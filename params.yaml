@@ -4,3 +4,4 @@ start_date: "2021-09-03"
 end_date: "2026-09-03"
 train_size_ratio: 0.9
 target_col: "open"
+forecast_steps: 30

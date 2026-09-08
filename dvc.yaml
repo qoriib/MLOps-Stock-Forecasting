@@ -19,6 +19,9 @@ stages:
       -p data_path artifact/data/${tickers[0]}.csv
       -p train_size_ratio ${train_size_ratio}
       -p target_col ${target_col}
+      -p forecast_steps ${forecast_steps}
+      --log-output
+      --progress-bar
     deps:
       - src/ml_pipeline.ipynb
       - artifact/data/${tickers[0]}.csv
@@ -26,6 +29,21 @@ stages:
       - tickers
       - train_size_ratio
       - target_col
+      - forecast_steps
     outs:
       - artifact/notebook/ml_pipeline_output.ipynb:
           cache: false
+      - artifact/forecast:
+          persist: true
+  store:
+    cmd: python -m src.store
+    deps:
+      - src/config.py
+      - src/store.py
+      - artifact/data
+      - artifact/forecast
+    params:
+      - tickers
+    outs:
+      - artifact/seed.sql:
+          persist: true
