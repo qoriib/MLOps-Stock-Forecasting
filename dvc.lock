@@ -1,0 +1,26 @@
+schema: '2.0'
+stages:
+  ingestion:
+    cmd: python -m src.ingestion
+    deps:
+    - path: src/config.py
+      hash: md5
+      md5: bdcd37927aa310b56115c3a3568fa597
+      size: 449
+    - path: src/ingestion.py
+      hash: md5
+      md5: e10cae79123af3eeef379495f0e90d2a
+      size: 3422
+    params:
+      params.yaml:
+        ingestion:
+          symbols:
+          - BBCA
+          start_date: '2021-09-03'
+          end_date: '2026-09-03'
+    outs:
+    - path: artifact/data
+      hash: md5
+      md5: 83476d3c5f6be3b2ff0b488e663ec015.dir
+      size: 11175
+      nfiles: 1

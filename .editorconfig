@@ -1,0 +1,41 @@
+# EditorConfig - https://editorconfig.org
+root = true
+
+# Konfigurasi Umum untuk Seluruh File
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Python Files
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# YAML & JSON Files
+[*.{yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+# TOML Files (pyproject.toml, dvc config)
+[*.toml]
+indent_style = space
+indent_size = 2
+
+# Markdown Files
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2
+
+# Shell & PowerShell Scripts
+[*.{sh,ps1,cmd,bat}]
+indent_style = space
+indent_size = 4
+
+# Makefiles
+[Makefile]
+indent_style = tab

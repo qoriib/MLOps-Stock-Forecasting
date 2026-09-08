@@ -1,0 +1,11 @@
+stages:
+  ingestion:
+    cmd: python -m src.ingestion
+    deps:
+      - src/config.py
+      - src/ingestion.py
+    params:
+      - ingestion
+    outs:
+      - artifact/data:
+          persist: true
