@@ -87,9 +87,10 @@ def main():
     args = parse_args()
 
     # Membaca parameter dari params.yaml via DVC API
-    params = dvc.api.params_show().get("ingestion", {})
+    raw_params = dvc.api.params_show()
+    params = raw_params.get("ingestion", raw_params)
 
-    symbols = args.symbols or params.get("symbols", [])
+    symbols = args.symbols or params.get("tickers") or params.get("symbols", [])
     if isinstance(symbols, str):
         symbols = [s.strip() for s in symbols.split(",") if s.strip()]
 

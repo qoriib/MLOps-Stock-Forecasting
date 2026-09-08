@@ -9,18 +9,17 @@ stages:
       size: 221
     - path: src/ingestion.py
       hash: md5
-      md5: 1adea70180c6892ee9cadccd328c1565
-      size: 4094
+      md5: 7717e56b5884772b0d7786a565002d47
+      size: 4155
     params:
       params.yaml:
-        ingestion:
-          symbols:
-          - BBCA
-          start_date: '2021-09-03'
-          end_date: '2026-09-03'
+        end_date: '2026-09-03'
+        start_date: '2021-09-03'
+        tickers:
+        - BBCA
     outs:
     - path: artifact/data
       hash: md5
-      md5: 1e30448e3201cec01c95fab65399ac08.dir
-      size: 113650
+      md5: 73682ef8fa0c701835a1bfe9a4671aa4.dir
+      size: 113739
       nfiles: 1
