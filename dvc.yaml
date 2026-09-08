@@ -9,3 +9,20 @@ stages:
     outs:
       - artifact/data:
           persist: true
+  ml_pipeline:
+    cmd: >-
+      papermill
+      src/ml_pipeline.ipynb
+      artifact/notebook/ml_pipeline_output.ipynb
+      -p data_path ${ml_pipeline.data_path}
+      -p train_size_ratio ${ml_pipeline.train_size_ratio}
+      -p target_col ${ml_pipeline.target_col}
+    deps:
+      - src/ml_pipeline.ipynb
+      - ${ml_pipeline.data_path}
+    params:
+      - ml_pipeline
+    outs:
+      - artifact/notebook/ml_pipeline_output.ipynb:
+          cache: false
+

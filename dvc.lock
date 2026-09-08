@@ -5,12 +5,12 @@ stages:
     deps:
     - path: src/config.py
       hash: md5
-      md5: bdcd37927aa310b56115c3a3568fa597
-      size: 449
+      md5: 3e2b2c087b15220abb14ae22d4be920f
+      size: 221
     - path: src/ingestion.py
       hash: md5
-      md5: e10cae79123af3eeef379495f0e90d2a
-      size: 3422
+      md5: 1adea70180c6892ee9cadccd328c1565
+      size: 4094
     params:
       params.yaml:
         ingestion:
@@ -21,6 +21,6 @@ stages:
     outs:
     - path: artifact/data
       hash: md5
-      md5: 83476d3c5f6be3b2ff0b488e663ec015.dir
-      size: 11175
+      md5: 1e30448e3201cec01c95fab65399ac08.dir
+      size: 113650
       nfiles: 1

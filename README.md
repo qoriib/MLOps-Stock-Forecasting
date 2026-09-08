@@ -49,17 +49,26 @@ dvc remote modify --local r2 secret_access_key <SECRET_ACCESS_KEY>
 
 ## Alur Kerja DVC & Pipeline
 
-### Menjalankan Pipeline Data
+### Menjalankan Pipeline Data & Model
 Jalankan pipeline DVC berdasarkan konfigurasi di `dvc.yaml` dan `params.yaml`:
 ```powershell
-# Menjalankan seluruh tahapan pipeline (reproduce)
+# Menjalankan seluruh tahapan pipeline (ingestion & ml_pipeline)
 dvc repro
+
+# Menjalankan hanya tahapan ml_pipeline / permodelan
+dvc repro ml_pipeline
 ```
 
-Atau menjalankan ingestion secara manual:
-```powershell
-python -m src.ingestion --symbols BBCA --start 2021-09-03 --end 2026-09-03
-```
+#### Menjalankan secara Manual / Modular:
+1. **Ingestion Data Saham (yfinance)**:
+   ```powershell
+   python -m src.ingestion --symbols BBCA --start 2021-09-03 --end 2026-09-03
+   ```
+
+2. **Training ML Pipeline via Papermill**:
+   ```powershell
+   papermill src/ml_pipeline.ipynb artifact/notebook/ml_pipeline_output.ipynb -p data_path artifact/data/BBCA.csv
+   ```
 
 ### Sinkronisasi Data ke Cloudflare R2
 ```powershell
@@ -72,10 +81,3 @@ dvc pull
 # Cek status perubahan pipeline dan data
 dvc status
 ```
-
----
-
-## Best Practice Commit Git & DVC
-- **Commit ke Git**: Kode sumber (`src/`), konfigurasi umum (`.dvc/config`, `dvc.yaml`, `dvc.lock`, `params.yaml`, `pyproject.toml`).
-- **Jangan commit ke Git**: File `.env`, `.dvc/config.local`, cache `.dvc/cache/`, dan file data fisik di `artifact/data/`.
-

@@ -1,48 +1,68 @@
 import argparse
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import dvc.api
 import pandas as pd
-import requests
+import yfinance as yf
 from src import config
 
 
+def resolve_ticker(symbol: str) -> str:
+    """Mengubah simbol saham lokal ke format Yahoo Finance (misal: BBCA -> BBCA.JK)."""
+    clean_sym = symbol.strip().upper()
+    if "." in clean_sym:
+        return clean_sym
+    # Asumsi saham 4 huruf tanpa titik adalah saham Bursa Efek Indonesia (IDX)
+    if len(clean_sym) == 4 and clean_sym.isalpha():
+        return f"{clean_sym}.JK"
+    return clean_sym
+
+
 def fetch_stock_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
-    """Mengambil data historis saham dari GoAPI."""
-    start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
-    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+    """Mengambil data historis saham menggunakan library yfinance (tanpa API key)."""
+    yf_symbol = resolve_ticker(symbol)
+    print(f"Mengunduh data {symbol} (Ticker: {yf_symbol}) dari {start_date} sampai {end_date}...")
 
-    all_data = []
-    current_end = end_date_obj
+    try:
+        ticker = yf.Ticker(yf_symbol)
+        hist = ticker.history(start=start_date, end=end_date)
+    except Exception as e:
+        print(f"Error saat mengunduh data {yf_symbol}: {e}")
+        return pd.DataFrame()
 
-    while current_end >= start_date_obj:
-        current_start = max(current_end - timedelta(days=364), start_date_obj)
-        date_from = current_start.strftime("%Y-%m-%d")
-        date_to = current_end.strftime("%Y-%m-%d")
+    if hist.empty:
+        # Coba download langsung dengan symbol asli jika format .JK gagal
+        if yf_symbol != symbol:
+            print(f"Mencoba ticker alternatif: {symbol}...")
+            try:
+                hist = yf.Ticker(symbol).history(start=start_date, end=end_date)
+            except Exception:
+                pass
 
-        url = f"{config.BASE_URL}/{symbol}/historical?from={date_from}&to={date_to}"
-        print(f"Fetching {symbol}: {date_from} sampai {date_to}")
+    if hist.empty:
+        print(f"Peringatan: Data kosong dari Yahoo Finance untuk {symbol}.")
+        return pd.DataFrame()
 
-        res = requests.get(url, headers=config.HEADERS)
-        if res.status_code == 200:
-            res_json = res.json()
-            results = res_json.get("data", {}).get("results", [])
-            all_data.extend(results)
-        else:
-            err_msg = res.json().get("message", f"HTTP {res.status_code}")
-            print(f"Peringatan API: {err_msg}")
-            break
+    hist = hist.reset_index()
 
-        current_end = current_start - timedelta(days=1)
-        time.sleep(1)
+    # Standarisasi kolom dan format tanggal
+    hist["date"] = pd.to_datetime(hist["Date"]).dt.tz_localize(None).dt.strftime("%Y-%m-%d")
+    hist["symbol"] = symbol.upper()
 
-    df = pd.DataFrame(all_data)
-    if not df.empty and "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.sort_values("date", ascending=True).drop_duplicates("date").reset_index(drop=True)
+    col_rename = {
+        "Open": "open",
+        "High": "high",
+        "Low": "low",
+        "Close": "close",
+        "Volume": "volume",
+    }
+    hist = hist.rename(columns=col_rename)
 
-    return df
+    required_cols = ["symbol", "date", "open", "high", "low", "close", "volume"]
+    hist = hist[[col for col in required_cols if col in hist.columns]]
+    hist = hist.sort_values("date", ascending=True).drop_duplicates("date").reset_index(drop=True)
+
+    return hist
 
 
 def save_data(df: pd.DataFrame, symbol: str) -> Path:
@@ -51,12 +71,12 @@ def save_data(df: pd.DataFrame, symbol: str) -> Path:
     file_path = config.DATA_DIR / f"{symbol}.csv"
 
     df.to_csv(file_path, index=False)
-    print(f"Selesai! Total {len(df)} data disimpan ke: {file_path}")
+    print(f"Selesai! Total {len(df)} baris data disimpan ke: {file_path}")
     return file_path
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Ingestion data saham GoAPI.")
+    parser = argparse.ArgumentParser(description="Ingestion data saham menggunakan yfinance.")
     parser.add_argument("-s", "--symbols", nargs="+", default=None, help="Daftar simbol saham (contoh: -s BBCA BBRI)")
     parser.add_argument("--start", type=str, default=None, help="Tanggal awal (YYYY-MM-DD)")
     parser.add_argument("--end", type=str, default=None, help="Tanggal akhir (YYYY-MM-DD)")
@@ -66,7 +86,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Membaca parameter langsung menggunakan API resmi DVC
+    # Membaca parameter dari params.yaml via DVC API
     params = dvc.api.params_show().get("ingestion", {})
 
     symbols = args.symbols or params.get("symbols", [])
@@ -91,7 +111,7 @@ def main():
         if not df.empty:
             save_data(df, ticker)
         else:
-            print(f"Peringatan: Data kosong untuk {ticker}.")
+            print(f"Peringatan: Gagal menyimpan data untuk {ticker}.")
 
 
 if __name__ == "__main__":
