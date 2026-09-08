@@ -5,8 +5,8 @@ stages:
     deps:
     - path: src/config.py
       hash: md5
-      md5: b63597bf912e75ed45aad2f35a5d1699
-      size: 262
+      md5: 6b892e7a23394c24685ee6d58de0d4ec
+      size: 303
     - path: src/ingestion.py
       hash: md5
       md5: 7717e56b5884772b0d7786a565002d47
@@ -17,34 +17,218 @@ stages:
         start_date: '2021-09-03'
         tickers:
         - BBCA
+        - BBRI
+        - BMRI
+        - BBNI
+        - BBTN
     outs:
     - path: artifact/data
       hash: md5
-      md5: af926d3c1d13cfe93c0bdf3b2cea7f7e.dir
-      size: 113332
-      nfiles: 1
+      md5: 663fd79a11a11b72e76f3baad1a90efc.dir
+      size: 558172
+      nfiles: 5
   store:
     cmd: python -m src.store
     deps:
     - path: artifact/data
       hash: md5
-      md5: af926d3c1d13cfe93c0bdf3b2cea7f7e.dir
-      size: 113332
-      nfiles: 1
+      md5: 663fd79a11a11b72e76f3baad1a90efc.dir
+      size: 558172
+      nfiles: 5
+    - path: artifact/forecast
+      hash: md5
+      md5: 6fe09e94830cfe9a826adaa358e1066e.dir
+      size: 5685
+      nfiles: 5
     - path: src/config.py
       hash: md5
-      md5: b63597bf912e75ed45aad2f35a5d1699
-      size: 262
+      md5: 6b892e7a23394c24685ee6d58de0d4ec
+      size: 303
     - path: src/store.py
       hash: md5
-      md5: 5fd21bc5dd9cc308d4d88f87f177b6e3
-      size: 4595
+      md5: 121d36e284e42183cc49fdad0775d3d7
+      size: 7276
     params:
       params.yaml:
         tickers:
         - BBCA
+        - BBRI
+        - BMRI
+        - BBNI
+        - BBTN
     outs:
     - path: artifact/seed.sql
       hash: md5
-      md5: 97c788edc672b4d3d1e7c3e806632175
-      size: 134426
+      md5: 0684bb0a9713e30b95c533278b490248
+      size: 674257
+  ml_pipeline:
+    cmd: papermill src/ml_pipeline.ipynb 
+      artifact/notebook/ml_pipeline_output.ipynb -p data_path 
+      artifact/data/BBCA.csv -p train_size_ratio 0.9 -p target_col open -p 
+      forecast_steps 30 --log-output --progress-bar
+    deps:
+    - path: artifact/data/BBCA.csv
+      hash: md5
+      md5: 8cda437db22444f5da62960c9ef5a7bb
+      size: 113332
+    - path: src/ml_pipeline.ipynb
+      hash: md5
+      md5: df5d9e1ef8c715d339d45bfeafea5e22
+      size: 18036
+    params:
+      params.yaml:
+        forecast_steps: 30
+        target_col: open
+        tickers:
+        - BBCA
+        train_size_ratio: 0.9
+    outs:
+    - path: artifact/forecast
+      hash: md5
+      md5: d751713988987e9331980363e24189ce.dir
+      size: 0
+      nfiles: 0
+    - path: artifact/notebook/ml_pipeline_output.ipynb
+      hash: md5
+      md5: 4aca834e5fdaceeb2c1a0877cd0d5370
+      size: 338790
+  ml_pipeline@BBCA:
+    cmd: papermill src/ml_pipeline.ipynb 
+      artifact/notebook/ml_pipeline_BBCA.ipynb -p data_path 
+      artifact/data/BBCA.csv -p train_size_ratio 0.9 -p target_col open -p 
+      forecast_steps 30 --log-output --progress-bar
+    deps:
+    - path: artifact/data/BBCA.csv
+      hash: md5
+      md5: 3e2e9e13f963ed33108a03074b25ab67
+      size: 113641
+    - path: src/ml_pipeline.ipynb
+      hash: md5
+      md5: df5d9e1ef8c715d339d45bfeafea5e22
+      size: 18036
+    params:
+      params.yaml:
+        forecast_steps: 30
+        target_col: open
+        train_size_ratio: 0.9
+    outs:
+    - path: artifact/forecast/BBCA_forecast.csv
+      hash: md5
+      md5: 6722d70bbf76c191175c4652c6ead936
+      size: 1151
+    - path: artifact/notebook/ml_pipeline_BBCA.ipynb
+      hash: md5
+      md5: 8fabb868df7ed7592a1f2840636d8c78
+      size: 487791
+  ml_pipeline@BBRI:
+    cmd: papermill src/ml_pipeline.ipynb 
+      artifact/notebook/ml_pipeline_BBRI.ipynb -p data_path 
+      artifact/data/BBRI.csv -p train_size_ratio 0.9 -p target_col open -p 
+      forecast_steps 30 --log-output --progress-bar
+    deps:
+    - path: artifact/data/BBRI.csv
+      hash: md5
+      md5: 8f06da638afe0f11e89af3c47d589191
+      size: 113960
+    - path: src/ml_pipeline.ipynb
+      hash: md5
+      md5: df5d9e1ef8c715d339d45bfeafea5e22
+      size: 18036
+    params:
+      params.yaml:
+        forecast_steps: 30
+        target_col: open
+        train_size_ratio: 0.9
+    outs:
+    - path: artifact/forecast/BBRI_forecast.csv
+      hash: md5
+      md5: ab646f77648cca4744425279848e5d32
+      size: 1156
+    - path: artifact/notebook/ml_pipeline_BBRI.ipynb
+      hash: md5
+      md5: 53473f226fbd838c7838517a37455276
+      size: 511527
+  ml_pipeline@BMRI:
+    cmd: papermill src/ml_pipeline.ipynb 
+      artifact/notebook/ml_pipeline_BMRI.ipynb -p data_path 
+      artifact/data/BMRI.csv -p train_size_ratio 0.9 -p target_col open -p 
+      forecast_steps 30 --log-output --progress-bar
+    deps:
+    - path: artifact/data/BMRI.csv
+      hash: md5
+      md5: 446bc1003efb98390986a4f06f463475
+      size: 113366
+    - path: src/ml_pipeline.ipynb
+      hash: md5
+      md5: df5d9e1ef8c715d339d45bfeafea5e22
+      size: 18036
+    params:
+      params.yaml:
+        forecast_steps: 30
+        target_col: open
+        train_size_ratio: 0.9
+    outs:
+    - path: artifact/forecast/BMRI_forecast.csv
+      hash: md5
+      md5: 12e1f6a3fd1d494b38e5ee6d4a6d1451
+      size: 1126
+    - path: artifact/notebook/ml_pipeline_BMRI.ipynb
+      hash: md5
+      md5: 7902495e82ebc0faa41616033ca877c3
+      size: 518602
+  ml_pipeline@BBNI:
+    cmd: papermill src/ml_pipeline.ipynb 
+      artifact/notebook/ml_pipeline_BBNI.ipynb -p data_path 
+      artifact/data/BBNI.csv -p train_size_ratio 0.9 -p target_col open -p 
+      forecast_steps 30 --log-output --progress-bar
+    deps:
+    - path: artifact/data/BBNI.csv
+      hash: md5
+      md5: 6a634ca5e480b3e548ceda108617b92a
+      size: 112558
+    - path: src/ml_pipeline.ipynb
+      hash: md5
+      md5: df5d9e1ef8c715d339d45bfeafea5e22
+      size: 18036
+    params:
+      params.yaml:
+        forecast_steps: 30
+        target_col: open
+        train_size_ratio: 0.9
+    outs:
+    - path: artifact/forecast/BBNI_forecast.csv
+      hash: md5
+      md5: 77096062fca6e4de73236f0dc363488e
+      size: 1126
+    - path: artifact/notebook/ml_pipeline_BBNI.ipynb
+      hash: md5
+      md5: 5101c4c0a7d81df472defd7f03d7b5f9
+      size: 517708
+  ml_pipeline@BBTN:
+    cmd: papermill src/ml_pipeline.ipynb 
+      artifact/notebook/ml_pipeline_BBTN.ipynb -p data_path 
+      artifact/data/BBTN.csv -p train_size_ratio 0.9 -p target_col open -p 
+      forecast_steps 30 --log-output --progress-bar
+    deps:
+    - path: artifact/data/BBTN.csv
+      hash: md5
+      md5: 26317ddf8add18c590cc8eb9dc4813b2
+      size: 104647
+    - path: src/ml_pipeline.ipynb
+      hash: md5
+      md5: df5d9e1ef8c715d339d45bfeafea5e22
+      size: 18036
+    params:
+      params.yaml:
+        forecast_steps: 30
+        target_col: open
+        train_size_ratio: 0.9
+    outs:
+    - path: artifact/forecast/BBTN_forecast.csv
+      hash: md5
+      md5: 79117b2b9679934b75a9e71fdfee1d1b
+      size: 1126
+    - path: artifact/notebook/ml_pipeline_BBTN.ipynb
+      hash: md5
+      md5: 18f141ce45aded800da069e33042de01
+      size: 545927

@@ -1,5 +1,9 @@
+params:
+  - params.yaml
+
 stages:
   ingestion:
+    desc: "Unduh data historis harga saham bank dari Yahoo Finance"
     cmd: python -m src.ingestion
     deps:
       - src/config.py
@@ -12,11 +16,14 @@ stages:
       - artifact/data:
           persist: true
   ml_pipeline:
+    desc: "Evaluasi hyperparameter ARIMA/SARIMA dan peramalan masa depan per ticker"
+    matrix:
+      ticker: ${tickers}
     cmd: >-
       papermill
       src/ml_pipeline.ipynb
-      artifact/notebook/ml_pipeline_output.ipynb
-      -p data_path artifact/data/${tickers[0]}.csv
+      artifact/notebook/ml_pipeline_${item.ticker}.ipynb
+      -p data_path artifact/data/${item.ticker}.csv
       -p train_size_ratio ${train_size_ratio}
       -p target_col ${target_col}
       -p forecast_steps ${forecast_steps}
@@ -24,18 +31,18 @@ stages:
       --progress-bar
     deps:
       - src/ml_pipeline.ipynb
-      - artifact/data/${tickers[0]}.csv
+      - artifact/data/${item.ticker}.csv
     params:
-      - tickers
       - train_size_ratio
       - target_col
       - forecast_steps
     outs:
-      - artifact/notebook/ml_pipeline_output.ipynb:
+      - artifact/notebook/ml_pipeline_${item.ticker}.ipynb:
           cache: false
-      - artifact/forecast:
+      - artifact/forecast/${item.ticker}_forecast.csv:
           persist: true
   store:
+    desc: "Generate seed SQL Cloudflare D1 untuk data historis dan peramalan"
     cmd: python -m src.store
     deps:
       - src/config.py
@@ -47,3 +54,4 @@ stages:
     outs:
       - artifact/seed.sql:
           persist: true
+

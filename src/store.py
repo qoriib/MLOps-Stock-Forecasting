@@ -109,6 +109,7 @@ def generate_seed_sql(tickers: list[str], output_file: Path, batch_size: int = 5
 
         # Ingestion data prediksi / forecasting
         for ticker in tickers:
+            ticker_clean = ticker.strip().upper()
             forecast_csv_path = config.FORECAST_DIR / f"{ticker_clean}_forecast.csv"
             if not forecast_csv_path.exists():
                 # Fallback jika ada di DATA_DIR
