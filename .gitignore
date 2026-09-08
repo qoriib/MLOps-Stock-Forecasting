@@ -34,6 +34,12 @@ wheels/
 htmlcov/
 .ipynb_checkpoints
 
+# Node & Cloudflare
+node_modules/
+dist/
+.wrangler/
+
 # DVC - Never ignore .dvc metadata files
 !*.dvc
 !.dvcignore
+
