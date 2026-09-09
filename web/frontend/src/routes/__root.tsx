@@ -1,6 +1,8 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { Theme } from '@astryxdesign/core/theme'
+import { neutralTheme } from '@astryxdesign/theme-neutral/built'
 
 import appCss from '../styles.css?url'
 
@@ -15,7 +17,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        title: 'Stock Inference System',
       },
     ],
     links: [
@@ -35,7 +37,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <Theme theme={neutralTheme} mode="system">
+          {children}
+        </Theme>
         <TanStackDevtools
           config={{
             position: 'bottom-right',
