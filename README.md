@@ -1,10 +1,10 @@
 # MLOps Stock Forecasting
 
-Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) menggunakan time-series dan machine learning (ARIMA & SARIMA), terintegrasi dengan DVC, ekosistem Cloudflare (R2, D1, Workers), dan antarmuka web modern.
+Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) menggunakan time-series dan machine learning (ARIMA & SARIMA), terintegrasi dengan DVC, Cloudflare R2, dan backend inferensi Python FastAPI yang ditargetkan untuk Google Cloud Run.
 
 ---
 
-## Arsitektur Ekosistem Cloudflare & Pipeline
+## Arsitektur Pipeline & Deployment
 
 ```text
 [ yfinance ]
@@ -13,13 +13,16 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
 [ artifact/data/{ticker}.csv ] ──(dvc push)──► [ Cloudflare R2 ] (S3-compatible Object Storage)
      │
      ▼ (ml_pipeline)
-[ artifact/model/{ticker}.pkl ] (Model Deployment Ready)
+[ artifact/model/{ticker}.pkl ] ──(Container Image)──► [ Google Cloud Run ] (FastAPI Inference)
+                                                              │
+                                                              ▼ (JSON API)
+                                                   [ Frontend / Clients ]
 ```
 
 ---
 
 ## Struktur Direktori
-- `src/`: Modul kode sumber Python:
+- `src/`: Modul kode sumber Python MLOps:
   - `ingestion.py`: Mengunduh data saham dari yfinance.
   - `config.py`: Definisi path direktori dan file artefak.
   - `ml_pipeline.ipynb`: Pipeline pemodelan time-series dan penyimpanan model (ARIMA & SARIMA).
@@ -27,8 +30,8 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
   - `data/`: Dataset harga historis saham (`{ticker}.csv`) (diabaikan Git, dilacak DVC).
   - `model/`: Model time-series terlatih (`{ticker}.pkl`) (diabaikan Git, dilacak DVC).
   - `notebook/`: Output notebook evaluasi pemodelan papermill.
+- `backend/`: REST API inferensi berbasis Python FastAPI & Dockerfile siap deploy ke Google Cloud Run.
 - `web/`:
-  - `backend/`: Serverless REST API berbasis Cloudflare Workers & Hono.
   - `frontend/`: Aplikasi dashboard interaktif React / Vite.
 - `dvc.yaml`: Definisi pipeline data & model DVC (`ingestion -> ml_pipeline`).
 - `dvc.lock`: Hash versi data dan state stage DVC.
