@@ -30,8 +30,8 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
   - `data/`: Dataset harga historis saham (`{ticker}.csv`) (diabaikan Git, dilacak DVC).
   - `model/`: Model time-series terlatih (`{ticker}.pkl`) (diabaikan Git, dilacak DVC).
   - `notebook/`: Output notebook evaluasi pemodelan papermill.
-- `backend/`: REST API inferensi berbasis Python FastAPI & Dockerfile siap deploy ke Google Cloud Run.
 - `web/`:
+  - `backend/`: REST API inferensi berbasis Python FastAPI & Dockerfile siap deploy ke Google Cloud Run.
   - `frontend/`: Aplikasi dashboard interaktif React / Vite.
 - `dvc.yaml`: Definisi pipeline data & model DVC (`ingestion -> ml_pipeline`).
 - `dvc.lock`: Hash versi data dan state stage DVC.

@@ -24,7 +24,7 @@ Backend inferensi machine learning berbasis **Python FastAPI** yang melayani per
 ### A. Menggunakan Python Virtual Environment
 ```bash
 # Masuk ke direktori backend
-cd backend
+cd web/backend
 
 # Install dependencies
 pip install -r requirements.txt
@@ -43,7 +43,7 @@ Akses dokumentasi Swagger UI di: [http://localhost:8000/docs](http://localhost:8
 
 ```bash
 # Build Docker image
-docker build -t stock-api -f backend/Dockerfile .
+docker build -t stock-api -f web/backend/Dockerfile .
 
 # Jalankan container
 docker run -p 8080:8080 -e PORT=8080 stock-api
@@ -69,7 +69,7 @@ Jalankan perintah ini dari direktori root proyek:
 ```bash
 gcloud run deploy stock-forecast-api \
   --source . \
-  --dockerfile backend/Dockerfile \
+  --dockerfile web/backend/Dockerfile \
   --platform managed \
   --region asia-southeast2 \
   --allow-unauthenticated \

@@ -32,7 +32,7 @@ app.add_middleware(
 # Path Discovery (Fleksibel untuk Lokal dan Docker Container)
 # ============================================================
 CURRENT_DIR = Path(__file__).resolve().parent
-ROOT_DIR = CURRENT_DIR.parent
+ROOT_DIR = CURRENT_DIR.parent.parent
 
 def resolve_directory(env_var: str, candidates: List[Path]) -> Path:
     if os.environ.get(env_var):
@@ -46,6 +46,7 @@ MODEL_DIR = resolve_directory(
     "MODEL_DIR",
     [
         ROOT_DIR / "artifact" / "model",
+        CURRENT_DIR.parent / "artifact" / "model",
         CURRENT_DIR / "artifact" / "model",
         CURRENT_DIR / "model",
         Path("/app/artifact/model"),
@@ -57,6 +58,7 @@ DATA_DIR = resolve_directory(
     "DATA_DIR",
     [
         ROOT_DIR / "artifact" / "data",
+        CURRENT_DIR.parent / "artifact" / "data",
         CURRENT_DIR / "artifact" / "data",
         CURRENT_DIR / "data",
         Path("/app/artifact/data"),
