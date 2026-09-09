@@ -15,7 +15,7 @@ stages:
     outs:
       - artifact/data
   ml_pipeline:
-    desc: "Evaluasi hyperparameter ARIMA/SARIMA dan peramalan masa depan per ticker"
+    desc: "Evaluasi hyperparameter ARIMA/SARIMA dan penyimpanan model per ticker"
     matrix:
       ticker: ${tickers}
     cmd: >-
@@ -25,7 +25,6 @@ stages:
       -p data_path artifact/data/${item.ticker}.csv
       -p train_size_ratio ${train_size_ratio}
       -p target_col ${target_col}
-      -p forecast_steps ${forecast_steps}
       --log-output
       --progress-bar
     deps:
@@ -34,20 +33,7 @@ stages:
     params:
       - train_size_ratio
       - target_col
-      - forecast_steps
     outs:
       - artifact/notebook/ml_pipeline_${item.ticker}.ipynb:
           cache: false
-      - artifact/forecast/${item.ticker}_forecast.csv
-  store:
-    desc: "Generate seed SQL Cloudflare D1 untuk data historis dan peramalan"
-    cmd: python -m src.store
-    deps:
-      - src/config.py
-      - src/store.py
-      - artifact/data
-      - artifact/forecast
-    params:
-      - tickers
-    outs:
-      - artifact/seed.sql
+      - artifact/model/${item.ticker}.pkl

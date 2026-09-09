@@ -10,19 +10,10 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
 [ yfinance ]
      │
      ▼ (ingestion)
-[ artifact/data/ ] ──(dvc push)──► [ Cloudflare R2 ] (S3-compatible Object Storage)
+[ artifact/data/{ticker}.csv ] ──(dvc push)──► [ Cloudflare R2 ] (S3-compatible Object Storage)
      │
      ▼ (ml_pipeline)
-[ artifact/forecast/ ]
-     │
-     ▼ (src/store.py)
-[ artifact/seed.sql ] ──────────► [ Cloudflare D1 ] (Edge SQLite Database)
-                                         │
-                                         ▼ (D1 Binding 'DB')
-                              [ Cloudflare Workers (Hono) ] (REST API)
-                                         │
-                                         ▼ (Fetch JSON API)
-                              [ Frontend (React/Vite) ]
+[ artifact/model/{ticker}.pkl ] (Model Deployment Ready)
 ```
 
 ---
@@ -31,18 +22,17 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
 - `src/`: Modul kode sumber Python:
   - `ingestion.py`: Mengunduh data saham dari yfinance.
   - `config.py`: Definisi path direktori dan file artefak.
-  - `ml_pipeline.ipynb`: Pipeline pemodelan dan peramalan time-series (ARIMA & SARIMA).
-  - `store.py`: Generator seed SQL untuk Cloudflare D1.
+  - `ml_pipeline.ipynb`: Pipeline pemodelan time-series dan penyimpanan model (ARIMA & SARIMA).
 - `artifact/`:
-  - `data/`: Dataset harga historis saham (diabaikan Git, dilacak DVC).
-  - `forecast/`: Hasil prediksi peramalan masa depan (diabaikan Git, dilacak DVC).
-  - `seed.sql`: File SQL seed otomatis untuk Cloudflare D1.
+  - `data/`: Dataset harga historis saham (`{ticker}.csv`) (diabaikan Git, dilacak DVC).
+  - `model/`: Model time-series terlatih (`{ticker}.pkl`) (diabaikan Git, dilacak DVC).
+  - `notebook/`: Output notebook evaluasi pemodelan papermill.
 - `web/`:
-  - `backend/`: Serverless REST API berbasis Cloudflare Workers & Hono dengan binding Cloudflare D1.
+  - `backend/`: Serverless REST API berbasis Cloudflare Workers & Hono.
   - `frontend/`: Aplikasi dashboard interaktif React / Vite.
-- `dvc.yaml`: Definisi pipeline data & model DVC (`ingestion -> ml_pipeline -> store`).
+- `dvc.yaml`: Definisi pipeline data & model DVC (`ingestion -> ml_pipeline`).
 - `dvc.lock`: Hash versi data dan state stage DVC.
-- `params.yaml`: Parameter konfigurasi pipeline (`tickers`, `start_date`, `end_date`, `train_size_ratio`, `target_col`, `forecast_steps`).
+- `params.yaml`: Parameter konfigurasi pipeline (`tickers`, `start_date`, `end_date`, `train_size_ratio`, `target_col`).
 
 ---
 
