@@ -8,20 +8,54 @@ Backend inferensi machine learning berbasis **Python FastAPI** yang melayani per
 - **Model Loading & In-Memory Caching**: Memuat model pickled (`.pkl`) secara efisien.
 - **Prediksi Probabilistik**: Menghasilkan nilai prediksi beserta rentang keyakinan 95% (`lower_bound` & `upper_bound`).
 - **Penjadwalan Tanggal Hari Kerja**: Otomatis menghasilkan tanggal masa depan (Business Days) setelah tanggal historis terakhir.
-- **RESTful Endpoints**:
-  - `GET /` - Informasi layanan dan navigasi endpoint.
-  - `GET /health` - Healthcheck probe untuk Cloud Run.
-  - `GET /api/models` - Daftar model yang tersedia.
-  - `POST /api/predict` - Inferensi model (JSON payload: `{"ticker": "BBCA.JK", "steps": 30}`).
-  - `GET /api/predict/{ticker}` - Convenience GET endpoint inferensi (`/api/predict/BBCA.JK?steps=30`).
+- **RESTful Endpoints (Sederhana & Efisien)**:
+  - `GET /` - Dokumentasi Interaktif API (Swagger UI langsung di root).
+  - `GET /health` - Healthcheck probe untuk Cloud Run & monitoring.
+  - `GET /openapi.json` - Spesifikasi OpenAPI 3.1 schema JSON.
+  - `GET /api/models` - Endpoint terpadu: daftar ticker aktif dan metadata lengkap model.
+  - `POST /api/predict` - Inferensi model peramalan (JSON payload: `{"ticker": "BBCA.JK", "steps": 30}`).
   - `GET /api/stocks/{ticker}` - Data historis harga saham untuk visualisasi chart.
-  - `GET /docs` - Dokumentasi interaktif OpenAPI / Swagger UI.
+
+---
+
+## Struktur Direktori Modular
+Aplikasi backend telah dimodularisasi dengan arsitektur berlapis:
+```text
+web/backend/
+├── app/
+│   ├── core/            # Konfigurasi aplikasi & path discovery (MODEL_DIR, DATA_DIR)
+│   ├── schemas/         # Skema validasi Pydantic (request & response)
+│   ├── services/        # Logika bisnis (pemuatan model, forecasting, data historis)
+│   └── api/             # Routing FastAPI (health, models, predict, stocks)
+├── main.py              # Entrypoint aplikasi FastAPI & Uvicorn runner
+├── pyproject.toml       # Definisi dependensi & metadata package Poetry
+├── poetry.lock          # Versi lock dependensi Python
+├── Dockerfile           # Konfigurasi container untuk Google Cloud Run
+├── requirements.txt     # Dependensi Python untuk container build
+└── README.md
+```
 
 ---
 
 ## 1. Menjalankan Secara Lokal
 
-### A. Menggunakan Python Virtual Environment
+### A. Menggunakan Poetry (Direkomendasikan)
+Direktori backend telah mendukung manajemen dependensi modern menggunakan **Poetry** (`pyproject.toml` & `poetry.lock`):
+
+```bash
+# Masuk ke direktori backend
+cd web/backend
+
+# Install dependencies dari lockfile
+poetry install
+
+# Jalankan server
+poetry run python main.py
+# atau menggunakan Uvicorn reload:
+poetry run uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+```
+
+### B. Menggunakan Pip & Virtual Environment Tradisional
 ```bash
 # Masuk ke direktori backend
 cd web/backend
@@ -32,17 +66,32 @@ pip install -r requirements.txt
 # Jalankan server
 python main.py
 # atau:
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-Akses dokumentasi Swagger UI di: [http://localhost:8000/docs](http://localhost:8000/docs)
+Akses dokumentasi interaktif langsung di: [http://localhost:8080/](http://localhost:8080/)
+Akses skema OpenAPI di: [http://localhost:8080/openapi.json](http://localhost:8080/openapi.json)
 
 ---
 
 ## 2. Menjalankan dengan Docker Secara Lokal
 
+### Menggunakan Docker Compose (Direkomendasikan)
+Dari direktori root proyek (`MLOps-Stock-Forecasting`):
 ```bash
-# Build Docker image
+# Build dan jalankan container di latar belakang
+docker compose up --build -d
+
+# Cek log aplikasi
+docker compose logs -f
+
+# Hentikan container
+docker compose down
+```
+
+### Menggunakan Docker CLI Standar
+```bash
+# Build Docker image dari root proyek
 docker build -t stock-api -f web/backend/Dockerfile .
 
 # Jalankan container
