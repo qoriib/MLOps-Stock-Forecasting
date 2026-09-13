@@ -2,9 +2,6 @@
   "name": "web",
   "private": true,
   "type": "module",
-  "imports": {
-    "#/*": "./src/*"
-  },
   "scripts": {
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
@@ -22,7 +19,8 @@
     "@tanstack/react-start": "latest",
     "nitro": "3.0.260610-beta",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@tanstack/devtools-vite": "latest",
