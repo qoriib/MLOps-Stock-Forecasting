@@ -5,8 +5,15 @@ export interface PredictionItem extends Record<string, unknown> {
   upper_bound: number | null
 }
 
+export interface PredictRequest {
+  ticker: string
+  steps: number
+  model_type?: string
+}
+
 export interface PredictResponse {
   ticker: string
+  model_type?: string
   model_name: string
   forecast_steps: number
   last_historical_date: string | null
@@ -34,6 +41,7 @@ export interface HistoricalResponse {
 
 export interface ModelInfo {
   ticker: string
+  variant?: string
   filename: string
   model_type: string
   file_size_bytes: number
@@ -42,5 +50,7 @@ export interface ModelInfo {
 
 export interface ModelsResponse {
   tickers: string[]
+  available_model_types?: string[]
   models: ModelInfo[]
 }
+

@@ -4,8 +4,11 @@ import type { ModelInfo, ModelsResponse } from '@/types/stock'
 export interface StockContextType {
   ticker: string
   setTicker: (ticker: string) => void
+  modelType: string
+  setModelType: (modelType: string) => void
   availableTickers: string[]
   availableModels: ModelInfo[]
+  availableModelTypes: string[]
   loadingTickers: boolean
   backendHealthy: boolean | null
   checkHealth: () => Promise<void>
@@ -15,8 +18,10 @@ const StockContext = createContext<StockContextType | undefined>(undefined)
 
 export function StockProvider({ children }: { children: ReactNode }) {
   const [ticker, setTicker] = useState<string>('')
+  const [modelType, setModelType] = useState<string>('sarima')
   const [availableTickers, setAvailableTickers] = useState<string[]>([])
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
+  const [availableModelTypes, setAvailableModelTypes] = useState<string[]>(['sarima', 'arima'])
   const [loadingTickers, setLoadingTickers] = useState<boolean>(true)
   const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null)
 
@@ -32,6 +37,9 @@ export function StockProvider({ children }: { children: ReactNode }) {
         const tickers: string[] = data.tickers || []
         setAvailableTickers(tickers)
         setAvailableModels(data.models || [])
+        if (data.available_model_types && data.available_model_types.length > 0) {
+          setAvailableModelTypes(data.available_model_types)
+        }
         if (tickers.length > 0) {
           setTicker((prev) => (prev && tickers.includes(prev) ? prev : tickers[0]))
         }
@@ -66,8 +74,11 @@ export function StockProvider({ children }: { children: ReactNode }) {
       value={{
         ticker,
         setTicker,
+        modelType,
+        setModelType,
         availableTickers,
         availableModels,
+        availableModelTypes,
         loadingTickers,
         backendHealthy,
         checkHealth,

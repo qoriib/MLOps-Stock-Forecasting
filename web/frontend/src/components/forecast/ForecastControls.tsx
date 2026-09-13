@@ -8,11 +8,19 @@ import { Selector } from '@astryxdesign/core/Selector'
 
 interface ForecastControlsProps {
   ticker: string
+  modelType: string
+  onModelTypeChange: (modelType: string) => void
   steps: string
   onStepsChange: (steps: string) => void
   loading: boolean
   onPredict: () => void
 }
+
+const MODEL_OPTIONS = [
+  { value: 'sarima', label: 'Model: SARIMA' },
+  { value: 'arima', label: 'Model: ARIMA' },
+]
+
 
 const STEP_OPTIONS = [
   { value: '7', label: '7 Hari' },
@@ -24,6 +32,8 @@ const STEP_OPTIONS = [
 
 export function ForecastControls({
   ticker,
+  modelType,
+  onModelTypeChange,
   steps,
   onStepsChange,
   loading,
@@ -45,12 +55,21 @@ export function ForecastControls({
         endContent={
           <HStack gap={2} align="center">
             <Selector
+              label="Pilihan Model"
+              isLabelHidden
+              options={MODEL_OPTIONS}
+              value={modelType}
+              onChange={onModelTypeChange}
+              width={170}
+              size="sm"
+            />
+            <Selector
               label="Horizon"
               isLabelHidden
               options={STEP_OPTIONS}
               value={steps}
               onChange={onStepsChange}
-              width={120}
+              width={110}
               size="sm"
             />
             <Button

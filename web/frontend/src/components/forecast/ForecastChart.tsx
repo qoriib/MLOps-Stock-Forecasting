@@ -1,6 +1,7 @@
 import { Card } from '@astryxdesign/core/Card'
 import { VStack, HStack } from '@astryxdesign/core/Stack'
 import { Text } from '@astryxdesign/core/Text'
+import { Badge } from '@astryxdesign/core/Badge'
 import { useTheme } from '@astryxdesign/core/theme'
 import type { PredictionItem, HistoricalItem } from '@/types/stock'
 
@@ -8,9 +9,17 @@ interface ForecastChartProps {
   predictions: PredictionItem[]
   history?: HistoricalItem[]
   ticker: string
+  modelType?: string
+  modelName?: string
 }
 
-export function ForecastChart({ predictions, history = [], ticker }: ForecastChartProps) {
+export function ForecastChart({
+  predictions,
+  history = [],
+  ticker,
+  modelType,
+  modelName,
+}: ForecastChartProps) {
   const { token } = useTheme()
   const accent = token('--color-accent') || '#3b82f6'
   const textMuted = token('--color-text-secondary') || '#6b7280'
@@ -59,13 +68,22 @@ export function ForecastChart({ predictions, history = [], ticker }: ForecastCha
     <Card variant="default" elevation="low" padding={3}>
       <VStack gap={2}>
         <HStack justify="between" align="center">
-          <Text weight="semibold">Visualisasi Historis & Proyeksi Peramalan ({ticker})</Text>
+          <HStack gap={2} align="center">
+            <Text weight="semibold">Visualisasi Historis & Proyeksi Peramalan ({ticker})</Text>
+            {modelType && (
+              <Badge
+                label={`Model: ${modelType.toUpperCase()}${modelName ? ` (${modelName})` : ''}`}
+                variant="neutral"
+              />
+            )}
+          </HStack>
           <HStack gap={3}>
             <Text size="xsm" color="secondary">● Historis ({histSorted.length} hari)</Text>
             <Text size="xsm" style={{ color: accent }}>● Prediksi ({predictions.length} hari)</Text>
             <Text size="xsm" color="secondary">■ CI 95%</Text>
           </HStack>
         </HStack>
+
 
         <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
           <line x1={padLeft} y1={padTop} x2={width - padRight} y2={padTop} stroke={gridColor} strokeDasharray="3 3" />

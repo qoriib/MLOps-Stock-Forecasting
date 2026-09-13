@@ -5,12 +5,12 @@ stages:
     deps:
     - path: src/config.py
       hash: md5
-      md5: 7bb0231f5a8d1482051c398648f5f5cf
-      size: 220
+      md5: 47f7e33a0ff7fbc95dc561adc6663a38
+      size: 293
     - path: src/ingestion.py
       hash: md5
-      md5: c94e78a6b975e3e1dfe17b25bf91c9ac
-      size: 2578
+      md5: 553d11b68d82e1dc61e54ad76a335d79
+      size: 2056
     params:
       params.yaml:
         end_date: '2026-09-03'
@@ -21,8 +21,8 @@ stages:
     outs:
     - path: artifact/data
       hash: md5
-      md5: 0ff4ef614be9312a576c78facb030d93.dir
-      size: 234844
+      md5: 8281fa0f2345bc5f5eb734f69b087a59.dir
+      size: 253941
       nfiles: 2
   store:
     cmd: python -m src.store
@@ -231,58 +231,110 @@ stages:
       size: 545927
   ml_pipeline@BBCA.JK:
     cmd: papermill src/ml_pipeline.ipynb 
-      artifact/notebook/ml_pipeline_BBCA.JK.ipynb -p data_path 
-      artifact/data/BBCA.JK.csv -p train_size_ratio 0.9 -p target_col open 
-      --log-output --progress-bar
+      artifact/notebook/ml_pipeline_BBCA.JK.ipynb -p TICKER BBCA.JK -p 
+      TRAIN_SIZE_RATIO 0.9 -p TARGET_COL open -p ARIMA_START_P 0 -p ARIMA_MAX_P 
+      3 -p ARIMA_START_Q 0 -p ARIMA_MAX_Q 3 -p ARIMA_D 1 -p SARIMA_START_P 0 -p 
+      SARIMA_MAX_P 2 -p SARIMA_START_Q 0 -p SARIMA_MAX_Q 2 -p SARIMA_D 1 -p 
+      SARIMA_START_SEASONAL_P 0 -p SARIMA_MAX_SEASONAL_P 2 -p 
+      SARIMA_START_SEASONAL_Q 0 -p SARIMA_MAX_SEASONAL_Q 2 -p SARIMA_SEASONAL_D 
+      1 -p SARIMA_SEASONAL_PERIOD 5 --log-output --progress-bar
     deps:
     - path: artifact/data/BBCA.JK.csv
       hash: md5
-      md5: b78f5bec47bb488502355739ec4d80ad
-      size: 117217
+      md5: 3bb7a286b0892ca965f4f0430c8be1cb
+      size: 126902
     - path: src/ml_pipeline.ipynb
       hash: md5
-      md5: d68e689d81bacbc0dd3d83664cbf58b0
-      size: 17524
+      md5: f09fcee3c792b64139c1dc25f6984a62
+      size: 14234
     params:
       params.yaml:
+        arima:
+          start_p: 0
+          max_p: 3
+          start_q: 0
+          max_q: 3
+          d: 1
+        sarima:
+          start_p: 0
+          max_p: 2
+          start_q: 0
+          max_q: 2
+          d: 1
+          start_seasonal_p: 0
+          max_seasonal_p: 2
+          start_seasonal_q: 0
+          max_seasonal_q: 2
+          seasonal_d: 1
+          seasonal_period: 5
         target_col: open
         train_size_ratio: 0.9
     outs:
-    - path: artifact/model/BBCA.JK.pkl
+    - path: artifact/model/BBCA.JK_ARIMA.pkl
       hash: md5
-      md5: 76fa4f5a3f0d1b030e1591076174bb51
-      size: 28045213
+      md5: 8efa85c2f82d093c1b414ea96763cfa0
+      size: 2672128
+    - path: artifact/model/BBCA.JK_SARIMA.pkl
+      hash: md5
+      md5: d7cc112dc02ed6a5e150aba75dfd730d
+      size: 60593059
     - path: artifact/notebook/ml_pipeline_BBCA.JK.ipynb
       hash: md5
-      md5: a3149e081ffd6fed8be232f2668e1471
-      size: 488264
+      md5: 5824dba9a8f2a772c033431da5d1c784
+      size: 478488
   ml_pipeline@BBRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
-      artifact/notebook/ml_pipeline_BBRI.JK.ipynb -p data_path 
-      artifact/data/BBRI.JK.csv -p train_size_ratio 0.9 -p target_col open 
-      --log-output --progress-bar
+      artifact/notebook/ml_pipeline_BBRI.JK.ipynb -p TICKER BBRI.JK -p 
+      TRAIN_SIZE_RATIO 0.9 -p TARGET_COL open -p ARIMA_START_P 0 -p ARIMA_MAX_P 
+      3 -p ARIMA_START_Q 0 -p ARIMA_MAX_Q 3 -p ARIMA_D 1 -p SARIMA_START_P 0 -p 
+      SARIMA_MAX_P 2 -p SARIMA_START_Q 0 -p SARIMA_MAX_Q 2 -p SARIMA_D 1 -p 
+      SARIMA_START_SEASONAL_P 0 -p SARIMA_MAX_SEASONAL_P 2 -p 
+      SARIMA_START_SEASONAL_Q 0 -p SARIMA_MAX_SEASONAL_Q 2 -p SARIMA_SEASONAL_D 
+      1 -p SARIMA_SEASONAL_PERIOD 5 --log-output --progress-bar
     deps:
     - path: artifact/data/BBRI.JK.csv
       hash: md5
-      md5: 9b121b71e2cbf39476bed6ae1a6acf94
-      size: 117627
+      md5: 2bf28a3453b5ce76441a9da2faaedbc4
+      size: 127039
     - path: src/ml_pipeline.ipynb
       hash: md5
-      md5: d68e689d81bacbc0dd3d83664cbf58b0
-      size: 17524
+      md5: f09fcee3c792b64139c1dc25f6984a62
+      size: 14234
     params:
       params.yaml:
+        arima:
+          start_p: 0
+          max_p: 3
+          start_q: 0
+          max_q: 3
+          d: 1
+        sarima:
+          start_p: 0
+          max_p: 2
+          start_q: 0
+          max_q: 2
+          d: 1
+          start_seasonal_p: 0
+          max_seasonal_p: 2
+          start_seasonal_q: 0
+          max_seasonal_q: 2
+          seasonal_d: 1
+          seasonal_period: 5
         target_col: open
         train_size_ratio: 0.9
     outs:
-    - path: artifact/model/BBRI.JK.pkl
+    - path: artifact/model/BBRI.JK_ARIMA.pkl
       hash: md5
-      md5: 93e3efe0a47a2959ac7e386b66428713
-      size: 13302454
+      md5: 3d970a7f2e68c0750669c52dc125af11
+      size: 2674546
+    - path: artifact/model/BBRI.JK_SARIMA.pkl
+      hash: md5
+      md5: 8a11dc7527ee88fd62d63bc91a8bb983
+      size: 60643768
     - path: artifact/notebook/ml_pipeline_BBRI.JK.ipynb
       hash: md5
-      md5: cbcafc893c2480ab9f75690a0b8b76c8
-      size: 511817
+      md5: 88f3312e34d371f1e8224fa297bcdd2c
+      size: 504896
   ml_pipeline@BMRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BMRI.JK.ipynb -p data_path 

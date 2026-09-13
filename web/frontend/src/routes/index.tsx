@@ -13,7 +13,7 @@ import type { PredictResponse } from '@/types/stock'
 export const Route = createFileRoute('/')({ component: ForecastPage })
 
 export function ForecastPage() {
-  const { ticker } = useStock()
+  const { ticker, modelType, setModelType } = useStock()
   const [steps, setSteps] = useState<string>('30')
   const [predictResult, setPredictResult] = useState<PredictResponse | null>(null)
   const { request, loading, error } = useApi()
@@ -23,7 +23,11 @@ export function ForecastPage() {
     const data = await request<PredictResponse>('/api/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker, steps: parseInt(steps, 10) }),
+      body: JSON.stringify({
+        ticker,
+        steps: parseInt(steps, 10),
+        model_type: modelType,
+      }),
     })
     if (data) {
       if (!data.history || data.history.length === 0) {
@@ -39,18 +43,20 @@ export function ForecastPage() {
       }
       setPredictResult(data)
     }
-  }, [ticker, steps, request])
+  }, [ticker, steps, modelType, request])
 
   useEffect(() => {
     if (ticker) {
       handlePredict()
     }
-  }, [ticker, handlePredict])
+  }, [ticker, modelType, handlePredict])
 
   return (
     <VStack gap={5}>
       <ForecastControls
         ticker={ticker}
+        modelType={modelType}
+        onModelTypeChange={setModelType}
         steps={steps}
         onStepsChange={setSteps}
         loading={loading}
@@ -65,9 +71,12 @@ export function ForecastPage() {
           predictions={predictResult.predictions}
           history={predictResult.history}
           ticker={ticker}
+          modelType={predictResult.model_type}
+          modelName={predictResult.model_name}
         />
       )}
       <ForecastTable items={predictResult?.predictions || []} />
     </VStack>
   )
 }
+

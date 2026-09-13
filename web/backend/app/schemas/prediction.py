@@ -29,6 +29,11 @@ class PredictRequest(BaseModel):
         examples=["BBCA.JK"],
         description="Simbol ticker saham IDX (contoh: BBCA.JK atau BBRI.JK)",
     )
+    model_type: Optional[str] = Field(
+        default="sarima",
+        examples=["sarima", "arima"],
+        description="Pilihan varian model peramalan: 'sarima' (default) atau 'arima'",
+    )
     steps: int = Field(
         default=30,
         ge=1,
@@ -41,6 +46,7 @@ class PredictRequest(BaseModel):
         "json_schema_extra": {
             "example": {
                 "ticker": "BBCA.JK",
+                "model_type": "sarima",
                 "steps": 30,
             }
         }
@@ -48,6 +54,11 @@ class PredictRequest(BaseModel):
 
 class PredictResponse(BaseModel):
     ticker: str = Field(..., examples=["BBCA.JK"], description="Simbol ticker saham")
+    model_type: str = Field(
+        default="sarima",
+        examples=["sarima", "arima"],
+        description="Varian model yang digunakan untuk peramalan",
+    )
     model_name: str = Field(
         ...,
         examples=["ARIMAResultsWrapper"],

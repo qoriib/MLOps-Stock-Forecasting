@@ -23,9 +23,13 @@ Menjalankan inferensi deret waktu (*time-series forecasting*) menggunakan model 
     },
 )
 def predict(req: PredictRequest):
-    """Menghasilkan prediksi harga saham masa depan berdasarkan ticker."""
+    """Menghasilkan prediksi harga saham masa depan berdasarkan ticker dan pilihan varian model."""
     try:
-        return forecast_service.predict(ticker=req.ticker, steps=req.steps)
+        return forecast_service.predict(
+            ticker=req.ticker,
+            steps=req.steps,
+            model_type=req.model_type,
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
