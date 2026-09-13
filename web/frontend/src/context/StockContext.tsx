@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import type { ModelInfo, ModelsResponse } from '@/types/stock'
+import type { Model, ModelsResponse } from '@/types/stock'
 
 export interface StockContextType {
   ticker: string
@@ -7,7 +7,7 @@ export interface StockContextType {
   modelType: string
   setModelType: (modelType: string) => void
   availableTickers: string[]
-  availableModels: ModelInfo[]
+  availableModels: Model[]
   availableModelTypes: string[]
   loadingTickers: boolean
   backendHealthy: boolean | null
@@ -20,7 +20,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
   const [ticker, setTicker] = useState<string>('')
   const [modelType, setModelType] = useState<string>('sarima')
   const [availableTickers, setAvailableTickers] = useState<string[]>([])
-  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
+  const [availableModels, setAvailableModels] = useState<Model[]>([])
   const [availableModelTypes, setAvailableModelTypes] = useState<string[]>(['sarima', 'arima'])
   const [loadingTickers, setLoadingTickers] = useState<boolean>(true)
   const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null)
@@ -44,19 +44,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
           setTicker((prev) => (prev && tickers.includes(prev) ? prev : tickers[0]))
         }
       } else {
-        // Fallback coba ke /health
-        const healthRes = await fetch(`${apiBase}/health`)
-        if (healthRes.ok) {
-          setBackendHealthy(true)
-          const json = await healthRes.json()
-          const tickers: string[] = json.available_tickers || []
-          setAvailableTickers(tickers)
-          if (tickers.length > 0) {
-            setTicker((prev) => (prev && tickers.includes(prev) ? prev : tickers[0]))
-          }
-        } else {
-          setBackendHealthy(false)
-        }
+        setBackendHealthy(false)
       }
     } catch {
       setBackendHealthy(false)
