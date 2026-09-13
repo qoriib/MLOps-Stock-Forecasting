@@ -39,7 +39,7 @@ export interface HistoricalResponse {
   data: HistoricalItem[]
 }
 
-export interface ModelInfo {
+export interface Model {
   ticker: string
   variant?: string
   filename: string
@@ -51,6 +51,6 @@ export interface ModelInfo {
 export interface ModelsResponse {
   tickers: string[]
   available_model_types?: string[]
-  models: ModelInfo[]
+  models: Model[]
 }
 

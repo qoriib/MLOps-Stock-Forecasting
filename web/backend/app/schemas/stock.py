@@ -3,11 +3,11 @@ from pydantic import BaseModel, Field
 
 class HistoricalStockResponse(BaseModel):
     ticker: str = Field(..., examples=["BBCA.JK"], description="Simbol ticker saham")
-    total_records: int = Field(..., examples=[1202], description="Jumlah total baris data yang tersedia di dataset")
-    returned_records: int = Field(..., examples=[100], description="Jumlah baris data yang dikembalikan pada request ini")
+    total_records: int = Field(..., examples=[1202], description="Jumlah total baris data")
+    returned_records: int = Field(..., examples=[100], description="Jumlah baris data yang dikembalikan")
     data: List[Dict[str, Any]] = Field(
         ...,
-        description="Daftar objek data historis (kolom date, open, high, low, close, volume)",
+        description="Daftar data historis saham",
     )
 
     model_config = {

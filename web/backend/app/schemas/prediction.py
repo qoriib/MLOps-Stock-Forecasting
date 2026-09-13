@@ -5,41 +5,41 @@ class PredictionItem(BaseModel):
     date: str = Field(
         ...,
         examples=["2026-09-15"],
-        description="Tanggal peramalan bursa hari kerja (format YYYY-MM-DD)",
+        description="Tanggal peramalan (format YYYY-MM-DD)",
     )
     predicted_price: float = Field(
         ...,
         examples=[9850.50],
-        description="Estimasi harga saham yang diramalkan oleh model",
+        description="Estimasi harga saham yang diramalkan",
     )
     lower_bound: Optional[float] = Field(
         None,
         examples=[9620.25],
-        description="Batas bawah interval keyakinan 95% (lower confidence interval)",
+        description="Batas bawah interval keyakinan 95%",
     )
     upper_bound: Optional[float] = Field(
         None,
         examples=[10080.75],
-        description="Batas atas interval keyakinan 95% (upper confidence interval)",
+        description="Batas atas interval keyakinan 95%",
     )
 
 class PredictRequest(BaseModel):
     ticker: str = Field(
         ...,
         examples=["BBCA.JK"],
-        description="Simbol ticker saham IDX (contoh: BBCA.JK atau BBRI.JK)",
+        description="Simbol ticker saham",
     )
     model_type: Optional[str] = Field(
         default="sarima",
         examples=["sarima", "arima"],
-        description="Pilihan varian model peramalan: 'sarima' (default) atau 'arima'",
+        description="Varian model: sarima atau arima",
     )
     steps: int = Field(
         default=30,
         ge=1,
         le=180,
         examples=[30],
-        description="Jumlah hari kerja langkah peramalan (1 - 180 hari)",
+        description="Jumlah hari kerja langkah peramalan",
     )
 
     model_config = {
@@ -57,32 +57,33 @@ class PredictResponse(BaseModel):
     model_type: str = Field(
         default="sarima",
         examples=["sarima", "arima"],
-        description="Varian model yang digunakan untuk peramalan",
+        description="Varian model yang digunakan",
     )
     model_name: str = Field(
         ...,
         examples=["ARIMAResultsWrapper"],
-        description="Nama kelas arsitektur model yang digunakan",
+        description="Nama arsitektur model yang digunakan",
     )
     forecast_steps: int = Field(..., examples=[30], description="Jumlah langkah peramalan")
     last_historical_date: Optional[str] = Field(
         None,
         examples=["2026-09-11"],
-        description="Tanggal data historis terakhir yang tersedia di dataset",
+        description="Tanggal data historis terakhir",
     )
     predictions: List[PredictionItem] = Field(
         ...,
-        description="Daftar item estimasi harga untuk setiap tanggal masa depan",
+        description="Daftar estimasi harga masa depan",
     )
     history: Optional[List[Dict[str, Any]]] = Field(
         None,
-        description="Daftar 30 record harga historis terbaru sebelum tanggal peramalan",
+        description="Daftar 30 record harga historis terbaru",
     )
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "ticker": "BBCA.JK",
+                "model_type": "sarima",
                 "model_name": "SARIMAXResultsWrapper",
                 "forecast_steps": 2,
                 "last_historical_date": "2026-09-11",
