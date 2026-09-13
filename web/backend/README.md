@@ -10,7 +10,6 @@ Backend inferensi machine learning berbasis **Python FastAPI** yang melayani per
 - **Penjadwalan Tanggal Hari Kerja**: Otomatis menghasilkan tanggal masa depan (Business Days) setelah tanggal historis terakhir.
 - **RESTful Endpoints (Sederhana & Efisien)**:
   - `GET /` - Dokumentasi Interaktif API (Swagger UI langsung di root).
-  - `GET /health` - Healthcheck probe untuk Cloud Run & monitoring.
   - `GET /openapi.json` - Spesifikasi OpenAPI 3.1 schema JSON.
   - `GET /api/models` - Endpoint terpadu: daftar ticker aktif dan metadata lengkap model.
   - `POST /api/predict` - Inferensi model peramalan (JSON payload: `{"ticker": "BBCA.JK", "steps": 30}`).
@@ -26,12 +25,11 @@ web/backend/
 │   ├── core/            # Konfigurasi aplikasi & path discovery (MODEL_DIR, DATA_DIR)
 │   ├── schemas/         # Skema validasi Pydantic (request & response)
 │   ├── services/        # Logika bisnis (pemuatan model, forecasting, data historis)
-│   └── api/             # Routing FastAPI (health, models, predict, stocks)
+│   └── api/             # Routing FastAPI (models, predict, stocks)
 ├── main.py              # Entrypoint aplikasi FastAPI & Uvicorn runner
 ├── pyproject.toml       # Definisi dependensi & metadata package Poetry
 ├── poetry.lock          # Versi lock dependensi Python
 ├── Dockerfile           # Konfigurasi container untuk Google Cloud Run
-├── requirements.txt     # Dependensi Python untuk container build
 └── README.md
 ```
 
@@ -39,8 +37,7 @@ web/backend/
 
 ## 1. Menjalankan Secara Lokal
 
-### A. Menggunakan Poetry (Direkomendasikan)
-Direktori backend telah mendukung manajemen dependensi modern menggunakan **Poetry** (`pyproject.toml` & `poetry.lock`):
+Direktori backend mendukung manajemen dependensi modern menggunakan **Poetry** (`pyproject.toml` & `poetry.lock`):
 
 ```bash
 # Masuk ke direktori backend
@@ -53,20 +50,6 @@ poetry install
 poetry run python main.py
 # atau menggunakan Uvicorn reload:
 poetry run uvicorn main:app --host 0.0.0.0 --port 8080 --reload
-```
-
-### B. Menggunakan Pip & Virtual Environment Tradisional
-```bash
-# Masuk ke direktori backend
-cd web/backend
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Jalankan server
-python main.py
-# atau:
-uvicorn main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 Akses dokumentasi interaktif langsung di: [http://localhost:8080/](http://localhost:8080/)

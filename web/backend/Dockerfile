@@ -16,10 +16,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Salin dependencies: fleksibel untuk context root maupun context web/backend
-COPY requirements.txt* web/backend/requirements.txt* ./
-RUN if [ -f "web/backend/requirements.txt" ]; then mv web/backend/requirements.txt requirements.txt; fi && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml* poetry.lock* web/backend/pyproject.toml* web/backend/poetry.lock* ./
+RUN if [ -f "web/backend/pyproject.toml" ]; then mv web/backend/pyproject.toml pyproject.toml; fi && \
+    if [ -f "web/backend/poetry.lock" ]; then mv web/backend/poetry.lock poetry.lock; fi && \
+    pip install --no-cache-dir --upgrade pip poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --only main --no-interaction --no-ansi --no-root
 
 # Salin source code dan artefak model/data
 COPY . /tmp/build_context
@@ -42,7 +44,7 @@ EXPOSE 8080
 
 # Healthcheck probe Docker container
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+    CMD curl -f http://localhost:${PORT}/api/models || exit 1
 
 # Jalankan Uvicorn dengan bind ke 0.0.0.0 dan port dinamis dari Google Cloud Run ($PORT)
 CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT}
