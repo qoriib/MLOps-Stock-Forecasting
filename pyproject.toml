@@ -20,10 +20,10 @@ dependencies = [
 ]
 
 [project.scripts]
-ingestion = "src.ingestion:main"
+ingestion = "ingestion:main"
 
 [tool.poetry]
-packages = [{include = "src"}]
+packages = [{ include = "*", from = "src" }]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

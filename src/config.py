@@ -1,9 +1,10 @@
-from pathlib import Path
+import os
 
 # Path Direktori
-BASE_DIR = Path(__file__).resolve().parent.parent
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(SRC_DIR)
 
 # Direktori Artifact
-ARTIFACT_DIR = BASE_DIR / "artifact"
-DATA_DIR = ARTIFACT_DIR / "data"
-MODEL_DIR = ARTIFACT_DIR / "model"
+ARTIFACT_DIR = os.path.join(BASE_DIR, "artifact")
+DATA_DIR = os.path.join(ARTIFACT_DIR, "data")
+MODEL_DIR = os.path.join(ARTIFACT_DIR, "model")
