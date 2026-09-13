@@ -6,97 +6,84 @@ from app.schemas.prediction import PredictionItem, PredictResponse
 from app.services.model_service import model_service
 
 class ForecastService:
-    def predict(self, ticker: str, steps: int = 30, model_type: Optional[str] = "best") -> PredictResponse:
-        ticker_clean = ticker.strip().upper()
-        model, resolved_variant = model_service.load_model(ticker_clean, model_type=model_type)
+    def predict(self, ticker: str, steps: int = 30, model_type: Optional[str] = "sarima") -> PredictResponse:
+        ticker_symbol = ticker.strip().upper()
+        model, resolved_variant = model_service.load_model(ticker_symbol, model_type=model_type)
 
-        # Hitung prediksi dan interval keyakinan
         predictions_mean, conf_int = self._calculate_forecast(model, steps)
+        last_date, recent_history = self._get_recent_history(ticker_symbol)
+        future_dates = self._generate_future_business_dates(last_date, steps)
 
-        # Dapatkan data tanggal historis terakhir dan 30 baris data terbaru
-        last_historical_date, recent_history = self._get_recent_history(ticker_clean)
+        prediction_items: List[PredictionItem] = []
+        for index, forecast_date in enumerate(future_dates):
+            price_estimate = round(float(predictions_mean[index]), 2)
+            lower_bound_price = None
+            upper_bound_price = None
 
-        # Hitung rentang hari kerja ke depan (bdate_range)
-        future_dates = self._generate_future_business_dates(last_historical_date, steps)
+            if conf_int is not None:
+                lower_bound_price = round(float(conf_int[index, 0]), 2)
+                upper_bound_price = round(float(conf_int[index, 1]), 2)
 
-        # Format item prediksi
-        items: List[PredictionItem] = []
-        for i, date_val in enumerate(future_dates):
-            pred_val = float(predictions_mean[i])
-            lower = float(conf_int[i, 0]) if conf_int is not None else None
-            upper = float(conf_int[i, 1]) if conf_int is not None else None
-
-            items.append(
-                PredictionItem(
-                    date=date_val.strftime("%Y-%m-%d"),
-                    predicted_price=round(pred_val, 2),
-                    lower_bound=round(lower, 2) if lower is not None else None,
-                    upper_bound=round(upper, 2) if upper is not None else None,
-                )
+            item = PredictionItem(
+                date=forecast_date.strftime("%Y-%m-%d"),
+                predicted_price=price_estimate,
+                lower_bound=lower_bound_price,
+                upper_bound=upper_bound_price,
             )
+            prediction_items.append(item)
 
         return PredictResponse(
-            ticker=ticker_clean,
+            ticker=ticker_symbol,
             model_type=resolved_variant.lower(),
             model_name=type(model).__name__,
             forecast_steps=steps,
-            last_historical_date=last_historical_date,
-            predictions=items,
+            last_historical_date=last_date,
+            predictions=prediction_items,
             history=recent_history,
         )
 
     def _calculate_forecast(self, model: Any, steps: int) -> Tuple[Any, Optional[Any]]:
-        try:
-            forecast_res = model.get_forecast(steps=steps)
-            predictions_mean = forecast_res.predicted_mean
-            conf_int = forecast_res.conf_int()
-            # Pastikan conf_int dalam bentuk numpy array jika dataframe
-            if hasattr(conf_int, "values"):
-                conf_int = conf_int.values
-        except Exception:
-            # Fallback jika model pmdarima atau model yang mendukung predict() / forecast() biasa
-            if hasattr(model, "predict"):
-                try:
-                    preds, conf_int = model.predict(n_periods=steps, return_conf_int=True)
-                    predictions_mean = preds
-                except Exception:
-                    predictions_mean = model.predict(n_periods=steps)
-                    conf_int = None
-            elif hasattr(model, "forecast"):
-                predictions_mean = model.forecast(steps=steps)
-                conf_int = None
-            else:
-                raise ValueError(f"Format model {type(model).__name__} tidak didukung untuk peramalan.")
+        # Format model pmdarima (auto_arima)
+        if hasattr(model, "predict"):
+            predictions, conf_intervals = model.predict(n_periods=steps, return_conf_int=True)
+            return predictions, conf_intervals
 
-        if hasattr(predictions_mean, "values"):
-            predictions_mean = predictions_mean.values
+        # Format model statsmodels
+        forecast_result = model.get_forecast(steps=steps)
+        predictions = forecast_result.predicted_mean
+        conf_intervals = forecast_result.conf_int()
 
-        return predictions_mean, conf_int
+        if hasattr(conf_intervals, "values"):
+            conf_intervals = conf_intervals.values
 
-    def _get_recent_history(self, ticker_clean: str) -> Tuple[Optional[str], List[Dict[str, Any]]]:
-        last_historical_date = None
-        recent_history: List[Dict[str, Any]] = []
+        if hasattr(predictions, "values"):
+            predictions = predictions.values
 
-        data_csv = settings.DATA_DIR / f"{ticker_clean}.csv"
-        if data_csv.exists():
-            try:
-                df = pd.read_csv(data_csv)
-                if "date" in df.columns and len(df) > 0:
-                    last_historical_date = str(df["date"].iloc[-1])
-                    recent_history = df.tail(30).to_dict(orient="records")
-            except Exception:
-                pass
+        return predictions, conf_intervals
 
-        return last_historical_date, recent_history
+    def _get_recent_history(self, ticker_symbol: str) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+        csv_file_path = settings.DATA_DIR / f"{ticker_symbol}.csv"
+        if not csv_file_path.exists():
+            return None, []
+
+        dataframe = pd.read_csv(csv_file_path)
+        if dataframe.empty or "date" not in dataframe.columns:
+            return None, []
+
+        last_date_record = str(dataframe["date"].iloc[-1])
+        recent_records = dataframe.tail(30).to_dict(orient="records")
+        return last_date_record, recent_records
 
     def _generate_future_business_dates(
         self, last_historical_date: Optional[str], steps: int
     ) -> pd.DatetimeIndex:
         if last_historical_date:
-            start_dt = pd.to_datetime(last_historical_date) + pd.Timedelta(days=1)
+            next_day = pd.to_datetime(last_historical_date) + pd.Timedelta(days=1)
+            start_date = next_day
         else:
-            start_dt = pd.to_datetime(datetime.now().strftime("%Y-%m-%d"))
+            today_string = datetime.now().strftime("%Y-%m-%d")
+            start_date = pd.to_datetime(today_string)
 
-        return pd.bdate_range(start=start_dt, periods=steps)
+        return pd.bdate_range(start=start_date, periods=steps)
 
 forecast_service = ForecastService()
