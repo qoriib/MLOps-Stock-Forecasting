@@ -237,7 +237,7 @@ stages:
       SARIMA_MAX_P 2 -p SARIMA_START_Q 0 -p SARIMA_MAX_Q 2 -p SARIMA_D 1 -p 
       SARIMA_START_SEASONAL_P 0 -p SARIMA_MAX_SEASONAL_P 2 -p 
       SARIMA_START_SEASONAL_Q 0 -p SARIMA_MAX_SEASONAL_Q 2 -p SARIMA_SEASONAL_D 
-      1 -p SARIMA_SEASONAL_PERIOD 5 --log-output --progress-bar
+      1 -p SARIMA_SEASONAL_PERIOD 5 --report-mode --log-output --progress-bar
     deps:
     - path: artifact/data/BBCA.JK.csv
       hash: md5
@@ -280,8 +280,8 @@ stages:
       size: 60593059
     - path: artifact/notebook/ml_pipeline_BBCA.JK.ipynb
       hash: md5
-      md5: 5824dba9a8f2a772c033431da5d1c784
-      size: 478488
+      md5: a73074ed4c98d02474742e2ced9cfef7
+      size: 479184
   ml_pipeline@BBRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBRI.JK.ipynb -p TICKER BBRI.JK -p 
@@ -290,7 +290,7 @@ stages:
       SARIMA_MAX_P 2 -p SARIMA_START_Q 0 -p SARIMA_MAX_Q 2 -p SARIMA_D 1 -p 
       SARIMA_START_SEASONAL_P 0 -p SARIMA_MAX_SEASONAL_P 2 -p 
       SARIMA_START_SEASONAL_Q 0 -p SARIMA_MAX_SEASONAL_Q 2 -p SARIMA_SEASONAL_D 
-      1 -p SARIMA_SEASONAL_PERIOD 5 --log-output --progress-bar
+      1 -p SARIMA_SEASONAL_PERIOD 5 --report-mode --log-output --progress-bar
     deps:
     - path: artifact/data/BBRI.JK.csv
       hash: md5
@@ -333,8 +333,8 @@ stages:
       size: 60643768
     - path: artifact/notebook/ml_pipeline_BBRI.JK.ipynb
       hash: md5
-      md5: 88f3312e34d371f1e8224fa297bcdd2c
-      size: 504896
+      md5: a275dd8da6ab719ae396bb04bde2177b
+      size: 505762
   ml_pipeline@BMRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BMRI.JK.ipynb -p data_path 

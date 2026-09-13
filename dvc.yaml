@@ -41,6 +41,7 @@ stages:
       -p SARIMA_MAX_SEASONAL_Q ${sarima.max_seasonal_q}
       -p SARIMA_SEASONAL_D ${sarima.seasonal_d}
       -p SARIMA_SEASONAL_PERIOD ${sarima.seasonal_period}
+      --report-mode
       --log-output
       --progress-bar
     deps:
