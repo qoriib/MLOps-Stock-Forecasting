@@ -1,88 +1,110 @@
-import { Card } from '@astryxdesign/core/Card'
-import { Toolbar } from '@astryxdesign/core/Toolbar'
-import { Heading } from '@astryxdesign/core/Heading'
-import { Text } from '@astryxdesign/core/Text'
-import { HStack } from '@astryxdesign/core/Stack'
-import { Button } from '@astryxdesign/core/Button'
-import { Selector } from '@astryxdesign/core/Selector'
+import { useState, useEffect } from 'react'
+import {
+  Button,
+  DateRangeInput,
+  Heading,
+  HStack,
+  Selector,
+  Text,
+  Toolbar,
+} from '@astryxdesign/core'
+import type { DateRange } from '@astryxdesign/core/DateRangeInput'
+import { useForecastState } from '@/stores'
+import { DATE_RANGE_PRESETS, MODEL_OPTIONS, STEP_OPTIONS } from '@/configs'
 
-interface ForecastControlsProps {
-  ticker: string
-  modelType: string
-  onModelTypeChange: (modelType: string) => void
-  steps: string
-  onStepsChange: (steps: string) => void
-  loading: boolean
-  onPredict: () => void
-}
+export function ForecastControls() {
+  const {
+    ticker,
+    modelType,
+    setModelType,
+    steps,
+    setSteps,
+    forecastDateRange,
+    setForecastDateRange,
+    loading,
+    fetchForecast,
+  } = useForecastState()
 
-const MODEL_OPTIONS = [
-  { value: 'sarima', label: 'Model: SARIMA' },
-  { value: 'arima', label: 'Model: ARIMA' },
-]
+  const [draftModelType, setDraftModelType] = useState<string>(modelType)
+  const [draftSteps, setDraftSteps] = useState<string>(steps)
+  const [draftDateRange, setDraftDateRange] = useState<DateRange | null>(
+    forecastDateRange,
+  )
 
+  useEffect(() => {
+    setDraftModelType(modelType)
+  }, [modelType])
 
-const STEP_OPTIONS = [
-  { value: '7', label: '7 Hari' },
-  { value: '14', label: '14 Hari' },
-  { value: '30', label: '30 Hari' },
-  { value: '60', label: '60 Hari' },
-  { value: '90', label: '90 Hari' },
-]
+  useEffect(() => {
+    setDraftSteps(steps)
+  }, [steps])
 
-export function ForecastControls({
-  ticker,
-  modelType,
-  onModelTypeChange,
-  steps,
-  onStepsChange,
-  loading,
-  onPredict,
-}: ForecastControlsProps) {
+  useEffect(() => {
+    setDraftDateRange(forecastDateRange)
+  }, [forecastDateRange])
+
+  const handleSubmit = () => {
+    setModelType(draftModelType)
+    setSteps(draftSteps)
+    setForecastDateRange(draftDateRange)
+    fetchForecast({
+      ticker,
+      modelType: draftModelType,
+      steps: draftSteps,
+      dateRange: draftDateRange,
+    })
+  }
+
   return (
-    <Card variant="default" padding={0}>
-      <Toolbar
-        label="Konfigurasi Peramalan"
-        size="sm"
-        startContent={
-          <HStack gap={2} align="center">
-            <Heading level={4}>Peramalan Saham</Heading>
-            <Text color="secondary" size="sm">
-              ({ticker || 'Memuat...'})
-            </Text>
-          </HStack>
-        }
-        endContent={
-          <HStack gap={2} align="center">
-            <Selector
-              label="Pilihan Model"
-              isLabelHidden
-              options={MODEL_OPTIONS}
-              value={modelType}
-              onChange={onModelTypeChange}
-              width={170}
-              size="sm"
-            />
-            <Selector
-              label="Horizon"
-              isLabelHidden
-              options={STEP_OPTIONS}
-              value={steps}
-              onChange={onStepsChange}
-              width={110}
-              size="sm"
-            />
-            <Button
-              label="Jalankan Inferensi"
-              variant="primary"
-              size="sm"
-              isLoading={loading}
-              isDisabled={!ticker || loading}
-              onClick={onPredict}
-            />
-          </HStack>
-        }
-      />
-    </Card>
+    <Toolbar
+      label="Konfigurasi Peramalan"
+      startContent={
+        <HStack gap={2} align="center">
+          <Heading level={4}>Peramalan Saham</Heading>
+          <Text color="secondary">
+            ({ticker || 'Memuat...'})
+          </Text>
+        </HStack>
+      }
+      endContent={
+        <HStack gap={3} align="center" wrap="wrap">
+          <DateRangeInput
+            width={260}
+            label="Rentang Tanggal Riwayat"
+            isLabelHidden
+            placeholder="Rentang riwayat historis"
+            value={draftDateRange}
+            onChange={setDraftDateRange}
+            presets={DATE_RANGE_PRESETS}
+            isDisabled={!ticker || loading}
+          />
+          <Selector
+            label="Pilihan Model"
+            isLabelHidden
+            options={MODEL_OPTIONS}
+            value={draftModelType}
+            onChange={setDraftModelType}
+            width={180}
+            isDisabled={!ticker || loading}
+          />
+          <Selector
+            label="Horizon"
+            isLabelHidden
+            options={STEP_OPTIONS}
+            value={draftSteps}
+            onChange={setDraftSteps}
+            width={130}
+            isDisabled={!ticker || loading}
+          />
+          <Button
+            label="Jalankan Inferensi"
+            variant="primary"
+            isLoading={loading}
+            isDisabled={!ticker || loading}
+            onClick={handleSubmit}
+          />
+        </HStack>
+      }
+    />
   )
 }

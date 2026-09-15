@@ -1,65 +1,70 @@
-import { Card } from '@astryxdesign/core/Card'
-import { Text } from '@astryxdesign/core/Text'
-import { Table, proportional } from '@astryxdesign/core/Table'
+import { Card, Text, Timestamp } from '@astryxdesign/core'
+import { Layout, LayoutContent } from '@astryxdesign/core/Layout'
+import { Table, pixel, proportional } from '@astryxdesign/core/Table'
+import { useStockStore } from '@/stores'
+import { formatCurrency } from '@/utils'
 import type { TableColumn } from '@astryxdesign/core/Table'
-import type { PredictionItem } from '@/types/stock'
-
-interface ForecastTableProps {
-  items: PredictionItem[]
-}
+import type { PredictionItem } from '@/types'
 
 const COLUMNS: TableColumn<PredictionItem>[] = [
   {
     key: 'date',
-    header: 'Tanggal Bursa',
-    width: proportional(1),
-    renderCell: (row) => <Text weight="medium">{String(row.date)}</Text>,
-  },
-  {
-    key: 'predicted_price',
-    header: 'Prediksi Harga',
+    header: 'Tanggal',
     width: proportional(1),
     renderCell: (row) => (
-      <Text weight="semibold">
-        Rp {Number(row.predicted_price).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
+      <Timestamp value={row.date} format="date" type="body" weight="medium" />
+    ),
+  },
+  {
+    key: 'predicted',
+    header: 'Prediksi',
+    width: pixel(180),
+    renderCell: (row) => (
+      <Text type="code" weight="semibold" hasTabularNumbers>
+        {formatCurrency(row.predicted_price, { minimumFractionDigits: 2 })}
       </Text>
     ),
   },
   {
     key: 'lower_bound',
-    header: 'Batas Bawah (95% CI)',
-    width: proportional(1),
+    header: 'Batas Bawah',
+    width: pixel(180),
     renderCell: (row) => (
-      <Text color="secondary">
-        {row.lower_bound != null
-          ? `Rp ${Number(row.lower_bound).toLocaleString('id-ID', { minimumFractionDigits: 2 })}`
-          : '—'}
+      <Text type="code" color="secondary" hasTabularNumbers>
+        {formatCurrency(row.lower_bound, { minimumFractionDigits: 2 })}
       </Text>
     ),
   },
   {
     key: 'upper_bound',
-    header: 'Batas Atas (95% CI)',
-    width: proportional(1),
+    header: 'Batas Atas',
+    width: pixel(180),
     renderCell: (row) => (
-      <Text color="secondary">
-        {row.upper_bound != null
-          ? `Rp ${Number(row.upper_bound).toLocaleString('id-ID', { minimumFractionDigits: 2 })}`
-          : '—'}
+      <Text type="code" color="secondary" hasTabularNumbers>
+        {formatCurrency(row.upper_bound, { minimumFractionDigits: 2 })}
       </Text>
     ),
   },
 ]
 
-export function ForecastTable({ items }: ForecastTableProps) {
+export function ForecastTable() {
+  const items = useStockStore((state) => state.predictResult?.predictions)
+
+  if (!items || items.length === 0) return null
+
   return (
-    <Card variant="default" padding={0}>
-      <Table
-        data={items}
-        columns={COLUMNS}
-        idKey="date"
-        hasHover
-        density="compact"
+    <Card variant="default">
+      <Layout
+        content={
+          <LayoutContent padding={0}>
+            <Table
+              data={items}
+              columns={COLUMNS}
+              idKey="date"
+              hasHover
+            />
+          </LayoutContent>
+        }
       />
     </Card>
   )

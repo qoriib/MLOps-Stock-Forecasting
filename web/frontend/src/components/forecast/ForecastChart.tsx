@@ -1,109 +1,174 @@
-import { Card } from '@astryxdesign/core/Card'
-import { VStack, HStack } from '@astryxdesign/core/Stack'
-import { Text } from '@astryxdesign/core/Text'
-import { Badge } from '@astryxdesign/core/Badge'
+import { useState, useEffect } from 'react'
+import Chart from 'react-apexcharts'
+import { Card, Center, Heading, Overlay, Spinner, Text, VStack } from '@astryxdesign/core'
+import { Layout, LayoutHeader, LayoutContent } from '@astryxdesign/core/Layout'
 import { useTheme } from '@astryxdesign/core/theme'
-import type { PredictionItem, HistoricalItem } from '@/types/stock'
+import { useStockStore, useShallow } from '@/stores'
+import { getApexThemeOptions } from '@/configs'
+import { ForecastControls } from './ForecastControls'
+import type { ApexOptions } from 'apexcharts'
+import { formatCurrency } from '@/utils'
 
-interface ForecastChartProps {
-  predictions: PredictionItem[]
-  history?: HistoricalItem[]
-  ticker: string
-  modelType?: string
-  modelName?: string
-}
+export function ForecastChart() {
+  const [mounted, setMounted] = useState(false)
+  const { mode } = useTheme()
+  const isDark = mode === 'dark'
 
-export function ForecastChart({
-  predictions,
-  history = [],
-  ticker,
-  modelType,
-  modelName,
-}: ForecastChartProps) {
-  const { token } = useTheme()
-  const accent = token('--color-accent') || '#3b82f6'
-  const textMuted = token('--color-text-secondary') || '#6b7280'
-  const gridColor = token('--color-border') || 'rgba(0,0,0,0.08)'
+  const { predictResult, loading } = useStockStore(
+    useShallow((state) => ({
+      predictResult: state.predictResult,
+      loading: state.forecastLoading,
+    })),
+  )
 
-  if (!predictions || predictions.length === 0) return null
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const history = predictResult?.history ?? []
+  const predictions = predictResult?.predictions ?? []
+  const hasData = predictions.length > 0
 
   const histSorted = [...history].sort((a, b) => a.date.localeCompare(b.date))
-  const allPrices = [
-    ...histSorted.map((d) => d.close),
-    ...predictions.flatMap((d) => [d.predicted_price, d.lower_bound ?? d.predicted_price, d.upper_bound ?? d.predicted_price]),
+  const lastHist = histSorted[histSorted.length - 1]
+  const lastHistDate = lastHist?.date
+
+  // Gabungkan data historis dan prediksi ke dalam satu deret data kontinu
+  const combinedData: { x: string; y: number; isForecast?: boolean }[] = [
+    ...histSorted.map((d) => ({
+      x: d.date,
+      y: d.close,
+      isForecast: false,
+    })),
+    ...predictions.map((d) => ({
+      x: d.date,
+      y: d.predicted_price,
+      isForecast: true,
+    })),
   ]
-  const minVal = Math.min(...allPrices)
-  const maxVal = Math.max(...allPrices)
-  const range = maxVal - minVal || 1
 
-  const width = 800
-  const height = 220
-  const padTop = 20
-  const padBottom = 30
-  const padLeft = 65
-  const padRight = 20
+  const series = [
+    {
+      name: 'Harga',
+      data: combinedData.map((d) => ({ x: d.x, y: d.y })),
+    },
+  ]
 
-  const plotW = width - padLeft - padRight
-  const plotH = height - padTop - padBottom
-  const totalCount = histSorted.length + predictions.length
+  const baseOptions = getApexThemeOptions(isDark)
+  const splitTimestamp = lastHistDate ? new Date(lastHistDate).getTime() : undefined
 
-  const getX = (index: number) => padLeft + (index / (totalCount - 1 || 1)) * plotW
-  const getY = (val: number) => padTop + plotH - ((val - minVal) / range) * plotH
-
-  const histPoints = histSorted.map((d, i) => `${getX(i)},${getY(d.close)}`)
-  const histPath = histPoints.length ? `M ${histPoints.join(' L ')}` : ''
-
-  const bridgeIndex = histSorted.length > 0 ? histSorted.length - 1 : 0
-  const bridgePoint = histSorted.length > 0 ? `${getX(bridgeIndex)},${getY(histSorted[bridgeIndex].close)}` : null
-  const predPoints = predictions.map((d, i) => `${getX(histSorted.length + i)},${getY(d.predicted_price)}`)
-  const forecastPath = `M ${[...(bridgePoint ? [bridgePoint] : []), ...predPoints].join(' L ')}`
-
-  const bandUpper = predictions.map((d, i) => `${getX(histSorted.length + i)},${getY(d.upper_bound ?? d.predicted_price)}`)
-  const bandLower = predictions.map((d, i) => `${getX(histSorted.length + i)},${getY(d.lower_bound ?? d.predicted_price)}`).reverse()
-  const bandPath = `M ${bandUpper.join(' L ')} L ${bandLower.join(' L ')} Z`
-
-  const splitX = histSorted.length > 0 ? getX(histSorted.length - 1) : null
+  const options: ApexOptions = {
+    ...baseOptions,
+    chart: {
+      ...baseOptions.chart,
+      type: 'line',
+    },
+    colors: ['#3b82f6'],
+    stroke: {
+      curve: 'smooth',
+      width: 2.5,
+    },
+    markers: {
+      size: 0,
+      hover: { sizeOffset: 3 },
+      strokeColors: isDark ? '#18181b' : '#ffffff',
+      strokeWidth: 2,
+    },
+    annotations: splitTimestamp
+      ? {
+          xaxis: [
+            {
+              x: splitTimestamp,
+              borderColor: isDark ? '#38bdf8' : '#2563eb',
+              borderWidth: 2,
+              strokeDashArray: 4,
+              label: {
+                borderColor: isDark ? '#38bdf8' : '#2563eb',
+                orientation: 'horizontal',
+                style: {
+                  color: '#ffffff',
+                  background: isDark ? '#0284c7' : '#2563eb',
+                  fontFamily: 'Figtree, sans-serif',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                },
+                text: 'Awal Prediksi',
+              },
+            },
+          ],
+        }
+      : undefined,
+    tooltip: {
+      ...baseOptions.tooltip,
+      y: {
+        formatter: (val) => formatCurrency(val),
+        title: {
+          formatter: (_seriesName, opts) => {
+            const index = opts?.dataPointIndex ?? -1
+            const pt = index >= 0 ? combinedData[index] : undefined
+            if (pt?.isForecast) {
+              return 'Harga Prediksi: '
+            }
+            return 'Harga Historis: '
+          },
+        },
+      },
+    },
+    legend: {
+      show: false,
+    },
+  }
 
   return (
-    <Card variant="default" elevation="low" padding={3}>
-      <VStack gap={2}>
-        <HStack justify="between" align="center">
-          <HStack gap={2} align="center">
-            <Text weight="semibold">Visualisasi Historis & Proyeksi Peramalan ({ticker})</Text>
-            {modelType && (
-              <Badge
-                label={`Model: ${modelType.toUpperCase()}${modelName ? ` (${modelName})` : ''}`}
-                variant="neutral"
-              />
+    <Card variant="default">
+      <Layout
+        defaultHasDividers
+        header={
+          <LayoutHeader>
+            <ForecastControls />
+          </LayoutHeader>
+        }
+        content={
+          <LayoutContent>
+            {loading && !hasData && (
+              <Center height={320}>
+                <Spinner size="lg" label="Menjalankan inferensi model..." />
+              </Center>
             )}
-          </HStack>
-          <HStack gap={3}>
-            <Text size="xsm" color="secondary">● Historis ({histSorted.length} hari)</Text>
-            <Text size="xsm" style={{ color: accent }}>● Prediksi ({predictions.length} hari)</Text>
-            <Text size="xsm" color="secondary">■ CI 95%</Text>
-          </HStack>
-        </HStack>
-
-
-        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-          <line x1={padLeft} y1={padTop} x2={width - padRight} y2={padTop} stroke={gridColor} strokeDasharray="3 3" />
-          <line x1={padLeft} y1={padTop + plotH / 2} x2={width - padRight} y2={padTop + plotH / 2} stroke={gridColor} strokeDasharray="3 3" />
-          <line x1={padLeft} y1={height - padBottom} x2={width - padRight} y2={height - padBottom} stroke={gridColor} />
-
-          {splitX && <line x1={splitX} y1={padTop} x2={splitX} y2={height - padBottom} stroke={gridColor} strokeDasharray="4 4" />}
-
-          <text x={padLeft - 8} y={padTop + 4} fill={textMuted} fontSize="11" textAnchor="end">Rp {Math.round(maxVal).toLocaleString('id-ID')}</text>
-          <text x={padLeft - 8} y={height - padBottom} fill={textMuted} fontSize="11" textAnchor="end">Rp {Math.round(minVal).toLocaleString('id-ID')}</text>
-
-          <path d={bandPath} fill={accent} fillOpacity="0.15" />
-          {histPath && <path d={histPath} fill="none" stroke={textMuted} strokeWidth="1.8" />}
-          <path d={forecastPath} fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" />
-
-          <text x={padLeft} y={height - 10} fill={textMuted} fontSize="11">{histSorted[0]?.date || predictions[0].date}</text>
-          {splitX && <text x={splitX} y={height - 10} fill={textMuted} fontSize="11" textAnchor="middle">Kini</text>}
-          <text x={width - padRight} y={height - 10} fill={textMuted} fontSize="11" textAnchor="end">{predictions[predictions.length - 1].date}</text>
-        </svg>
-      </VStack>
+            {!hasData && !loading && (
+              <Center height={320}>
+                <VStack align="center" gap={2}>
+                  <Heading level={5}>Siap Melakukan Peramalan</Heading>
+                  <Text color="secondary">
+                    Tentukan parameter dan rentang riwayat, lalu klik "Jalankan Inferensi".
+                  </Text>
+                </VStack>
+              </Center>
+            )}
+            {hasData && (
+              <Overlay
+                isOpen={loading}
+                position="fill"
+                align="center"
+                scrim={isDark ? 'dark' : 'light'}
+                content={<Spinner size="lg" label="Menjalankan inferensi model..." />}
+              >
+                {mounted && (
+                  <Chart
+                    key={mode}
+                    options={options}
+                    series={series}
+                    type="line"
+                    height={320}
+                    width="100%"
+                  />
+                )}
+              </Overlay>
+            )}
+          </LayoutContent>
+        }
+      />
     </Card>
   )
 }
+
