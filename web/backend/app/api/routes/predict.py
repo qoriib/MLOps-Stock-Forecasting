@@ -21,6 +21,9 @@ def predict(req: PredictRequest):
             ticker=req.ticker,
             steps=req.steps,
             model_type=req.model_type,
+            start_date=req.start_date,
+            end_date=req.end_date,
+            history_limit=req.history_limit,
         )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

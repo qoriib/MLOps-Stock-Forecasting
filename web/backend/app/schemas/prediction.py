@@ -41,6 +41,23 @@ class PredictRequest(BaseModel):
         examples=[30],
         description="Jumlah hari kerja langkah peramalan",
     )
+    start_date: Optional[str] = Field(
+        default=None,
+        examples=["2026-08-01"],
+        description="Batas awal tanggal riwayat yang disertakan",
+    )
+    end_date: Optional[str] = Field(
+        default=None,
+        examples=["2026-09-02"],
+        description="Batas akhir tanggal riwayat yang disertakan",
+    )
+    history_limit: Optional[int] = Field(
+        default=30,
+        ge=5,
+        le=1000,
+        examples=[30],
+        description="Jumlah baris data historis maksimal yang disertakan",
+    )
 
     model_config = {
         "json_schema_extra": {
@@ -48,6 +65,8 @@ class PredictRequest(BaseModel):
                 "ticker": "BBCA.JK",
                 "model_type": "sarima",
                 "steps": 30,
+                "start_date": "2026-08-01",
+                "end_date": "2026-09-02",
             }
         }
     }

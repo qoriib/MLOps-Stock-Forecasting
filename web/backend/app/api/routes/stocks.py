@@ -28,9 +28,24 @@ def get_historical_stock(
         examples=[100],
         description="Jumlah baris data historis yang diambil.",
     ),
+    start_date: str | None = Query(
+        default=None,
+        examples=["2026-08-01"],
+        description="Batas awal tanggal riwayat yang diambil.",
+    ),
+    end_date: str | None = Query(
+        default=None,
+        examples=["2026-09-02"],
+        description="Batas akhir tanggal riwayat yang diambil.",
+    ),
 ):
     try:
-        return stock_service.get_historical_data(ticker=ticker, limit=limit)
+        return stock_service.get_historical_data(
+            ticker=ticker,
+            limit=limit,
+            start_date=start_date,
+            end_date=end_date,
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:

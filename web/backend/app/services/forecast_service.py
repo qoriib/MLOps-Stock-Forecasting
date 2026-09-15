@@ -6,12 +6,25 @@ from app.schemas.prediction import PredictionItem, PredictResponse
 from app.services.model_service import model_service
 
 class ForecastService:
-    def predict(self, ticker: str, steps: int = 30, model_type: Optional[str] = "sarima") -> PredictResponse:
+    def predict(
+        self,
+        ticker: str,
+        steps: int = 30,
+        model_type: Optional[str] = "sarima",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        history_limit: Optional[int] = 30,
+    ) -> PredictResponse:
         ticker_symbol = ticker.strip().upper()
         model, resolved_variant = model_service.load_model(ticker_symbol, model_type=model_type)
 
         predictions_mean, conf_int = self._calculate_forecast(model, steps)
-        last_date, recent_history = self._get_recent_history(ticker_symbol)
+        last_date, recent_history = self._get_recent_history(
+            ticker_symbol,
+            start_date=start_date,
+            end_date=end_date,
+            history_limit=history_limit,
+        )
         future_dates = self._generate_future_business_dates(last_date, steps)
 
         prediction_items: List[PredictionItem] = []
@@ -61,7 +74,13 @@ class ForecastService:
 
         return predictions, conf_intervals
 
-    def _get_recent_history(self, ticker_symbol: str) -> Tuple[Optional[str], List[Dict[str, Any]]]:
+    def _get_recent_history(
+        self,
+        ticker_symbol: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        history_limit: Optional[int] = 30,
+    ) -> Tuple[Optional[str], List[Dict[str, Any]]]:
         csv_file_path = settings.DATA_DIR / f"{ticker_symbol}.csv"
         if not csv_file_path.exists():
             return None, []
@@ -71,7 +90,23 @@ class ForecastService:
             return None, []
 
         last_date_record = str(dataframe["date"].iloc[-1])
-        recent_records = dataframe.tail(30).to_dict(orient="records")
+
+        if start_date and end_date:
+            filtered = dataframe[(dataframe["date"] >= start_date) & (dataframe["date"] <= end_date)]
+            if not filtered.empty:
+                recent_records = filtered.to_dict(orient="records")
+            else:
+                recent_records = dataframe.tail(history_limit or 30).to_dict(orient="records")
+        elif start_date:
+            filtered = dataframe[dataframe["date"] >= start_date]
+            recent_records = filtered.to_dict(orient="records")
+        elif end_date:
+            filtered = dataframe[dataframe["date"] <= end_date]
+            recent_records = filtered.tail(history_limit or 30).to_dict(orient="records")
+        else:
+            limit = history_limit if history_limit else 30
+            recent_records = dataframe.tail(limit).to_dict(orient="records")
+
         return last_date_record, recent_records
 
     def _generate_future_business_dates(
