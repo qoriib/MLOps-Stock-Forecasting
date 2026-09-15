@@ -1,26 +1,24 @@
-import { TopNav, TopNavHeading, TopNavItem } from '@astryxdesign/core/TopNav'
-import { Selector } from '@astryxdesign/core/Selector'
-import { HStack } from '@astryxdesign/core/Stack'
+import { useMemo } from 'react'
+import { HStack, Selector, TopNav, TopNavHeading, TopNavItem } from '@astryxdesign/core'
 import { useRouterState } from '@tanstack/react-router'
-import { useStock } from '@/context/StockContext'
+import { useHeaderState } from '@/stores'
+import { APP_CONFIG } from '@/configs'
 
 export function AppHeader() {
-  const { ticker, setTicker, availableTickers, loadingTickers } = useStock()
+  const { ticker, setTicker, availableTickers, loadingTickers } = useHeaderState()
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
 
-  const tickerOptions = availableTickers.map((t) => ({
-    value: t,
-    label: t,
-  }))
+  const tickerOptions = useMemo(
+    () => availableTickers.map((t) => ({ value: t, label: t })),
+    [availableTickers],
+  )
 
   return (
     <TopNav
       label="Navigasi Utama Aplikasi"
       heading={
-        <TopNavHeading
-          heading="Stock Forecasting"
-        />
+        <TopNavHeading heading={APP_CONFIG.name} />
       }
       startContent={
         <HStack gap={1}>
@@ -39,14 +37,13 @@ export function AppHeader() {
       endContent={
         <HStack gap={1}>
           <Selector
-            label="Pilih Saham"
             isLabelHidden
+            width={140}
+            label="Pilih Saham"
             placeholder={loadingTickers ? 'Memuat...' : 'Pilih Ticker'}
             options={tickerOptions}
             value={ticker || undefined}
-            onChange={(val) => setTicker(val)}
-            width={120}
-            size="sm"
+            onChange={setTicker}
             isDisabled={loadingTickers || availableTickers.length === 0}
           />
         </HStack>

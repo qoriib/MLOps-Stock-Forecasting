@@ -1,31 +1,41 @@
-import { HStack } from '@astryxdesign/core/Stack'
-import { Text } from '@astryxdesign/core/Text'
-import { StatusDot } from '@astryxdesign/core/StatusDot'
-import { Button } from '@astryxdesign/core/Button'
-import { useStock } from '@/context/StockContext'
+import { Button, HStack, StatusDot, Text } from '@astryxdesign/core'
+import { useStockStore } from '@/stores'
+import { APP_CONFIG } from '@/configs'
 
 export function AppFooter() {
-  const { backendHealthy, checkHealth } = useStock()
+  const backendHealthy = useStockStore((state) => state.backendHealthy)
+  const checkHealth = useStockStore((state) => state.checkHealth)
+  const themeMode = useStockStore((state) => state.themeMode)
+  const toggleThemeMode = useStockStore((state) => state.toggleThemeMode)
+
+  const statusLabel =
+    backendHealthy === true
+      ? 'Online'
+      : backendHealthy === false
+        ? 'Offline'
+        : 'Cek Status'
 
   return (
     <HStack justify="between" align="center">
-      <Text color="secondary" size="sm">
-        MLOps Stock Forecasting
+      <Text color="secondary">
+        {APP_CONFIG.title}
       </Text>
-
       <HStack gap={2} align="center">
-        <StatusDot
-          variant={backendHealthy ? 'success' : backendHealthy === false ? 'error' : 'neutral'}
-          label={backendHealthy ? 'Backend Aktif' : 'Backend Offline'}
-          isPulsing={backendHealthy === true}
-        />
-        <Text color={backendHealthy ? 'primary' : 'secondary'} size="sm" weight="medium">
-          {backendHealthy ? 'API Online' : 'API Offline'}
-        </Text>
         <Button
-          label="Cek Status"
           variant="ghost"
-          size="sm"
+          label={themeMode === 'light' ? 'Mode Gelap' : 'Mode Terang'}
+          onClick={toggleThemeMode}
+        />
+        <Button
+          variant="ghost"
+          icon={
+            <StatusDot
+              label={statusLabel}
+              variant={backendHealthy ? 'success' : backendHealthy === false ? 'error' : 'neutral'}
+              isPulsing={backendHealthy === true}
+            />
+          }
+          label={statusLabel}
           onClick={checkHealth}
         />
       </HStack>

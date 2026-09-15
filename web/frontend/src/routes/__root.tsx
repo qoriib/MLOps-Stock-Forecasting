@@ -1,14 +1,12 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+import { useEffect } from 'react'
+import { HeadContent, Link, Scripts, createRootRoute } from '@tanstack/react-router'
 import { Theme } from '@astryxdesign/core/theme'
 import { neutralTheme } from '@astryxdesign/theme-neutral/built'
-import { LayerProvider } from '@astryxdesign/core/Layer'
+import { LinkProvider } from '@astryxdesign/core/Link'
 import { Layout, LayoutHeader, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout'
+import { useStockStore } from '@/stores'
 import { AppHeader } from '@/components/AppHeader'
 import { AppFooter } from '@/components/AppFooter'
-import { StockProvider } from '@/context/StockContext'
-
 import appCss from '@/styles.css?url'
 
 export const Route = createRootRoute({
@@ -36,44 +34,45 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const checkHealth = useStockStore((state) => state.checkHealth)
+  const themeMode = useStockStore((state) => state.themeMode)
+  const setThemeMode = useStockStore((state) => state.setThemeMode)
+
+  useEffect(() => {
+    checkHealth()
+    const saved = localStorage.getItem('theme-mode') as 'light' | 'dark' | null
+    if (saved === 'light' || saved === 'dark') {
+      setThemeMode(saved)
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setThemeMode('dark')
+    }
+  }, [checkHealth, setThemeMode])
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        <Theme theme={neutralTheme} mode="system">
-          <LayerProvider>
-            <StockProvider>
-              <Layout
-                contentWidth={1040}
-                defaultHasDividers
-                header={
-                  <LayoutHeader>
-                    <AppHeader />
-                  </LayoutHeader>
-                }
-                content={<LayoutContent>{children}</LayoutContent>}
-                footer={
-                  <LayoutFooter>
-                    <AppFooter />
-                  </LayoutFooter>
-                }
-              />
-            </StockProvider>
-          </LayerProvider>
+        <Theme theme={neutralTheme} mode={themeMode}>
+          <LinkProvider component={Link}>
+            <Layout
+              contentWidth={1040}
+              defaultHasDividers
+              header={
+                <LayoutHeader>
+                  <AppHeader />
+                </LayoutHeader>
+              }
+              content={<LayoutContent>{children}</LayoutContent>}
+              footer={
+                <LayoutFooter>
+                  <AppFooter />
+                </LayoutFooter>
+              }
+            />
+          </LinkProvider>
         </Theme>
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
         <Scripts />
       </body>
     </html>
