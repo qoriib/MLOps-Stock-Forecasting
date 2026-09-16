@@ -1,14 +1,14 @@
 import type { DateRangePreset, DateRange } from '@astryxdesign/core/DateRangeInput'
 import { toISODate, getDaysAgoDate } from '@/utils/date.util'
 
-export const DEFAULT_MODEL_TYPE = 'sarima'
+export const DEFAULT_MODEL_TYPE = 'lstm'
 export const DEFAULT_FORECAST_STEPS = '7'
 export const DEFAULT_HISTORY_LIMIT = 500
 export const DEFAULT_HISTORY_DISPLAY_COUNT = 30
 
 export const MODEL_OPTIONS = [
-  { value: 'sarima', label: 'Model: SARIMA' },
-  { value: 'arima', label: 'Model: ARIMA' },
+  { value: 'lstm', label: 'Model: LSTM' },
+  { value: 'gru', label: 'Model: GRU' },
 ]
 
 export const STEP_OPTIONS = [
