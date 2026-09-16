@@ -8,7 +8,7 @@ router = APIRouter(prefix="/api", tags=["Predictions"])
     "/predict",
     response_model=PredictResponse,
     summary="Prediksi Harga Saham",
-    description="Inferensi peramalan harga saham menggunakan model ARIMA atau SARIMA.",
+    description="Inferensi peramalan harga saham menggunakan model Deep Learning (LSTM & GRU).",
     response_description="Hasil prediksi harga saham beserta rentang interval keyakinan.",
     responses={
         404: {"description": "Model untuk ticker saham yang diminta tidak ditemukan."},

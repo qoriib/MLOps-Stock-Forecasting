@@ -30,9 +30,9 @@ class PredictRequest(BaseModel):
         description="Simbol ticker saham",
     )
     model_type: Optional[str] = Field(
-        default="sarima",
-        examples=["sarima", "arima"],
-        description="Varian model: sarima atau arima",
+        default="lstm",
+        examples=["lstm", "gru"],
+        description="Varian model: lstm atau gru",
     )
     steps: int = Field(
         default=30,
@@ -63,7 +63,7 @@ class PredictRequest(BaseModel):
         "json_schema_extra": {
             "example": {
                 "ticker": "BBCA.JK",
-                "model_type": "sarima",
+                "model_type": "lstm",
                 "steps": 30,
                 "start_date": "2026-08-01",
                 "end_date": "2026-09-02",
@@ -74,13 +74,13 @@ class PredictRequest(BaseModel):
 class PredictResponse(BaseModel):
     ticker: str = Field(..., examples=["BBCA.JK"], description="Simbol ticker saham")
     model_type: str = Field(
-        default="sarima",
-        examples=["sarima", "arima"],
+        default="lstm",
+        examples=["lstm", "gru"],
         description="Varian model yang digunakan",
     )
     model_name: str = Field(
         ...,
-        examples=["ARIMAResultsWrapper"],
+        examples=["Sequential (LSTM)"],
         description="Nama arsitektur model yang digunakan",
     )
     forecast_steps: int = Field(..., examples=[30], description="Jumlah langkah peramalan")
@@ -102,8 +102,8 @@ class PredictResponse(BaseModel):
         "json_schema_extra": {
             "example": {
                 "ticker": "BBCA.JK",
-                "model_type": "sarima",
-                "model_name": "SARIMAXResultsWrapper",
+                "model_type": "lstm",
+                "model_name": "Sequential (LSTM)",
                 "forecast_steps": 2,
                 "last_historical_date": "2026-09-11",
                 "predictions": [

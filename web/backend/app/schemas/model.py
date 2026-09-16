@@ -3,13 +3,13 @@ from pydantic import BaseModel, Field
 
 class Model(BaseModel):
     ticker: str = Field(..., examples=["BBCA.JK"], description="Simbol ticker saham")
-    variant: str = Field(default="BEST", examples=["BEST", "ARIMA", "SARIMA"], description="Varian model peramalan")
-    filename: str = Field(..., examples=["BBCA.JK.pkl"], description="Nama file model")
-    model_type: str = Field(..., examples=["SARIMAXResultsWrapper"], description="Tipe arsitektur model")
-    file_size_bytes: int = Field(..., examples=[28045213], description="Ukuran file dalam bytes")
+    variant: str = Field(default="LSTM", examples=["LSTM", "GRU", "BEST"], description="Varian model peramalan")
+    filename: str = Field(..., examples=["BBCA.JK_LSTM.keras"], description="Nama file model")
+    model_type: str = Field(..., examples=["Sequential (LSTM)"], description="Tipe arsitektur model")
+    file_size_bytes: int = Field(..., examples=[150000], description="Ukuran file dalam bytes")
     last_modified: str = Field(
         ...,
-        examples=["2026-09-11T00:30:00"],
+        examples=["2026-09-17T03:00:00"],
         description="Waktu terakhir file dimodifikasi",
     )
 
@@ -20,7 +20,7 @@ class ModelsResponse(BaseModel):
         description="Daftar simbol ticker saham yang tersedia",
     )
     available_model_types: List[str] = Field(
-        default=["sarima", "arima"],
+        default=["lstm", "gru"],
         description="Daftar varian model yang tersedia",
     )
     models: List[Model] = Field(
@@ -32,15 +32,15 @@ class ModelsResponse(BaseModel):
         "json_schema_extra": {
             "example": {
                 "tickers": ["BBCA.JK", "BBRI.JK"],
-                "available_model_types": ["sarima", "arima"],
+                "available_model_types": ["lstm", "gru"],
                 "models": [
                     {
                         "ticker": "BBCA.JK",
-                        "variant": "SARIMA",
-                        "filename": "BBCA.JK_SARIMA.pkl",
-                        "model_type": "SARIMAXResultsWrapper",
-                        "file_size_bytes": 28045213,
-                        "last_modified": "2026-09-11T00:30:00",
+                        "variant": "LSTM",
+                        "filename": "BBCA.JK_LSTM.keras",
+                        "model_type": "Sequential (LSTM)",
+                        "file_size_bytes": 150000,
+                        "last_modified": "2026-09-17T03:00:00",
                     }
                 ],
             }
