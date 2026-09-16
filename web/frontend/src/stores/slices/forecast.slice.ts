@@ -1,11 +1,7 @@
 import type { StateCreator } from 'zustand'
-import {
-  API_ENDPOINTS,
-  DEFAULT_FORECAST_STEPS,
-  DEFAULT_HISTORY_DISPLAY_COUNT,
-} from '@/configs'
-import { parseApiResponse, extractErrorMessage } from '@/utils'
-import type { PredictResponse } from '@/types'
+import { DEFAULT_FORECAST_STEPS } from '@/configs'
+import { extractErrorMessage } from '@/utils'
+import { runInBrowserForecast } from '@/services/tfjsForecast.service'
 import type { ForecastSlice, StockState } from '../types'
 
 export const createForecastSlice: StateCreator<
@@ -40,53 +36,20 @@ export const createForecastSlice: StateCreator<
     set({ forecastLoading: true, forecastError: null })
 
     try {
-      const payload: Record<string, unknown> = {
+      // Eksekusi inferensi peramalan neural network langsung di browser client via TensorFlow.js
+      const data = await runInBrowserForecast({
         ticker: targetTicker,
+        modelType: targetModel,
         steps: parseInt(targetSteps, 10),
-        model_type: targetModel,
-      }
-
-      if (targetRange?.start && targetRange?.end) {
-        payload.start_date = targetRange.start
-        payload.end_date = targetRange.end
-      }
-
-      const response = await fetch(API_ENDPOINTS.predict, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        startDate: targetRange?.start,
+        endDate: targetRange?.end,
       })
-
-      const data = await parseApiResponse<PredictResponse>(
-        response,
-        'Gagal memproses peramalan saham',
-      )
-
-      // Fallback data historis jika belum terlampir pada respons
-      if (!data.history || data.history.length === 0) {
-        try {
-          const historyResponse = await fetch(
-            API_ENDPOINTS.stockHistory(
-              targetTicker,
-              DEFAULT_HISTORY_DISPLAY_COUNT,
-              targetRange?.start,
-              targetRange?.end,
-            ),
-          )
-          if (historyResponse.ok) {
-            const historyJson = await historyResponse.json()
-            data.history = historyJson.data
-          }
-        } catch {
-          // Abaikan fallback jika gagal
-        }
-      }
 
       set({ predictResult: data, forecastLoading: false })
     } catch (err: unknown) {
       const message = extractErrorMessage(
         err,
-        'Terjadi kesalahan sistem saat peramalan',
+        'Terjadi kesalahan saat inferensi TensorFlow.js di browser',
       )
       set({ forecastError: message, forecastLoading: false })
     }

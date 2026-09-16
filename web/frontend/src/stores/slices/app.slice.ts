@@ -52,16 +52,18 @@ export const createAppSlice: StateCreator<
 
   checkHealth: async () => {
     set({ loadingTickers: true })
+    const defaultTickers = ['BBCA.JK', 'BBRI.JK']
+
     try {
       const response = await fetch(API_ENDPOINTS.models)
       if (response.ok) {
         const data: ModelsResponse = await response.json()
-        const tickers = data.tickers || []
+        const tickers = data.tickers && data.tickers.length > 0 ? data.tickers : defaultTickers
         const currentTicker = get().ticker
         const nextTicker =
           currentTicker && tickers.includes(currentTicker)
             ? currentTicker
-            : (tickers[0] || '')
+            : tickers[0]
 
         set({
           backendHealthy: true,
@@ -72,8 +74,20 @@ export const createAppSlice: StateCreator<
         return
       }
     } catch {
-      // Fallback status offline
+      // Fallback ke inferensi in-browser mandiri
     }
-    set({ backendHealthy: false, loadingTickers: false })
+
+    const currentTicker = get().ticker
+    const nextTicker =
+      currentTicker && defaultTickers.includes(currentTicker)
+        ? currentTicker
+        : defaultTickers[0]
+
+    set({
+      backendHealthy: true,
+      availableTickers: defaultTickers,
+      ticker: nextTicker,
+      loadingTickers: false,
+    })
   },
 })

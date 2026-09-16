@@ -14,16 +14,26 @@ export function ForecastChart() {
   const { mode } = useTheme()
   const isDark = mode === 'dark'
 
-  const { predictResult, loading } = useStockStore(
+  const { ticker, modelType, steps, predictResult, loading, fetchForecast } = useStockStore(
     useShallow((state) => ({
+      ticker: state.ticker,
+      modelType: state.modelType,
+      steps: state.steps,
       predictResult: state.predictResult,
       loading: state.forecastLoading,
+      fetchForecast: state.fetchForecast,
     })),
   )
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (ticker && !predictResult && !loading) {
+      fetchForecast({ ticker, modelType, steps })
+    }
+  }, [ticker, predictResult, loading, fetchForecast, modelType, steps])
 
   const history = predictResult?.history ?? []
   const predictions = predictResult?.predictions ?? []

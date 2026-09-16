@@ -61,8 +61,10 @@ jobs:
       - name: Setup Pipeline Environment
         uses: ./.github/actions/setup-pipeline
 
-      - name: Run DVC Pipeline
-        run: poetry run dvc repro ml_pipeline
+      - name: Run DVC Pipeline & Export Web Models
+        run: |
+          poetry run dvc repro ml_pipeline
+          poetry run python -m src.export_web_models
 
       - name: Setup CML
         uses: iterative/setup-cml@v2
@@ -104,7 +106,7 @@ jobs:
       - name: Push Pipeline Data & Git State
         uses: ./.github/actions/push-pipeline
         with:
-          commit-message: "auto: update ml pipeline artifacts [skip ci]"
+          commit-message: "auto: update ml pipeline artifacts & web assets [skip ci]"
 
       - name: Upload Notebook Reports
         uses: actions/upload-artifact@v4
@@ -136,60 +138,16 @@ jobs:
           path: |
             artifact/model/*_metrics.json
 
-  deploy_backend:
-    name: Deploy Backend to Google Cloud Run
-    needs: pipeline
-    runs-on: ubuntu-latest
-    env:
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'mlops-stock-forecast' }}
-      GCP_REGION: asia-southeast2
-      SERVICE_NAME: stock-forecast-api
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
-        if: "${{ env.GCP_SA_KEY != '' }}"
-        uses: google-github-actions/auth@v2
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      - name: Upload Web Edge Assets
+        uses: actions/upload-artifact@v4
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        if: "${{ env.GCP_SA_KEY != '' }}"
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Configure Docker for GCP Artifact Registry
-        if: "${{ env.GCP_SA_KEY != '' }}"
-        run: |
-          gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
-
-      - name: Build & Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./web/backend/Dockerfile
-          push: ${{ env.GCP_SA_KEY != '' }}
-          tags: |
-            stock-forecast-api:latest
-            asia-southeast2-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/mlops-repo/stock-forecast-api:${{ github.sha }}
-
-      - name: Deploy to Cloud Run
-        if: "${{ env.GCP_SA_KEY != '' }}"
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE_NAME }}
-          image: asia-southeast2-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/mlops-repo/stock-forecast-api:${{ github.sha }}
-          region: ${{ env.GCP_REGION }}
-          flags: '--allow-unauthenticated --memory=2Gi --cpu=1 --timeout=300'
+          name: web-edge-assets
+          path: |
+            web/frontend/public/data/*.json
+            web/frontend/public/models/*.json
 
   deploy_frontend:
-    name: Deploy Frontend
+    name: Deploy Frontend (In-Browser Edge AI)
     needs: pipeline
     runs-on: ubuntu-latest
     steps:
@@ -205,7 +163,7 @@ jobs:
           cd web/frontend
           npm ci
 
-      - name: Build Frontend
+      - name: Build Frontend with TensorFlow.js
         run: |
           cd web/frontend
           npm run build
@@ -218,3 +176,4 @@ jobs:
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: 'web/frontend'
           command: pages deploy .output/public --project-name stock-forecasting-web
+

@@ -51,5 +51,17 @@ stages:
       - artifact/model/${item.ticker}_GRU.keras
       - artifact/model/${item.ticker}_scaler.pkl
       - artifact/model/${item.ticker}_metrics.json
+  export_web:
+    desc: "Ekspor data historis dan ringkasan model untuk inferensi in-browser TensorFlow.js"
+    cmd: python -m src.export_web_models
+    deps:
+      - src/export_web_models.py
+      - artifact/data
+    outs:
+      - web/frontend/public/data:
+          cache: false
+      - web/frontend/public/models:
+          cache: false
+
 
 

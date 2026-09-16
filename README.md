@@ -1,270 +1,144 @@
-# MLOps Stock Forecasting
+# MLOps Stock Forecasting - In-Browser Edge AI
 
-Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) menggunakan Deep Learning recurrent neural networks (**LSTM** & **GRU**), terintegrasi dengan DVC, Cloudflare R2, dan backend inferensi Python FastAPI yang ditargetkan untuk Google Cloud Run.
+Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) menggunakan arsitektur Deep Learning recurrent neural networks (**LSTM** & **GRU**). Seluruh proses inferensi peramalan dijalankan secara **100% Client-Side di browser pengguna menggunakan TensorFlow.js (@tensorflow/tfjs)** dengan akselerasi perangkat keras WebGL/GPU.
 
 ---
 
-## Arsitektur Pipeline & Deployment
+## 🚀 Keunggulan Arsitektur In-Browser Edge AI
+
+1. **Zero Server Cost & Infinite Scalability**: Tidak memerlukan server GPU/CPU inference backend (seperti Google Cloud Run atau VM) yang mahal. Web dapat di-host secara statis dan melayani jutaan pengguna secara gratis.
+2. **Zero Latency**: Hasil inferensi peramalan multi-step dihitung seketika langsung di browser klien tanpa round-trip delay jaringan.
+3. **Privasi & Keamanan Penuh**: Parameter inferensi dan manipulasi rentang data berjalan lokal di sisi klien.
+4. **Offline-Capable**: Aplikasi tetap dapat melakukan inferensi peramalan tanpa koneksi internet setelah aset statis ter-cache di browser.
+
+---
+
+## 🏗️ Arsitektur Pipeline & Deployment
 
 ```text
-[ yfinance ]
-     │
-     ▼ (ingestion)
-[ artifact/data/{ticker}.csv ] ──(dvc push)──► [ Cloudflare R2 ] (S3-compatible Object Storage)
-     │
-     ▼ (ml_pipeline)
-[ artifact/model/{ticker}_LSTM.keras ] ──(Container Image)──► [ Google Cloud Run ] (FastAPI Inference)
-[ artifact/model/{ticker}_GRU.keras  ]                              │
-                                                                    ▼ (JSON API)
-                                                         [ Frontend / Clients ]
+[ Yahoo Finance API ]
+        │
+        ▼ (ingestion)
+[ artifact/data/{ticker}.csv ] ──(dvc push)──► [ Cloudflare R2 ] (S3 Storage)
+        │
+        ▼ (ml_pipeline)
+[ artifact/model/{ticker}_LSTM.keras ] ──(dvc push)──► [ Cloudflare R2 ]
+[ artifact/model/{ticker}_GRU.keras  ]
+        │
+        ▼ (export_web: src/export_web_models.py)
+[ web/frontend/public/data/{ticker}.json ]
+[ web/frontend/public/models/overview.json ]
+        │
+        ▼ (build & deploy)
+[ Cloudflare Pages / Static Hosting ]
+        │
+        ▼ (Client Browser)
+┌────────────────────────────────────────────────────────┐
+│  Browser Client Runtime (TanStack + React + ApexChart) │
+│  └─► TensorFlow.js Engine (WebGL Accelerated)         │
+│      ├─ In-Browser LSTM / GRU Model Evaluation         │
+│      ├─ Autoregressive Multi-step Forecasting          │
+│      └─ 95% Confidence Interval Calculation            │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Struktur Direktori
-- `src/`: Modul kode sumber Python MLOps:
-  - `ingestion.py`: Mengunduh data saham dari yfinance.
-  - `config.py`: Definisi path direktori dan file artefak.
-  - `ml_pipeline.ipynb`: Pipeline pemodelan deep learning dan penyimpanan model (**LSTM** & **GRU**).
-- `artifact/`:
-  - `data/`: Dataset harga historis saham (`{ticker}.csv`) (diabaikan Git, dilacak DVC).
-  - `model/`: Model deep learning terlatih (`{ticker}_LSTM.keras`, `{ticker}_GRU.keras`, scaler & metrik) (diabaikan Git, dilacak DVC).
-  - `notebook/`: Output notebook evaluasi pemodelan papermill.
-- `web/`:
-  - `backend/`: REST API inferensi berbasis Python FastAPI & Dockerfile siap deploy ke Google Cloud Run.
-  - `frontend/`: Aplikasi dashboard interaktif React / Vite.
-- `dvc.yaml`: Definisi pipeline data & model DVC (`ingestion -> ml_pipeline`).
-- `dvc.lock`: Hash versi data dan state stage DVC.
-- `params.yaml`: Parameter konfigurasi pipeline (`tickers`, `start_date`, `end_date`, `train_size_ratio`, `target_col`).
+## 📁 Struktur Direktori
 
----
-
-## Panduan Setup Layanan Cloudflare
-
-### 1. Cloudflare R2 (DVC Remote Storage)
-
-Cloudflare R2 digunakan sebagai remote storage untuk melacak dan menyimpan dataset besar serta artefak model tanpa biaya egress.
-
-#### A. Dapatkan Kredensial R2 dari Dashboard
-1. Buka dashboard Cloudflare: [dash.cloudflare.com](https://dash.cloudflare.com/).
-2. Masuk ke menu **R2** > klik **Create bucket** (misal: `dvc-stock`).
-3. Salin **Account ID** pada panel sebelah kanan halaman Overview R2.
-4. Buat API Token untuk R2:
-   - Masuk ke **Manage R2 API Tokens** > **Create API Token**.
-   - Pilih izin **Object Read & Write**.
-   - Simpan **Access Key ID** dan **Secret Access Key**.
-
-#### B. Konfigurasi DVC di Terminal
-Jalankan perintah berikut di root folder proyek:
-
-```powershell
-# 1. Daftarkan bucket sebagai remote default
-dvc remote add -d r2 s3://dvc-stock
-
-# 2. Atur S3 endpoint ke Cloudflare R2 (ganti <ACCOUNT_ID>)
-dvc remote modify r2 endpointurl https://<ACCOUNT_ID>.r2.cloudflarestorage.com
-
-# 3. Atur region ke auto
-dvc remote modify r2 region auto
-
-# 4. Masukkan kredensial lokal (--local agar TIDAK ter-commit ke Git)
-dvc remote modify --local r2 access_key_id <ACCESS_KEY_ID>
-dvc remote modify --local r2 secret_access_key <SECRET_ACCESS_KEY>
-```
-
-#### C. Sinkronisasi Data R2
-```powershell
-# Upload artefak lokal ke Cloudflare R2
-dvc push
-
-# Download artefak dari Cloudflare R2 ke lokal
-dvc pull
-
-# Cek status perbedaan data
-dvc status
+```text
+MLOps-Stock-Forecasting/
+├── .github/
+│   └── workflows/
+│       └── pipeline.yml          # GitHub Actions CI/CD (Ingestion, Train, Export, Deploy)
+├── artifact/
+│   ├── data/                     # Dataset harga saham mentah (.csv) - dilacak DVC
+│   └── model/                    # Model terlatih Keras (.keras), scaler & metrik - dilacak DVC
+├── src/
+│   ├── config.py                 # Konfigurasi path dan environment pipeline
+│   ├── export_web_models.py      # Ekspor data & metadata model ke web static assets
+│   ├── ingestion.py              # Pengunduh data historis Yahoo Finance
+│   └── ml_pipeline.ipynb         # Notebook pelatihan & evaluasi LSTM & GRU
+├── web/
+│   └── frontend/                 # Aplikasi Web Modern (React 19 + TanStack + Astryx Design)
+│       ├── public/
+│       │   ├── data/             # JSON harga historis per ticker (BBCA, BBRI, dll)
+│       │   └── models/           # overview.json metadata model & metrik
+│       ├── src/
+│       │   ├── configs/          # Konfigurasi aplikasi & URL aset
+│       │   ├── services/
+│       │   │   └── tfjsForecast.service.ts # Engine inferensi TensorFlow.js in-browser
+│       │   ├── stores/           # Manajemen state global Zustand
+│       │   └── routes/           # Routing TanStack Router (Forecast & History)
+│       └── package.json
+├── dvc.yaml                      # Definisi pipeline MLOps deklaratif
+├── params.yaml                   # Parameter konfigurasi pelatihan & dataset
+├── pyproject.toml                # Konfigurasi Poetry & dependensi Python
+└── README.md
 ```
 
 ---
 
-### 2. Cloudflare D1 (Serverless SQL Database)
+## 🛠️ Panduan Memulai Cepat (Local Development)
 
-Cloudflare D1 menyimpan data harga saham dan hasil peramalan yang siap disajikan ke pengguna melalui query SQL di edge network.
+### 1. Menjalankan Dashboard Web Lokal
 
-#### A. Login ke Wrangler CLI
-```powershell
-npx wrangler login
-```
+Aplikasi web dapat langsung dijalankan tanpa perlu menyalakan backend Python apa pun:
 
-#### B. Membuat Database D1
-```powershell
-cd web/backend
-npx wrangler d1 create stock-db
-```
-Salin nilai `database_id` dari terminal.
-
-#### C. Masukkan `database_id` ke `wrangler.jsonc`
-Buka `web/backend/wrangler.jsonc` dan pastikan binding D1 telah terpasang:
-```jsonc
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "backend",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-09-08",
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "stock-db",
-      "database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    }
-  ]
-}
-```
-
-#### D. Menjalankan Seeding Data SQL ke D1
-File seed SQL (`artifact/seed.sql`) dihasilkan secara otomatis dari pipeline DVC (`dvc repro` atau `python -m src.store`).
-
-- **Eksekusi ke Database D1 Lokal (untuk development offline):**
-  ```powershell
-  cd web/backend
-  npm run db:seed:local
-  ```
-
-- **Eksekusi ke Database D1 Remote / Production:**
-  ```powershell
-  cd web/backend
-  npm run db:seed
-  ```
-
-#### E. Verifikasi Data di D1
-```powershell
-# Cek database lokal
-npx wrangler d1 execute stock-db --local --command="SELECT COUNT(*) AS total_prices FROM stock_prices;"
-
-# Cek database remote Cloudflare
-npx wrangler d1 execute stock-db --remote --command="SELECT COUNT(*) AS total_prices FROM stock_prices;"
-```
-
----
-
-### 3. Cloudflare Workers (Backend Hono REST API)
-
-Backend diimplementasikan menggunakan framework **Hono** di atas runtime Cloudflare Workers dengan integrasi langsung ke D1.
-
-#### A. Menjalankan Server Development Lokal
-```powershell
-cd web/backend
-npm run dev
-```
-Server development aktif di: `http://localhost:8787`
-
-#### B. Endpoint API yang Disediakan:
-- `GET /api/stocks`: Daftar seluruh saham yang tersedia di database.
-- `GET /api/stocks/:symbol`: Riwayat harga dengan pagination (`limit`) dan filter tanggal (`start_date`, `end_date`, `order`).
-- `GET /api/stocks/:symbol/latest`: Baris data harga terbaru.
-- `GET /api/stocks/:symbol/summary`: Metrik ringkasan harga (harga terakhir, perubahan, min, max, rata-rata volume).
-- `GET /api/stocks/:symbol/forecast`: Hasil peramalan masa depan (ARIMA/SARIMA).
-
-#### C. Deploy Worker ke Cloudflare Network
-```powershell
-cd web/backend
-npm run deploy
-```
-
----
-
-### 4. Cloudflare Pages / Frontend (React & Vite)
-
-Frontend dashboard berada di direktori `web/frontend/`.
-
-#### A. Konfigurasi Environment API
-Buat file `web/frontend/.env`:
-```env
-# Gunakan URL lokal saat development:
-VITE_API_BASE_URL=http://localhost:8787
-
-# Atau URL worker production saat deploy:
-# VITE_API_BASE_URL=https://backend.<subdomain>.workers.dev
-```
-
-#### B. Menjalankan Frontend secara Lokal
-```powershell
+```bash
 cd web/frontend
 npm install
 npm run dev
 ```
-Buka browser di `http://localhost:5173`.
 
-#### C. Deploy Frontend ke Cloudflare Pages
-```powershell
+Buka browser di `http://localhost:3000`. Dashboard akan langsung memuat data pasar dan menjalankan inferensi LSTM/GRU via WebGL.
+
+### 2. Memperbarui Data Pasar & Ekspor Web Aset
+
+Jalankan script ekspor untuk memperbarui data JSON di `web/frontend/public/`:
+
+```bash
+# Menggunakan Python bawaan (Zero-Dependency)
+python3 src/export_web_models.py
+
+# Atau menggunakan environment Poetry
+poetry run python -m src.export_web_models
+```
+
+### 3. Menjalankan Pipeline MLOps (DVC)
+
+Untuk melatih ulang model dan mengekspor seluruh artefak:
+
+```bash
+# Menjalankan seluruh tahapan pipeline
+poetry run dvc repro
+
+# Sinkronisasi ke Cloudflare R2 Remote Storage
+poetry run dvc push
+```
+
+---
+
+## 🌐 Panduan Deployment ke Cloudflare Pages
+
+Frontend web dikompilasi menjadi artefak statis murni yang siap disajikan melalui CDN global Cloudflare Pages:
+
+```bash
 cd web/frontend
+
+# 1. Build bundle produksi
 npm run build
-npx wrangler pages deploy dist --project-name stock-forecasting-web
+
+# 2. Deploy ke Cloudflare Pages
+npx wrangler pages deploy .output/public --project-name stock-forecasting-web
 ```
 
 ---
 
-## Alur Kerja DVC & Pipeline
+## ⚙️ Otomasi CI/CD (GitHub Actions)
 
-Pipeline MLOps dikelola secara deklaratif menggunakan `dvc.yaml` dengan dukungan **Stage Matrix** untuk pemrosesan 5 ticker perbankan secara paralel.
-
-### Visualisasi Pipeline (DAG)
-Jalankan perintah berikut untuk melihat struktur Directed Acyclic Graph:
-```powershell
-dvc dag
-```
-```text
-                                 +-----------+
-                                 | ingestion |
-                                 +-----------+
-        /             /                |               \             \
-+------------------+ +------------------+ +------------------+ +------------------+ +------------------+
-| ml_pipeline@BBCA | | ml_pipeline@BBRI | | ml_pipeline@BMRI | | ml_pipeline@BBNI | | ml_pipeline@BBTN |
-+------------------+ +------------------+ +------------------+ +------------------+ +------------------+
-        \             \                |               /             /
-                                   +-------+
-                                   | store |
-                                   +-------+
-```
-
-### Menjalankan Seluruh Pipeline
-Jalankan seluruh tahapan pipeline berdasarkan konfigurasi di `dvc.yaml` dan `params.yaml`:
-```powershell
-# Menjalankan seluruh alur: ingestion -> ml_pipeline (5 ticker) -> store
-dvc repro
-```
-
-### Menjalankan Per Tahap / Single Ticker:
-1. **Hanya Ingestion Data Saham (yfinance)**:
-   ```powershell
-   dvc repro ingestion
-   # atau: python -m src.ingestion
-   ```
-
-2. **Hanya Model Ticker Tertentu (contoh: BBRI)**:
-   ```powershell
-   dvc repro ml_pipeline@BBRI
-   ```
-
-3. **Hanya Generate Seed SQL Cloudflare D1**:
-   ```powershell
-   dvc repro store
-   # atau: python -m src.store
-   ```
-
-
----
-
-## Cheatsheet Perintah
-
-| Komponen | Perintah | Deskripsi |
-|---|---|---|
-| **DVC & R2** | `dvc repro` | Menjalankan seluruh pipeline MLOps |
-| | `dvc push` | Mengunggah artefak ke Cloudflare R2 |
-| | `dvc pull` | Mengunduh artefak dari Cloudflare R2 |
-| **D1 Database** | `python -m src.store` | Membuat file `artifact/seed.sql` |
-| | `cd web/backend; npm run db:seed:local` | Mengisi database D1 lokal |
-| | `cd web/backend; npm run db:seed` | Mengisi database D1 Cloudflare remote |
-| **Backend Hono** | `cd web/backend; npm run dev` | Menjalankan API backend lokal (`:8787`) |
-| | `cd web/backend; npm run deploy` | Deploy Worker ke Cloudflare |
-| **Frontend React** | `cd web/frontend; npm run dev` | Menjalankan dashboard frontend (`:5173`) |
-| | `cd web/frontend; npm run build` | Build bundle frontend untuk production |
+Alur kerja `.github/workflows/pipeline.yml` berjalan secara terjadwal setiap hari Senin atau dapat dipicu secara manual via `workflow_dispatch`:
+1. **Ingestion**: Mengunduh pembaruan harga saham terbaru dari Yahoo Finance.
+2. **DVC Pipeline**: Melatih model LSTM & GRU, menghitung metrik evaluasi (RMSE, MAPE, R2), dan mengekspor notebook CML.
+3. **Export Web**: Mengonversi dataset dan model metadata menjadi aset static web di `web/frontend/public/`.
+4. **Deploy Frontend**: Melakukan build frontend dan mempublikasikannya langsung ke Cloudflare Pages.

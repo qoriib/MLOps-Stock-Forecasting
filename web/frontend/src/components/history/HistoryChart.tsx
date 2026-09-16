@@ -9,10 +9,13 @@ import { HistoryControls } from './HistoryControls'
 import type { ApexOptions } from 'apexcharts'
 
 export function HistoryChart() {
-  const { items, loading } = useStockStore(
+  const { items, loading, ticker, dateRange, fetchHistory } = useStockStore(
     useShallow((state) => ({
       items: selectFilteredHistory(state),
       loading: state.historyLoading,
+      ticker: state.ticker,
+      dateRange: state.dateRange,
+      fetchHistory: state.fetchHistory,
     })),
   )
   const [mounted, setMounted] = useState(false)
@@ -22,6 +25,12 @@ export function HistoryChart() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (ticker && (!items || items.length === 0) && !loading) {
+      fetchHistory({ ticker, dateRange })
+    }
+  }, [ticker, items, loading, fetchHistory, dateRange])
 
   const hasData = items && items.length > 0
   const sortedData = hasData ? [...items].sort((a, b) => a.date.localeCompare(b.date)) : []

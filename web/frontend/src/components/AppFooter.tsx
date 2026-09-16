@@ -10,10 +10,10 @@ export function AppFooter() {
 
   const statusLabel =
     backendHealthy === true
-      ? 'Online'
+      ? 'TensorFlow.js (WebGL)'
       : backendHealthy === false
         ? 'Offline'
-        : 'Cek Status'
+        : 'Inisialisasi...'
 
   return (
     <HStack justify="between" align="center">

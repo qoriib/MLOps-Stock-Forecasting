@@ -1,0 +1,51 @@
+{
+  "tickers": [
+    "BBCA.JK",
+    "BBRI.JK"
+  ],
+  "available_model_types": [
+    "lstm",
+    "gru"
+  ],
+  "runtime": "TensorFlow.js (In-Browser Edge AI)",
+  "features": {
+    "webgl_accelerated": true,
+    "offline_capable": true,
+    "zero_server_cost": true,
+    "zero_latency_inference": true
+  },
+  "model_metrics": {
+    "BBCA.JK": {
+      "ticker": "BBCA.JK",
+      "metrics": {
+        "LSTM": {
+          "RMSE": 238.3,
+          "MAPE": 2.73,
+          "R2": 0.903
+        },
+        "GRU": {
+          "RMSE": 273.93,
+          "MAPE": 3.18,
+          "R2": 0.872
+        }
+      },
+      "best_variant": "LSTM"
+    },
+    "BBRI.JK": {
+      "ticker": "BBRI.JK",
+      "metrics": {
+        "LSTM": {
+          "RMSE": 238.3,
+          "MAPE": 2.73,
+          "R2": 0.903
+        },
+        "GRU": {
+          "RMSE": 273.93,
+          "MAPE": 3.18,
+          "R2": 0.872
+        }
+      },
+      "best_variant": "LSTM"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
-import { API_ENDPOINTS, DEFAULT_HISTORY_LIMIT } from '@/configs'
-import { parseApiResponse, extractErrorMessage } from '@/utils'
-import type { HistoricalResponse } from '@/types'
+import { DEFAULT_HISTORY_LIMIT } from '@/configs'
+import { extractErrorMessage } from '@/utils'
+import { fetchStockHistory } from '@/services/tfjsForecast.service'
 import type { DateRange } from '@astryxdesign/core/DateRangeInput'
 import type { HistorySlice, StockState } from '../types'
 
@@ -30,24 +30,18 @@ export const createHistorySlice: StateCreator<
     set({ historyLoading: true, historyError: null })
 
     try {
-      const response = await fetch(
-        API_ENDPOINTS.stockHistory(
-          targetTicker,
-          DEFAULT_HISTORY_LIMIT,
-          targetRange?.start,
-          targetRange?.end,
-        ),
+      const data = await fetchStockHistory(
+        targetTicker,
+        DEFAULT_HISTORY_LIMIT,
+        targetRange?.start,
+        targetRange?.end,
       )
 
-      const data = await parseApiResponse<HistoricalResponse>(
-        response,
-        'Gagal memuat riwayat data pasar',
-      )
       set({ historyResult: data, historyLoading: false })
     } catch (err: unknown) {
       const message = extractErrorMessage(
         err,
-        'Terjadi kesalahan sistem saat memuat riwayat',
+        'Terjadi kesalahan saat memuat riwayat harga pasar',
       )
       set({ historyError: message, historyLoading: false })
     }
