@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_HISTORY_LIMIT } from '@/configs'
 import { extractErrorMessage } from '@/utils'
-import { fetchStockHistory } from '@/services/tfjsForecast.service'
+import { fetchStockHistoryData } from '@/services/apiForecast.service'
 import type { DateRange } from '@astryxdesign/core/DateRangeInput'
 import type { HistorySlice, StockState } from '../types'
 
@@ -30,7 +30,7 @@ export const createHistorySlice: StateCreator<
     set({ historyLoading: true, historyError: null })
 
     try {
-      const data = await fetchStockHistory(
+      const data = await fetchStockHistoryData(
         targetTicker,
         DEFAULT_HISTORY_LIMIT,
         targetRange?.start,

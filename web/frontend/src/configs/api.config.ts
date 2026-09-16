@@ -10,7 +10,9 @@ export const getStaticOverviewUrl = () => {
   return `${base}/models/overview.json`
 }
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? ''
+export const API_BASE_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
+  'https://stock-forecast-api.klikolio-creative.workers.dev'
 
 export const API_ENDPOINTS = {
   models: API_BASE_URL ? `${API_BASE_URL}/api/models` : getStaticOverviewUrl(),

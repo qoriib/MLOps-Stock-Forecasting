@@ -1,11 +1,34 @@
 import { useState, useEffect } from 'react'
-import { Button, DateRangeInput, Heading, HStack, Toolbar } from '@astryxdesign/core'
+import {
+  Button,
+  DateRangeInput,
+  Heading,
+  HStack,
+  Toolbar,
+  SegmentedControl,
+  SegmentedControlItem,
+} from '@astryxdesign/core'
 import { useHistoryState } from '@/stores'
 import { DATE_RANGE_PRESETS } from '@/configs'
 import type { ISODateString } from '@astryxdesign/core/Calendar'
 import type { DateRange } from '@astryxdesign/core/DateRangeInput'
 
-export function HistoryControls() {
+export type ChartType = 'candlestick' | 'line'
+export type PriceField = 'close' | 'open' | 'high' | 'low'
+
+interface HistoryControlsProps {
+  chartType: ChartType
+  onChartTypeChange: (type: ChartType) => void
+  priceField: PriceField
+  onPriceFieldChange: (field: PriceField) => void
+}
+
+export function HistoryControls({
+  chartType,
+  onChartTypeChange,
+  priceField,
+  onPriceFieldChange,
+}: HistoryControlsProps) {
   const {
     ticker,
     dateRange,
@@ -31,7 +54,35 @@ export function HistoryControls() {
     <Toolbar
       label="Filter Riwayat Saham"
       startContent={
-        <Heading level={4}>Riwayat Harga</Heading>
+        <HStack gap={3} align="center">
+          <Heading level={4}>Riwayat Harga</Heading>
+
+          {/* Toggle: Candlestick vs Line */}
+          <SegmentedControl
+            value={chartType}
+            onChange={(val) => onChartTypeChange(val as ChartType)}
+            label="Tipe Grafik"
+            size="sm"
+          >
+            <SegmentedControlItem value="candlestick" label="Candlestick" />
+            <SegmentedControlItem value="line" label="Line" />
+          </SegmentedControl>
+
+          {/* Toggle kolom harga — hanya tampil saat mode line */}
+          {chartType === 'line' && (
+            <SegmentedControl
+              value={priceField}
+              onChange={(val) => onPriceFieldChange(val as PriceField)}
+              label="Kolom Harga"
+              size="sm"
+            >
+              <SegmentedControlItem value="close" label="Close" />
+              <SegmentedControlItem value="open" label="Open" />
+              <SegmentedControlItem value="high" label="High" />
+              <SegmentedControlItem value="low" label="Low" />
+            </SegmentedControl>
+          )}
+        </HStack>
       }
       endContent={
         <HStack gap={3} align="center">

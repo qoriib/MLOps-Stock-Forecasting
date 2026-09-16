@@ -52,12 +52,15 @@ export const createAppSlice: StateCreator<
         const nextTicker =
           currentTicker && tickers.includes(currentTicker)
             ? currentTicker
-            : tickers[0]
+            : (data.default_ticker && tickers.includes(data.default_ticker)
+                ? data.default_ticker
+                : tickers[0])
 
         set({
           backendHealthy: true,
           availableTickers: tickers,
           ticker: nextTicker,
+          modelType: get().modelType || data.default_model_type || DEFAULT_MODEL_TYPE,
           loadingTickers: false,
         })
         return

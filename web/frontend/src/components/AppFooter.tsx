@@ -10,7 +10,7 @@ export function AppFooter() {
 
   const statusLabel =
     backendHealthy === true
-      ? 'ONNX Runtime (Edge AI)'
+      ? 'Cloudflare Worker (Edge AI API)'
       : backendHealthy === false
         ? 'Offline'
         : 'Inisialisasi...'

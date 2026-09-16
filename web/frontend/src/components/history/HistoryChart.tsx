@@ -6,7 +6,22 @@ import { Layout, LayoutHeader, LayoutContent } from '@astryxdesign/core/Layout'
 import { useStockStore, selectFilteredHistory, useShallow } from '@/stores'
 import { getApexThemeOptions } from '@/configs'
 import { HistoryControls } from './HistoryControls'
+import type { ChartType, PriceField } from './HistoryControls'
 import type { ApexOptions } from 'apexcharts'
+
+const PRICE_FIELD_LABELS: Record<PriceField, string> = {
+  close: 'Harga Penutupan',
+  open: 'Harga Pembukaan',
+  high: 'Harga Tertinggi',
+  low: 'Harga Terendah',
+}
+
+const PRICE_FIELD_COLORS: Record<PriceField, string> = {
+  close: '#3b82f6',
+  open: '#8b5cf6',
+  high: '#10b981',
+  low: '#f59e0b',
+}
 
 export function HistoryChart() {
   const { items, loading, ticker, dateRange, fetchHistory } = useStockStore(
@@ -19,6 +34,8 @@ export function HistoryChart() {
     })),
   )
   const [mounted, setMounted] = useState(false)
+  const [chartType, setChartType] = useState<ChartType>('candlestick')
+  const [priceField, setPriceField] = useState<PriceField>('close')
   const { mode } = useTheme()
   const isDark = mode === 'dark'
 
@@ -35,25 +52,78 @@ export function HistoryChart() {
   const hasData = items && items.length > 0
   const sortedData = hasData ? [...items].sort((a, b) => a.date.localeCompare(b.date)) : []
 
-  const series = [
+  const baseOptions = getApexThemeOptions(isDark)
+
+  // --- Candlestick series & options ---
+  const candlestickSeries = [
     {
-      name: 'Harga Penutupan',
+      name: ticker ?? 'Saham',
       data: sortedData.map((d) => ({
         x: d.date,
-        y: d.close,
+        y: [d.open, d.high, d.low, d.close] as [number, number, number, number],
       })),
     },
   ]
 
-  const baseOptions = getApexThemeOptions(isDark)
+  const candlestickOptions: ApexOptions = {
+    ...baseOptions,
+    chart: {
+      ...baseOptions.chart,
+      type: 'candlestick',
+    },
+    tooltip: {
+      ...baseOptions.tooltip,
+      custom: ({ seriesIndex, dataPointIndex, w }) => {
+        const o = w.globals.seriesCandleO[seriesIndex]?.[dataPointIndex]
+        const h = w.globals.seriesCandleH[seriesIndex]?.[dataPointIndex]
+        const l = w.globals.seriesCandleL[seriesIndex]?.[dataPointIndex]
+        const c = w.globals.seriesCandleC[seriesIndex]?.[dataPointIndex]
+        const date = sortedData[dataPointIndex]?.date ?? ''
+        const fmt = (v: number) => v?.toLocaleString('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })
+        const isUp = c >= o
+        const color = isUp ? '#10b981' : '#ef4444'
+        return `<div style="padding:10px 14px;font-size:12px;line-height:1.7;">
+          <div style="font-weight:600;margin-bottom:4px;">${date}</div>
+          <div style="color:${color};font-weight:700;font-size:14px;">${fmt(c)}</div>
+          <div>Open: <b>${fmt(o)}</b></div>
+          <div>High: <b style="color:#10b981">${fmt(h)}</b></div>
+          <div>Low: <b style="color:#ef4444">${fmt(l)}</b></div>
+          <div>Close: <b>${fmt(c)}</b></div>
+        </div>`
+      },
+    },
+    plotOptions: {
+      candlestick: {
+        colors: {
+          upward: '#10b981',
+          downward: '#ef4444',
+        },
+        wick: {
+          useFillColor: true,
+        },
+      },
+    },
+  }
 
-  const options: ApexOptions = {
+  // --- Line series & options ---
+  const color = PRICE_FIELD_COLORS[priceField]
+  const lineSeries = [
+    {
+      name: PRICE_FIELD_LABELS[priceField],
+      data: sortedData.map((d) => ({
+        x: d.date,
+        y: d[priceField],
+      })),
+    },
+  ]
+
+  const lineOptions: ApexOptions = {
     ...baseOptions,
     chart: {
       ...baseOptions.chart,
       type: 'area',
     },
-    colors: ['#3b82f6'],
+    colors: [color],
     dataLabels: { enabled: false },
     stroke: { curve: 'smooth', width: 2 },
     markers: {
@@ -74,24 +144,31 @@ export function HistoryChart() {
     },
   }
 
+  const isCandlestick = chartType === 'candlestick'
+
   return (
     <Card variant="default">
       <Layout
         defaultHasDividers
         header={
           <LayoutHeader>
-            <HistoryControls />
+            <HistoryControls
+              chartType={chartType}
+              onChartTypeChange={setChartType}
+              priceField={priceField}
+              onPriceFieldChange={setPriceField}
+            />
           </LayoutHeader>
         }
         content={
           <LayoutContent>
             {loading && !hasData && (
-              <Center height={320}>
+              <Center height={360}>
                 <Spinner size="lg" label="Mengambil riwayat data pasar..." />
               </Center>
             )}
             {!hasData && !loading && (
-              <Center height={320}>
+              <Center height={360}>
                 <VStack align="center" gap={2}>
                   <Heading level={5}>Data Riwayat Belum Dimuat</Heading>
                   <Text color="secondary">
@@ -108,13 +185,23 @@ export function HistoryChart() {
                 scrim={isDark ? 'dark' : 'light'}
                 content={<Spinner size="lg" label="Mengambil riwayat data pasar..." />}
               >
-                {mounted && (
+                {mounted && isCandlestick && (
                   <Chart
-                    key={mode}
-                    options={options}
-                    series={series}
+                    key={`candlestick-${mode}`}
+                    options={candlestickOptions}
+                    series={candlestickSeries}
+                    type="candlestick"
+                    height={360}
+                    width="100%"
+                  />
+                )}
+                {mounted && !isCandlestick && (
+                  <Chart
+                    key={`line-${mode}-${priceField}`}
+                    options={lineOptions}
+                    series={lineSeries}
                     type="area"
-                    height={320}
+                    height={360}
                     width="100%"
                   />
                 )}
