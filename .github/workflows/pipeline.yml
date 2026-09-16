@@ -1,0 +1,186 @@
+name: End-to-End Stock Forecasting Data & ML Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, main]
+  schedule:
+    # Retraining & deployment otomatis setiap hari Senin pukul 01:00 UTC (08:00 WIB)
+    - cron: "0 1 * * 1"
+
+permissions:
+  contents: write
+  statuses: write
+  pull-requests: write
+  issues: write
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+jobs:
+  ingestion:
+    name: Stock Data Ingestion - Yahoo Finance Ingestion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Pipeline Environment
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Run Ingestion
+        shell: bash
+        run: poetry run python -m src.ingestion
+
+      - name: Push Pipeline Data & Git State
+        uses: ./.github/actions/push-pipeline
+        with:
+          commit-message: "auto: update stock ingestion artifacts [skip ci]"
+
+      - name: Upload Ingestion Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-files
+          path: |
+            artifact/data/*.csv
+
+  pipeline:
+    name: Run DVC ML Pipeline (LSTM & GRU)
+    needs: ingestion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Pipeline Environment
+        uses: ./.github/actions/setup-pipeline
+
+      - name: Run DVC Pipeline
+        run: poetry run dvc repro ml_pipeline
+
+      - name: Setup CML
+        uses: iterative/setup-cml@v2
+
+      - name: Publish Reports & Plots to GitHub Summary via CML
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          notebooks=(artifact/notebook/*.ipynb src/*.ipynb)
+
+          mkdir -p artifact/notebook
+
+          for nb in "${notebooks[@]}"; do
+            if [ -f "$nb" ]; then
+              stage=$(basename "$nb" .ipynb)
+              echo "Processing $nb ($stage)..."
+              poetry run jupyter nbconvert --to markdown --no-input "$nb" --output-dir artifact/notebook || true
+              
+              if [ -d "artifact/notebook/${stage}_files" ]; then
+                for img in artifact/notebook/${stage}_files/*.png; do
+                  if [ -f "$img" ]; then
+                    img_url=$(cml publish "$img" || echo "")
+                    filename=$(basename "$img")
+                    if [ -n "$img_url" ]; then
+                      sed -i "s|${stage}_files/${filename}|${img_url}|g" "artifact/notebook/${stage}.md" || true
+                    fi
+                  fi
+                done
+              fi
+              
+              if [ -f "artifact/notebook/${stage}.md" ]; then
+                cat "artifact/notebook/${stage}.md" >> $GITHUB_STEP_SUMMARY
+                echo -e "\n\n---\n\n" >> $GITHUB_STEP_SUMMARY
+              fi
+            fi
+          done
+
+      - name: Push Pipeline Data & Git State
+        uses: ./.github/actions/push-pipeline
+        with:
+          commit-message: "auto: update ml pipeline artifacts [skip ci]"
+
+      - name: Upload Notebook Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-reports
+          path: |
+            artifact/notebook/**
+
+      - name: Upload Prepared Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: prepared-files
+          path: |
+            artifact/data/*.csv
+
+      - name: Upload Modeling Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: modeling-files
+          path: |
+            artifact/model/*_LSTM.keras
+            artifact/model/*_GRU.keras
+            artifact/model/*_scaler.pkl
+
+      - name: Upload Evaluation Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-files
+          path: |
+            artifact/model/*_metrics.json
+
+  deploy_backend:
+    name: Deploy Backend
+    needs: pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./web/backend/Dockerfile
+          push: false
+          tags: stock-forecast-api:latest
+
+  deploy_frontend:
+    name: Deploy Frontend
+    needs: pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          cd web/frontend
+          npm ci
+
+      - name: Build Frontend
+        run: |
+          cd web/frontend
+          npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        if: "${{ env.CLOUDFLARE_API_TOKEN != '' }}"
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: 'web/frontend'
+          command: pages deploy .output/public --project-name stock-forecasting-web

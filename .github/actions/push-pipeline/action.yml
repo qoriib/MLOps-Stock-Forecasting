@@ -1,0 +1,31 @@
+name: 'Push Pipeline Artifacts & State'
+description: 'Pushes updated data cache to DVC remote and commits/pushes all working tree changes to GitHub.'
+
+inputs:
+  commit-message:
+    description: 'Custom commit message for Git push'
+    required: false
+    default: 'auto: update dvc tracking files and pipeline artifacts [skip ci]'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: DVC Push
+      shell: bash
+      run: |
+        poetry run dvc push || echo "DVC push completed or skipped"
+
+    - name: Commit and Push All Changes
+      shell: bash
+      run: |
+        # Staging seluruh perubahan di workspace
+        git add -A
+        
+        if ! git diff --cached --quiet; then
+          echo "=== Changes detected. Committing and pushing to remote... ==="
+          git commit -m "${{ inputs.commit-message }}"
+          git pull --rebase origin main || git pull --rebase origin master || true
+          git push
+        else
+          echo "=== No changes detected in working tree. Skipping commit. ==="
+        fi
