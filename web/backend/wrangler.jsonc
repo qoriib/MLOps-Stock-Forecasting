@@ -1,0 +1,13 @@
+{
+  "name": "stock-forecast-api",
+  "main": ".output/server/index.mjs",
+  "compatibility_date": "2024-09-23",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "stock-forecast-db",
+      "database_id": "e272aa1e-554b-4b39-a1d5-a4c03392e017",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

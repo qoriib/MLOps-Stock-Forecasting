@@ -1,0 +1,17 @@
+node_modules/
+
+# Nitro build output
+.output/
+.nitro/
+
+# Wrangler local dev state (shared dengan Miniflare)
+.wrangler/
+
+# TypeScript build
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.dev.vars

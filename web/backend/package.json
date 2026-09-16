@@ -1,0 +1,25 @@
+{
+  "name": "stock-forecast-api",
+  "version": "1.0.0",
+  "description": "Stock Forecast API with Hono on Nitro and TensorFlow.js Edge Inference",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "nitro dev",
+    "build": "nitro build",
+    "deploy": "npm run build && wrangler deploy",
+    "preview": "wrangler dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
+    "hono": "^4.7.4",
+    "nitro": "latest"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "typescript": "^5.8.2",
+    "wrangler": "^4.133.0"
+  }
+}

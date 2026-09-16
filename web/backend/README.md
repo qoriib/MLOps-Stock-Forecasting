@@ -1,113 +1,53 @@
-# MLOps Stock Forecasting Inference Backend (FastAPI)
+# Stock Forecast API (Hono + Cloudflare Workers)
 
-Backend inferensi machine learning berbasis **Python FastAPI** yang melayani peramalan harga saham time-series (ARIMA & SARIMA) dan dirancang untuk di-deploy ke **Google Cloud Run**.
-
----
-
-## Fitur Utama
-- **Model Loading & In-Memory Caching**: Memuat model pickled (`.pkl`) secara efisien.
-- **Prediksi Probabilistik**: Menghasilkan nilai prediksi beserta rentang keyakinan 95% (`lower_bound` & `upper_bound`).
-- **Penjadwalan Tanggal Hari Kerja**: Otomatis menghasilkan tanggal masa depan (Business Days) setelah tanggal historis terakhir.
-- **RESTful Endpoints (Sederhana & Efisien)**:
-  - `GET /` - Dokumentasi Interaktif API (Swagger UI langsung di root).
-  - `GET /openapi.json` - Spesifikasi OpenAPI 3.1 schema JSON.
-  - `GET /api/models` - Endpoint terpadu: daftar ticker aktif dan metadata lengkap model.
-  - `POST /api/predict` - Inferensi model peramalan (JSON payload: `{"ticker": "BBCA.JK", "steps": 30}`).
-  - `GET /api/stocks/{ticker}` - Data historis harga saham untuk visualisasi chart.
+Backend serverless berbasis **TypeScript** dan framework **[Hono](https://hono.dev)** yang di-deploy di **Cloudflare Workers** dengan kapabilitas inferensi edge menggunakan **[TensorFlow.js](https://js.tensorflow.org)** CPU backend.
 
 ---
 
-## Struktur Direktori Modular
-Aplikasi backend telah dimodularisasi dengan arsitektur berlapis:
-```text
-web/backend/
-├── app/
-│   ├── core/            # Konfigurasi aplikasi & path discovery (MODEL_DIR, DATA_DIR)
-│   ├── schemas/         # Skema validasi Pydantic (request & response)
-│   ├── services/        # Logika bisnis (pemuatan model, forecasting, data historis)
-│   └── api/             # Routing FastAPI (models, predict, stocks)
-├── main.py              # Entrypoint aplikasi FastAPI & Uvicorn runner
-├── pyproject.toml       # Definisi dependensi & metadata package Poetry
-├── poetry.lock          # Versi lock dependensi Python
-├── Dockerfile           # Konfigurasi container untuk Google Cloud Run
-└── README.md
+## ⚡ Fitur Utama
+
+- **Ultra Low Latency:** Dijalankan di ratusan titik Cloudflare edge global.
+- **Zero Server Maintenance:** Arsitektur *serverless* tanpa perlu mengelola VM / Docker container.
+- **Edge Inference:** Inferensi model peramalan deret waktu autoregressive (LSTM & GRU) langsung di worker via TensorFlow.js.
+- **Ringan & Kompatibel:** Ukuran bundle terkompresi ~143 KiB dengan flag `nodejs_compat`.
+
+---
+
+## 🛠️ API Endpoints
+
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| `GET` | `/` | Status API & daftar rute |
+| `GET` | `/health` | Pemeriksaan kesehatan service |
+| `GET` | `/api/models` | Ringkasan model, ticker yang didukung, dan metrik evaluasi |
+| `GET` | `/api/stocks/:ticker` | Data riwayat harga saham (parameter: `limit`, `start_date`, `end_date`) |
+| `POST` | `/api/predict` | Menjalankan inferensi peramalan harga saham multi-step |
+
+### Contoh Request Prediksi (`POST /api/predict`):
+```json
+{
+  "ticker": "BBCA.JK",
+  "model_type": "lstm",
+  "steps": 30
+}
 ```
 
 ---
 
-## 1. Menjalankan Secara Lokal
-
-Direktori backend mendukung manajemen dependensi modern menggunakan **Poetry** (`pyproject.toml` & `poetry.lock`):
+## 🚀 Menjalankan Secara Lokal
 
 ```bash
-# Masuk ke direktori backend
 cd web/backend
-
-# Install dependencies dari lockfile
-poetry install
-
-# Jalankan server
-poetry run python main.py
-# atau menggunakan Uvicorn reload:
-poetry run uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+npm install
+npm run dev
 ```
-
-Akses dokumentasi interaktif langsung di: [http://localhost:8080/](http://localhost:8080/)
-Akses skema OpenAPI di: [http://localhost:8080/openapi.json](http://localhost:8080/openapi.json)
+Worker akan berjalan di `http://localhost:8787`.
 
 ---
 
-## 2. Menjalankan dengan Docker Secara Lokal
+## 🚢 Deployment ke Cloudflare Workers
 
-### Menggunakan Docker Compose (Direkomendasikan)
-Dari direktori root proyek (`MLOps-Stock-Forecasting`):
 ```bash
-# Build dan jalankan container di latar belakang
-docker compose up --build -d
-
-# Cek log aplikasi
-docker compose logs -f
-
-# Hentikan container
-docker compose down
+npm run deploy
 ```
-
-### Menggunakan Docker CLI Standar
-```bash
-# Build Docker image dari root proyek
-docker build -t stock-api -f web/backend/Dockerfile .
-
-# Jalankan container
-docker run -p 8080:8080 -e PORT=8080 stock-api
-```
-
----
-
-## 3. Panduan Deploy ke Google Cloud Run
-
-### Persiapan:
-1. Pastikan Google Cloud SDK (`gcloud`) telah terpasang dan login:
-   ```bash
-   gcloud auth login
-   gcloud config set project mlops-stock-forecast
-   ```
-2. Aktifkan API Cloud Run & Artifact Registry:
-   ```bash
-   gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com
-   ```
-
-### Deploy Langsung (Source-based Deploy):
-Jalankan perintah ini dari direktori root proyek:
-```bash
-gcloud run deploy stock-forecast-api \
-  --source . \
-  --dockerfile web/backend/Dockerfile \
-  --platform managed \
-  --region asia-southeast2 \
-  --allow-unauthenticated \
-  --memory 2Gi \
-  --cpu 1 \
-  --timeout 300
-```
-
-Setelah selesai, Google Cloud Run akan memberikan URL HTTPS publik layanan Anda (contoh: `https://stock-forecast-api-xxxxx-as.a.run.app`).
+Atau otomatis melalui pipeline CI/CD GitHub Actions.
