@@ -15,7 +15,7 @@ stages:
     outs:
       - artifact/data
   ml_pipeline:
-    desc: "Evaluasi hyperparameter ARIMA/SARIMA dan penyimpanan model per ticker"
+    desc: "Pelatihan model LSTM & GRU serta penyimpanan model, scaler, dan metrik per ticker"
     matrix:
       ticker: ${tickers}
     cmd: >-
@@ -23,24 +23,13 @@ stages:
       src/ml_pipeline.ipynb
       artifact/notebook/ml_pipeline_${item.ticker}.ipynb
       -p TICKER ${item.ticker}
-      -p TRAIN_SIZE_RATIO ${train_size_ratio}
       -p TARGET_COL ${target_col}
-      -p ARIMA_START_P ${arima.start_p}
-      -p ARIMA_MAX_P ${arima.max_p}
-      -p ARIMA_START_Q ${arima.start_q}
-      -p ARIMA_MAX_Q ${arima.max_q}
-      -p ARIMA_D ${arima.d}
-      -p SARIMA_START_P ${sarima.start_p}
-      -p SARIMA_MAX_P ${sarima.max_p}
-      -p SARIMA_START_Q ${sarima.start_q}
-      -p SARIMA_MAX_Q ${sarima.max_q}
-      -p SARIMA_D ${sarima.d}
-      -p SARIMA_START_SEASONAL_P ${sarima.start_seasonal_p}
-      -p SARIMA_MAX_SEASONAL_P ${sarima.max_seasonal_p}
-      -p SARIMA_START_SEASONAL_Q ${sarima.start_seasonal_q}
-      -p SARIMA_MAX_SEASONAL_Q ${sarima.max_seasonal_q}
-      -p SARIMA_SEASONAL_D ${sarima.seasonal_d}
-      -p SARIMA_SEASONAL_PERIOD ${sarima.seasonal_period}
+      -p TRAIN_SIZE_RATIO ${train_size_ratio}
+      -p RANDOM_STATE ${random_state}
+      -p WINDOW_SIZE ${window_size}
+      -p BATCH_SIZE ${batch_size}
+      -p EPOCHS ${epochs}
+      -p LEARNING_RATE ${learning_rate}
       --report-mode
       --log-output
       --progress-bar
@@ -48,13 +37,19 @@ stages:
       - src/ml_pipeline.ipynb
       - artifact/data/${item.ticker}.csv
     params:
-      - train_size_ratio
       - target_col
-      - arima
-      - sarima
+      - train_size_ratio
+      - random_state
+      - window_size
+      - batch_size
+      - epochs
+      - learning_rate
     outs:
       - artifact/notebook/ml_pipeline_${item.ticker}.ipynb:
           cache: false
-      - artifact/model/${item.ticker}_ARIMA.pkl
-      - artifact/model/${item.ticker}_SARIMA.pkl
+      - artifact/model/${item.ticker}_LSTM.keras
+      - artifact/model/${item.ticker}_GRU.keras
+      - artifact/model/${item.ticker}_scaler.pkl
+      - artifact/model/${item.ticker}_metrics.json
+
 

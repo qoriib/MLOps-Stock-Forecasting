@@ -3,25 +3,12 @@ tickers:
   - BBRI.JK
 start_date: "2021-09-03"
 end_date: "2026-09-03"
-train_size_ratio: 0.9
-target_col: "open"
+train_size_ratio: 0.8
+target_col: "close"
+random_state: 42
 
-arima:
-  start_p: 0
-  max_p: 3
-  start_q: 0
-  max_q: 3
-  d: 1
-
-sarima:
-  start_p: 0
-  max_p: 2
-  start_q: 0
-  max_q: 2
-  d: 1
-  start_seasonal_p: 0
-  max_seasonal_p: 2
-  start_seasonal_q: 0
-  max_seasonal_q: 2
-  seasonal_d: 1
-  seasonal_period: 5
+# Hyperparameter Deep Learning
+window_size: 30
+batch_size: 32
+epochs: 50
+learning_rate: 0.001
