@@ -6,7 +6,7 @@ import { HistoryTable } from '@/components/history/HistoryTable'
 
 export const Route = createFileRoute('/history')({ component: HistoryPage })
 
-export function HistoryPage() {
+function HistoryPage() {
   const { error, hasData } = useStockStore(
     useShallow((state) => ({
       error: state.historyError,

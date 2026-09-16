@@ -7,45 +7,66 @@
     "lstm",
     "gru"
   ],
-  "runtime": "TensorFlow.js (In-Browser Edge AI)",
+  "model_format": "onnx",
+  "runtime": "ONNX Runtime Web (WASM & WebGL Accelerated)",
   "features": {
+    "onnx_optimized": true,
     "webgl_accelerated": true,
+    "wasm_simd_multithreaded": true,
     "offline_capable": true,
     "zero_server_cost": true,
     "zero_latency_inference": true
   },
+  "exported_onnx_models": [
+    "BBCA.JK_GRU.onnx",
+    "BBCA.JK_LSTM.onnx",
+    "BBRI.JK_GRU.onnx",
+    "BBRI.JK_LSTM.onnx"
+  ],
   "model_metrics": {
     "BBCA.JK": {
       "ticker": "BBCA.JK",
+      "target_col": "close",
+      "window_size": 30,
+      "batch_size": 32,
+      "epochs": 50,
+      "learning_rate": 0.001,
+      "train_size_ratio": 0.8,
+      "best_model": "GRU",
       "metrics": {
         "LSTM": {
-          "RMSE": 238.3,
-          "MAPE": 2.73,
-          "R2": 0.903
+          "MAPE": 3.0890497387390683,
+          "RMSE": 274.0580173093213,
+          "R2": 0.8700709808819139
         },
         "GRU": {
-          "RMSE": 273.93,
-          "MAPE": 3.18,
-          "R2": 0.872
+          "MAPE": 2.3763062077730086,
+          "RMSE": 217.18016365853256,
+          "R2": 0.9184053941260977
         }
-      },
-      "best_variant": "LSTM"
+      }
     },
     "BBRI.JK": {
       "ticker": "BBRI.JK",
+      "target_col": "close",
+      "window_size": 30,
+      "batch_size": 32,
+      "epochs": 50,
+      "learning_rate": 0.001,
+      "train_size_ratio": 0.8,
+      "best_model": "GRU",
       "metrics": {
         "LSTM": {
-          "RMSE": 238.3,
-          "MAPE": 2.73,
-          "R2": 0.903
+          "MAPE": 2.7811897681824176,
+          "RMSE": 254.77831240768228,
+          "R2": 0.8877087154078735
         },
         "GRU": {
-          "RMSE": 273.93,
-          "MAPE": 3.18,
-          "R2": 0.872
+          "MAPE": 2.4675490689810538,
+          "RMSE": 220.3499837029577,
+          "R2": 0.9160062091839536
         }
-      },
-      "best_variant": "LSTM"
+      }
     }
   }
 }

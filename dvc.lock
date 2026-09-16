@@ -232,109 +232,93 @@ stages:
   ml_pipeline@BBCA.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBCA.JK.ipynb -p TICKER BBCA.JK -p 
-      TRAIN_SIZE_RATIO 0.9 -p TARGET_COL open -p ARIMA_START_P 0 -p ARIMA_MAX_P 
-      3 -p ARIMA_START_Q 0 -p ARIMA_MAX_Q 3 -p ARIMA_D 1 -p SARIMA_START_P 0 -p 
-      SARIMA_MAX_P 2 -p SARIMA_START_Q 0 -p SARIMA_MAX_Q 2 -p SARIMA_D 1 -p 
-      SARIMA_START_SEASONAL_P 0 -p SARIMA_MAX_SEASONAL_P 2 -p 
-      SARIMA_START_SEASONAL_Q 0 -p SARIMA_MAX_SEASONAL_Q 2 -p SARIMA_SEASONAL_D 
-      1 -p SARIMA_SEASONAL_PERIOD 5 --report-mode --log-output --progress-bar
+      TARGET_COL close -p TRAIN_SIZE_RATIO 0.8 -p RANDOM_STATE 42 -p WINDOW_SIZE
+      30 -p BATCH_SIZE 32 -p EPOCHS 50 -p LEARNING_RATE 0.001 --report-mode 
+      --log-output --progress-bar
     deps:
     - path: artifact/data/BBCA.JK.csv
       hash: md5
-      md5: 3bb7a286b0892ca965f4f0430c8be1cb
-      size: 126902
+      md5: f71f6f66eb2c3f49fd10fabb5a859390
+      size: 125512
     - path: src/ml_pipeline.ipynb
       hash: md5
-      md5: f09fcee3c792b64139c1dc25f6984a62
-      size: 14234
+      md5: 442e8b7a6e27494b017ea0d66e60ce0a
+      size: 368400
     params:
       params.yaml:
-        arima:
-          start_p: 0
-          max_p: 3
-          start_q: 0
-          max_q: 3
-          d: 1
-        sarima:
-          start_p: 0
-          max_p: 2
-          start_q: 0
-          max_q: 2
-          d: 1
-          start_seasonal_p: 0
-          max_seasonal_p: 2
-          start_seasonal_q: 0
-          max_seasonal_q: 2
-          seasonal_d: 1
-          seasonal_period: 5
-        target_col: open
-        train_size_ratio: 0.9
+        batch_size: 32
+        epochs: 50
+        learning_rate: 0.001
+        random_state: 42
+        target_col: close
+        train_size_ratio: 0.8
+        window_size: 30
     outs:
-    - path: artifact/model/BBCA.JK_ARIMA.pkl
+    - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: 8efa85c2f82d093c1b414ea96763cfa0
-      size: 2672128
-    - path: artifact/model/BBCA.JK_SARIMA.pkl
+      md5: 85792bdbc75590b4675728e03ae1496a
+      size: 315807
+    - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: d7cc112dc02ed6a5e150aba75dfd730d
-      size: 60593059
+      md5: 147508a2f9447557ac5783d8780b1880
+      size: 400294
+    - path: artifact/model/BBCA.JK_metrics.json
+      hash: md5
+      md5: 29e422bd588fc30ccc89a6e38cecde6f
+      size: 440
+    - path: artifact/model/BBCA.JK_scaler.pkl
+      hash: md5
+      md5: 0a428d4eb808961b9515c7578a8e33f2
+      size: 522
     - path: artifact/notebook/ml_pipeline_BBCA.JK.ipynb
       hash: md5
-      md5: a73074ed4c98d02474742e2ced9cfef7
-      size: 479184
+      md5: 50778965f78e19e78dd67b935cca78b0
+      size: 518964
   ml_pipeline@BBRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBRI.JK.ipynb -p TICKER BBRI.JK -p 
-      TRAIN_SIZE_RATIO 0.9 -p TARGET_COL open -p ARIMA_START_P 0 -p ARIMA_MAX_P 
-      3 -p ARIMA_START_Q 0 -p ARIMA_MAX_Q 3 -p ARIMA_D 1 -p SARIMA_START_P 0 -p 
-      SARIMA_MAX_P 2 -p SARIMA_START_Q 0 -p SARIMA_MAX_Q 2 -p SARIMA_D 1 -p 
-      SARIMA_START_SEASONAL_P 0 -p SARIMA_MAX_SEASONAL_P 2 -p 
-      SARIMA_START_SEASONAL_Q 0 -p SARIMA_MAX_SEASONAL_Q 2 -p SARIMA_SEASONAL_D 
-      1 -p SARIMA_SEASONAL_PERIOD 5 --report-mode --log-output --progress-bar
+      TARGET_COL close -p TRAIN_SIZE_RATIO 0.8 -p RANDOM_STATE 42 -p WINDOW_SIZE
+      30 -p BATCH_SIZE 32 -p EPOCHS 50 -p LEARNING_RATE 0.001 --report-mode 
+      --log-output --progress-bar
     deps:
     - path: artifact/data/BBRI.JK.csv
       hash: md5
-      md5: 2bf28a3453b5ce76441a9da2faaedbc4
-      size: 127039
+      md5: 4358182196a990fb42276985850652a8
+      size: 125915
     - path: src/ml_pipeline.ipynb
       hash: md5
-      md5: f09fcee3c792b64139c1dc25f6984a62
-      size: 14234
+      md5: 442e8b7a6e27494b017ea0d66e60ce0a
+      size: 368400
     params:
       params.yaml:
-        arima:
-          start_p: 0
-          max_p: 3
-          start_q: 0
-          max_q: 3
-          d: 1
-        sarima:
-          start_p: 0
-          max_p: 2
-          start_q: 0
-          max_q: 2
-          d: 1
-          start_seasonal_p: 0
-          max_seasonal_p: 2
-          start_seasonal_q: 0
-          max_seasonal_q: 2
-          seasonal_d: 1
-          seasonal_period: 5
-        target_col: open
-        train_size_ratio: 0.9
+        batch_size: 32
+        epochs: 50
+        learning_rate: 0.001
+        random_state: 42
+        target_col: close
+        train_size_ratio: 0.8
+        window_size: 30
     outs:
-    - path: artifact/model/BBRI.JK_ARIMA.pkl
+    - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: 3d970a7f2e68c0750669c52dc125af11
-      size: 2674546
-    - path: artifact/model/BBRI.JK_SARIMA.pkl
+      md5: 35efc6d7eab651cbe9748a4b0a264327
+      size: 315807
+    - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 8a11dc7527ee88fd62d63bc91a8bb983
-      size: 60643768
+      md5: ec666893fadda1c9e8a44d5704ec0bf1
+      size: 400294
+    - path: artifact/model/BBRI.JK_metrics.json
+      hash: md5
+      md5: 2897e0d3c8b4276d781b352d977c5272
+      size: 440
+    - path: artifact/model/BBRI.JK_scaler.pkl
+      hash: md5
+      md5: 0a428d4eb808961b9515c7578a8e33f2
+      size: 522
     - path: artifact/notebook/ml_pipeline_BBRI.JK.ipynb
       hash: md5
-      md5: a275dd8da6ab719ae396bb04bde2177b
-      size: 505762
+      md5: ad53b34767b2ca3ca5048b90ac658e5a
+      size: 519749
   ml_pipeline@BMRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BMRI.JK.ipynb -p data_path 
@@ -416,3 +400,26 @@ stages:
       hash: md5
       md5: 5ab87388419b91e314a0cacecdd993ea
       size: 546145
+  export_web:
+    cmd: python -m src.export_web_models
+    deps:
+    - path: artifact/data
+      hash: md5
+      md5: e15ee717c44f9f02655398dc434fc8c4.dir
+      size: 251427
+      nfiles: 2
+    - path: src/export_web_models.py
+      hash: md5
+      md5: 78ee33a40f5945f7a144c77e0e3271b2
+      size: 4188
+    outs:
+    - path: web/frontend/public/data
+      hash: md5
+      md5: 86183df7d1d0e3f5db1960618e093e62.dir
+      size: 511043
+      nfiles: 2
+    - path: web/frontend/public/models
+      hash: md5
+      md5: cb1fdf5966ff7e04524045a0671e3a47.dir
+      size: 1411
+      nfiles: 1

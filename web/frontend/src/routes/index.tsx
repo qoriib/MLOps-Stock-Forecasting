@@ -6,7 +6,7 @@ import { ForecastTable } from '@/components/forecast/ForecastTable'
 
 export const Route = createFileRoute('/')({ component: ForecastPage })
 
-export function ForecastPage() {
+function ForecastPage() {
   const error = useStockStore((state) => state.forecastError)
 
   return (

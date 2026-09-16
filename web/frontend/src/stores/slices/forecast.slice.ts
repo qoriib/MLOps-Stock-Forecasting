@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import { DEFAULT_FORECAST_STEPS } from '@/configs'
 import { extractErrorMessage } from '@/utils'
-import { runInBrowserForecast } from '@/services/tfjsForecast.service'
+import { runInBrowserForecast } from '@/services/onnxForecast.service'
 import type { ForecastSlice, StockState } from '../types'
 
 export const createForecastSlice: StateCreator<
@@ -36,7 +36,7 @@ export const createForecastSlice: StateCreator<
     set({ forecastLoading: true, forecastError: null })
 
     try {
-      // Eksekusi inferensi peramalan neural network langsung di browser client via TensorFlow.js
+      // Eksekusi inferensi peramalan neural network berformat ONNX langsung di browser via ONNX Runtime Web
       const data = await runInBrowserForecast({
         ticker: targetTicker,
         modelType: targetModel,
@@ -49,7 +49,7 @@ export const createForecastSlice: StateCreator<
     } catch (err: unknown) {
       const message = extractErrorMessage(
         err,
-        'Terjadi kesalahan saat inferensi TensorFlow.js di browser',
+        'Terjadi kesalahan saat inferensi ONNX Runtime di browser',
       )
       set({ forecastError: message, forecastLoading: false })
     }

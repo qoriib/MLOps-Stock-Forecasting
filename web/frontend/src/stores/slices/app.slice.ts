@@ -3,17 +3,6 @@ import { API_ENDPOINTS, DEFAULT_MODEL_TYPE } from '@/configs'
 import type { ModelsResponse } from '@/types'
 import type { AppSlice, StockState, ThemeMode } from '../types'
 
-const getInitialThemeMode = (): ThemeMode => {
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('theme-mode')
-    if (saved === 'light' || saved === 'dark') return saved
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark'
-    }
-  }
-  return 'light'
-}
-
 export const createAppSlice: StateCreator<
   StockState,
   [],
@@ -25,7 +14,7 @@ export const createAppSlice: StateCreator<
   availableTickers: [],
   loadingTickers: true,
   backendHealthy: null,
-  themeMode: getInitialThemeMode(),
+  themeMode: 'dark',
 
   setTicker: (ticker: string) => {
     set({ ticker, predictResult: null, historyResult: null })

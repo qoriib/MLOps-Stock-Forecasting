@@ -1,12 +1,12 @@
 """
-Ekspor metadata model, scaler, dan data historis ke folder web/frontend/public
-agar dapat langsung diakses oleh engine inferensi TensorFlow.js di browser.
-Dapat dijalankan secara mandiri dengan Python standar (tanpa dependensi eksternal)
-maupun melalui Poetry.
+Ekspor metadata model, model berformat ONNX, dan data historis ke folder
+web/frontend/public agar dapat langsung diakses dan dioptimalkan oleh
+ONNX Runtime Web di browser client (Edge AI).
 """
 import csv
 import json
 import os
+import shutil
 from pathlib import Path
 
 SRC_DIR = Path(__file__).resolve().parent
@@ -43,6 +43,51 @@ def read_csv_records(csv_path: Path):
     return records
 
 
+def ensure_onnx_models():
+    """Memastikan seluruh model Keras yang ada di artifact/model diekspor ke format ONNX."""
+    exported_onnx = []
+    if not MODEL_DIR.exists():
+        return exported_onnx
+
+    keras_files = sorted(MODEL_DIR.glob("*.keras"))
+    if not keras_files:
+        return exported_onnx
+
+    try:
+        import keras
+        import tensorflow as tf
+        import tf2onnx
+
+        for k_file in keras_files:
+            onnx_name = k_file.stem + ".onnx"
+            onnx_path = MODEL_DIR / onnx_name
+            if not onnx_path.exists() or onnx_path.stat().st_mtime < k_file.stat().st_mtime:
+                print(f"[ONNX Export] Mengonversi {k_file.name} ke {onnx_name}...")
+                model = keras.models.load_model(k_file)
+
+                @tf.function(input_signature=[tf.TensorSpec((None, 30, 1), tf.float32, name="input")])
+                def serve_fn(x):
+                    return {"output": model(x)}
+
+                tf2onnx.convert.from_function(
+                    serve_fn,
+                    input_signature=[tf.TensorSpec((None, 30, 1), tf.float32, name="input")],
+                    output_path=str(onnx_path)
+                )
+                print(f"[ONNX Export] Berhasil: {onnx_path.name} ({onnx_path.stat().st_size / 1024:.1f} KB)")
+    except Exception as e:
+        print(f"[ONNX Export Warning] Gagal mengonversi via tf2onnx: {e}")
+
+    # Salin semua file .onnx dari artifact/model ke public/models
+    for onnx_file in sorted(MODEL_DIR.glob("*.onnx")):
+        dest = PUBLIC_MODEL_DIR / onnx_file.name
+        shutil.copy2(onnx_file, dest)
+        exported_onnx.append(onnx_file.name)
+        print(f"[Export] Model ONNX disalin ke public/models: {onnx_file.name}")
+
+    return exported_onnx
+
+
 def main():
     PUBLIC_DATA_DIR.mkdir(parents=True, exist_ok=True)
     PUBLIC_MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -68,7 +113,10 @@ def main():
         existing_json = sorted(PUBLIC_DATA_DIR.glob("*.json"))
         tickers = [f.stem for f in existing_json] if existing_json else ["BBCA.JK", "BBRI.JK"]
 
-    # 2. Baca metrik evaluasi model jika tersedia di artifact/model/*_metrics.json
+    # 2. Pastikan file model ONNX tersedia di artifact/model dan disalin ke public/models
+    exported_onnx_files = ensure_onnx_models()
+
+    # 3. Baca metrik evaluasi model jika tersedia di artifact/model/*_metrics.json
     if MODEL_DIR.exists():
         for metric_file in sorted(MODEL_DIR.glob("*_metrics.json")):
             ticker_name = metric_file.stem.replace("_metrics", "")
@@ -90,17 +138,21 @@ def main():
                 "best_variant": "LSTM"
             }
 
-    # 3. Simpan overview.json untuk inisialisasi instan frontend
+    # 4. Simpan overview.json untuk inisialisasi instan frontend dengan ONNX format
     overview = {
         "tickers": tickers,
         "available_model_types": ["lstm", "gru"],
-        "runtime": "TensorFlow.js (In-Browser Edge AI)",
+        "model_format": "onnx",
+        "runtime": "ONNX Runtime Web (WASM & WebGL Accelerated)",
         "features": {
+            "onnx_optimized": True,
             "webgl_accelerated": True,
+            "wasm_simd_multithreaded": True,
             "offline_capable": True,
             "zero_server_cost": True,
             "zero_latency_inference": True
         },
+        "exported_onnx_models": exported_onnx_files,
         "model_metrics": metrics_summary
     }
 

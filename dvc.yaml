@@ -49,10 +49,12 @@ stages:
           cache: false
       - artifact/model/${item.ticker}_LSTM.keras
       - artifact/model/${item.ticker}_GRU.keras
+      - artifact/model/${item.ticker}_LSTM.onnx
+      - artifact/model/${item.ticker}_GRU.onnx
       - artifact/model/${item.ticker}_scaler.pkl
       - artifact/model/${item.ticker}_metrics.json
   export_web:
-    desc: "Ekspor data historis dan ringkasan model untuk inferensi in-browser TensorFlow.js"
+    desc: "Ekspor data historis dan model ONNX untuk inferensi in-browser ONNX Runtime Web"
     cmd: python -m src.export_web_models
     deps:
       - src/export_web_models.py

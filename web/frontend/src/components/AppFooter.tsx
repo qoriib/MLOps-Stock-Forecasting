@@ -10,7 +10,7 @@ export function AppFooter() {
 
   const statusLabel =
     backendHealthy === true
-      ? 'TensorFlow.js (WebGL)'
+      ? 'ONNX Runtime (Edge AI)'
       : backendHealthy === false
         ? 'Offline'
         : 'Inisialisasi...'
