@@ -89,7 +89,7 @@ docker run -p 8080:8080 -e PORT=8080 stock-api
 1. Pastikan Google Cloud SDK (`gcloud`) telah terpasang dan login:
    ```bash
    gcloud auth login
-   gcloud config set project <PROJECT_ID_ANDA>
+   gcloud config set project mlops-stock-forecast
    ```
 2. Aktifkan API Cloud Run & Artifact Registry:
    ```bash
@@ -105,8 +105,9 @@ gcloud run deploy stock-forecast-api \
   --platform managed \
   --region asia-southeast2 \
   --allow-unauthenticated \
-  --memory 1Gi \
-  --cpu 1
+  --memory 2Gi \
+  --cpu 1 \
+  --timeout 300
 ```
 
 Setelah selesai, Google Cloud Run akan memberikan URL HTTPS publik layanan Anda (contoh: `https://stock-forecast-api-xxxxx-as.a.run.app`).
