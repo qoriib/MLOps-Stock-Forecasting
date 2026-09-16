@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Chart from 'react-apexcharts'
-import { Card, Center, Heading, Overlay, Spinner, Text, VStack } from '@astryxdesign/core'
+import { Card, Center, EmptyState, Overlay, Spinner } from '@astryxdesign/core'
 import { Layout, LayoutHeader, LayoutContent } from '@astryxdesign/core/Layout'
 import { useTheme } from '@astryxdesign/core/theme'
 import { useStockStore, useShallow } from '@/stores'
@@ -137,12 +137,11 @@ export function ForecastChart() {
             )}
             {!hasData && !loading && (
               <Center height={320}>
-                <VStack align="center" gap={2}>
-                  <Heading level={5}>Siap Melakukan Peramalan</Heading>
-                  <Text color="secondary">
-                    Tentukan parameter dan rentang riwayat, lalu klik "Jalankan Inferensi".
-                  </Text>
-                </VStack>
+                <EmptyState
+                  title="Siap Melakukan Peramalan"
+                  description="Tentukan parameter dan rentang riwayat di atas, lalu klik tombol 'Jalankan Inferensi'."
+                  headingLevel={4}
+                />
               </Center>
             )}
             {hasData && (
