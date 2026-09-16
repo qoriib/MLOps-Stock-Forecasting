@@ -1,6 +1,6 @@
 # MLOps Stock Forecasting
 
-Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) menggunakan time-series dan machine learning (ARIMA & SARIMA), terintegrasi dengan DVC, Cloudflare R2, dan backend inferensi Python FastAPI yang ditargetkan untuk Google Cloud Run.
+Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) menggunakan Deep Learning recurrent neural networks (**LSTM** & **GRU**), terintegrasi dengan DVC, Cloudflare R2, dan backend inferensi Python FastAPI yang ditargetkan untuk Google Cloud Run.
 
 ---
 
@@ -13,10 +13,10 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
 [ artifact/data/{ticker}.csv ] ──(dvc push)──► [ Cloudflare R2 ] (S3-compatible Object Storage)
      │
      ▼ (ml_pipeline)
-[ artifact/model/{ticker}.pkl ] ──(Container Image)──► [ Google Cloud Run ] (FastAPI Inference)
-                                                              │
-                                                              ▼ (JSON API)
-                                                   [ Frontend / Clients ]
+[ artifact/model/{ticker}_LSTM.keras ] ──(Container Image)──► [ Google Cloud Run ] (FastAPI Inference)
+[ artifact/model/{ticker}_GRU.keras  ]                              │
+                                                                    ▼ (JSON API)
+                                                         [ Frontend / Clients ]
 ```
 
 ---
@@ -25,10 +25,10 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
 - `src/`: Modul kode sumber Python MLOps:
   - `ingestion.py`: Mengunduh data saham dari yfinance.
   - `config.py`: Definisi path direktori dan file artefak.
-  - `ml_pipeline.ipynb`: Pipeline pemodelan time-series dan penyimpanan model (ARIMA & SARIMA).
+  - `ml_pipeline.ipynb`: Pipeline pemodelan deep learning dan penyimpanan model (**LSTM** & **GRU**).
 - `artifact/`:
   - `data/`: Dataset harga historis saham (`{ticker}.csv`) (diabaikan Git, dilacak DVC).
-  - `model/`: Model time-series terlatih (`{ticker}.pkl`) (diabaikan Git, dilacak DVC).
+  - `model/`: Model deep learning terlatih (`{ticker}_LSTM.keras`, `{ticker}_GRU.keras`, scaler & metrik) (diabaikan Git, dilacak DVC).
   - `notebook/`: Output notebook evaluasi pemodelan papermill.
 - `web/`:
   - `backend/`: REST API inferensi berbasis Python FastAPI & Dockerfile siap deploy ke Google Cloud Run.
