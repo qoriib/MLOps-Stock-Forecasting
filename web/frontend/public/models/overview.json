@@ -3,46 +3,34 @@
     "BBCA.JK",
     "BBRI.JK"
   ],
+  "default_ticker": "BBCA.JK",
+  "default_model_type": "lstm",
   "available_model_types": [
     "lstm",
     "gru"
   ],
-  "model_format": "onnx",
-  "runtime": "ONNX Runtime Web (WASM & WebGL Accelerated)",
-  "features": {
-    "onnx_optimized": true,
-    "webgl_accelerated": true,
-    "wasm_simd_multithreaded": true,
-    "offline_capable": true,
-    "zero_server_cost": true,
-    "zero_latency_inference": true
-  },
-  "exported_onnx_models": [
-    "BBCA.JK_GRU.onnx",
-    "BBCA.JK_LSTM.onnx",
-    "BBRI.JK_GRU.onnx",
-    "BBRI.JK_LSTM.onnx"
-  ],
+  "runtime": "Hono on Cloudflare Workers (TensorFlow.js Edge)",
+  "updated_at": "2026-09-16T23:08:33.593208+00:00",
   "model_metrics": {
     "BBCA.JK": {
       "ticker": "BBCA.JK",
       "target_col": "close",
       "window_size": 30,
       "batch_size": 32,
-      "epochs": 50,
+      "epochs": 2,
       "learning_rate": 0.001,
       "train_size_ratio": 0.8,
       "best_model": "GRU",
       "metrics": {
         "LSTM": {
-          "MAPE": 3.0890497387390683,
-          "RMSE": 274.0580173093213,
-          "R2": 0.8700709808819139
+          "RMSE": 355.36172686920304,
+          "MAPE": 4.321443102655128,
+          "R2": 0.781544768065473
         },
         "GRU": {
-          "MAPE": 2.3763062077730086,
-          "RMSE": 217.18016365853256,
-          "R2": 0.9184053941260977
+          "RMSE": 306.78327851074437,
+          "MAPE": 3.777364468114788,
+          "R2": 0.8371887106058769
         }
       }
     },
@@ -51,20 +39,20 @@
       "target_col": "close",
       "window_size": 30,
       "batch_size": 32,
-      "epochs": 50,
+      "epochs": 2,
       "learning_rate": 0.001,
       "train_size_ratio": 0.8,
       "best_model": "GRU",
       "metrics": {
         "LSTM": {
-          "MAPE": 2.7811897681824176,
-          "RMSE": 254.77831240768228,
-          "R2": 0.8877087154078735
+          "RMSE": 143.7623104756161,
+          "MAPE": 3.5084524282223097,
+          "R2": 0.7301595437165261
         },
         "GRU": {
-          "MAPE": 2.4675490689810538,
-          "RMSE": 220.3499837029577,
-          "R2": 0.9160062091839536
+          "RMSE": 100.315507915276,
+          "MAPE": 2.4356482577738197,
+          "R2": 0.8686127788058958
         }
       }
     }
