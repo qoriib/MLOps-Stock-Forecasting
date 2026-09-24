@@ -44,7 +44,7 @@ runs:
         poetry run dvc remote modify origin --local access_key_id "$CLOUDFLARE_ACCESS_KEY"
         poetry run dvc remote modify origin --local secret_access_key "$CLOUDFLARE_SECRET_KEY"
         poetry run dvc remote modify origin --local endpointurl "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
-        poetry run dvc remote modify origin url "s3://$CLOUDFLARE_BUCKET_NAME"
+        poetry run dvc remote modify origin url "s3://$CLOUDFLARE_DVC_BUCKET"
 
     - name: DVC Pull
       shell: bash
