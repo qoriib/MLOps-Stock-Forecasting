@@ -7,13 +7,9 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import config
 
-def store_scaler(ticker: str, target_col: str, train_size: float) -> dict | None:
+
+def store_scaler(ticker: str, target_col: str, train_size: float) -> dict:
     parquet_path = config.DATA_DIR / f"{ticker}.parquet"
-
-    if not parquet_path.exists():
-        print(f"[Warning] Parquet {parquet_path} tidak ditemukan untuk scaler.")
-        return None
-
     df = pd.read_parquet(parquet_path)
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date").reset_index(drop=True)
@@ -54,18 +50,10 @@ def store_metrics(
     train_size: float,
     random_state: int,
     epochs: int,
-) -> dict | None:
-    parquet_path = config.MODEL_DIR / f"{ticker}_hyperparameter.parquet"
+) -> dict:
+    csv_path = config.MODEL_DIR / f"{ticker}_hyperparameter.csv"
+    results_df = pd.read_csv(csv_path)
 
-    if not parquet_path.exists():
-        print(f"[Warning] File riwayat hyperparameter {parquet_path} tidak ditemukan.")
-        fallback_metrics_path = config.MODEL_DIR / f"{ticker}_metrics.json"
-        if fallback_metrics_path.exists():
-            with open(fallback_metrics_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return None
-
-    results_df = pd.read_parquet(parquet_path)
     grouped_by_model = results_df.groupby("model")
     best_indices = grouped_by_model["RMSE"].idxmin().values
     best_configs_df = results_df.loc[best_indices].reset_index(drop=True)
@@ -92,14 +80,14 @@ def store_metrics(
         clean_best_configs[m_name] = clean_cfg
 
         metrics_summary[m_name] = {
-            "MSE": float(row.get("MSE", 0.0)),
-            "RMSE": float(row.get("RMSE", 0.0)),
-            "MAPE": float(row.get("MAPE", 0.0)),
-            "R2": float(row.get("R2", 0.0)) if "R2" in row and not pd.isna(row.get("R2")) else 0.0,
-            "time_steps": int(row.get("time_steps", 30)),
-            "optimizer": str(row.get("optimizer", "Adam")),
-            "batch_size": int(row.get("batch_size", 32)),
-            "learning_rate": float(row.get("learning_rate", 0.001)),
+            "MSE": float(row["MSE"]),
+            "RMSE": float(row["RMSE"]),
+            "MAPE": float(row["MAPE"]),
+            "R2": float(row.get("R2", 0.0)) if "R2" in row and not pd.isna(row["R2"]) else 0.0,
+            "time_steps": int(row["time_steps"]),
+            "optimizer": str(row["optimizer"]),
+            "batch_size": int(row["batch_size"]),
+            "learning_rate": float(row["learning_rate"]),
         }
 
     metadata = {
@@ -161,13 +149,6 @@ def copy_backend_assets(tickers: list[str]) -> list[str]:
                 copied_files.append(str(dst_model))
                 print(f"[Asset Copy] {src_model} -> {dst_model}")
 
-        # 5. Salin juga jika ada format model lain (misal .onnx)
-        for extra_model in config.MODEL_DIR.glob(f"{ticker}_*.onnx"):
-            dst_extra = backend_assets_dir / extra_model.name
-            shutil.copy2(extra_model, dst_extra)
-            copied_files.append(str(dst_extra))
-            print(f"[Asset Copy] {extra_model} -> {dst_extra}")
-
     return copied_files
 
 
@@ -177,25 +158,20 @@ def main():
     args = parser.parse_args()
 
     params = dvc.api.params_show()
-    raw_tickers = params.get("tickers", [])
-    if isinstance(raw_tickers, str):
-        raw_tickers = raw_tickers.split(",")
+    tickers = [t.strip().upper() for t in params["TICKERS"]]
 
-    all_tickers = [t.strip().upper() for t in raw_tickers if t.strip()]
+    TARGET_COL = params["TARGET_COL"]
+    TRAIN_SIZE = float(params["TRAIN_SIZE"])
+    RANDOM_STATE = int(params["RANDOM_STATE"])
+    EPOCHS = int(params["EPOCHS"])
 
-    target_col = params.get("target_col", "close")
-    train_size = float(params.get("train_size", params.get("train_size_ratio", 0.8)))
-    random_state = int(params.get("random_state", 42))
-    epochs = int(params.get("epochs", 50))
-
-    tickers_to_process = [args.ticker.strip().upper()] if args.ticker else all_tickers
+    tickers_to_process = [args.ticker.strip().upper()] if args.ticker else tickers
     print(f"=== Memproses Artefak Scaler, Metrik & Copy Aset untuk: {tickers_to_process} ===")
 
     for ticker in tickers_to_process:
-        store_scaler(ticker, target_col, train_size)
-        store_metrics(ticker, target_col, train_size, random_state, epochs)
+        store_scaler(ticker, TARGET_COL, TRAIN_SIZE)
+        store_metrics(ticker, TARGET_COL, TRAIN_SIZE, RANDOM_STATE, EPOCHS)
 
-    # Langkah penyalinan artefak ke web/backend/assets agar tidak relatif ke ../..
     copy_backend_assets(tickers_to_process)
 
 
