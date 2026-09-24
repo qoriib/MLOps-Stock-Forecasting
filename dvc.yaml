@@ -5,31 +5,28 @@ stages:
   ingestion:
     desc: "Unduh data historis harga saham bank dari Yahoo Finance"
     matrix:
-      ticker: ${tickers}
+      ticker: ${TICKERS}
     cmd: python -m src.ingestion --ticker ${item.ticker}
     deps:
       - src/config.py
       - src/ingestion.py
     params:
-      - start_date
-      - end_date
+      - START_DATE
+      - END_DATE
     outs:
       - artifact/data/${item.ticker}.parquet
 
   ml_pipeline:
     desc: "Pelatihan model LSTM & GRU serta pencarian hyperparameter optimal per ticker"
     matrix:
-      ticker: ${tickers}
+      ticker: ${TICKERS}
     cmd: >-
       papermill
       --cwd .
       src/ml_pipeline.ipynb
       artifact/notebook/ml_pipeline_${item.ticker}.ipynb
+      -f params.yaml
       -p TICKER ${item.ticker}
-      -p TARGET_COL ${target_col}
-      -p RANDOM_STATE ${random_state}
-      -p TRAIN_SIZE ${train_size}
-      -p EPOCHS ${epochs}
       --report-mode
       --log-output
       --progress-bar
@@ -37,34 +34,39 @@ stages:
       - src/ml_pipeline.ipynb
       - artifact/data/${item.ticker}.parquet
     params:
-      - target_col
-      - train_size
-      - random_state
-      - epochs
+      - TARGET_COL
+      - TRAIN_SIZE
+      - RANDOM_STATE
+      - EPOCHS
+      - TIME_STEPS
+      - OPTIMIZERS
+      - BATCH_SIZES
+      - LEARNING_RATES
+      - MODELS
     outs:
       - artifact/notebook/ml_pipeline_${item.ticker}.ipynb:
           cache: false
       - artifact/model/${item.ticker}_LSTM.keras
       - artifact/model/${item.ticker}_GRU.keras
-      - artifact/model/${item.ticker}_hyperparameter.parquet
+      - artifact/model/${item.ticker}_hyperparameter.csv
 
   store:
     desc: "Ekspor parameter scaler, metrik evaluasi, dan penyalinan aset backend"
     matrix:
-      ticker: ${tickers}
+      ticker: ${TICKERS}
     cmd: python -m src.store --ticker ${item.ticker}
     deps:
       - src/config.py
       - src/store.py
       - artifact/data/${item.ticker}.parquet
-      - artifact/model/${item.ticker}_hyperparameter.parquet
+      - artifact/model/${item.ticker}_hyperparameter.csv
       - artifact/model/${item.ticker}_LSTM.keras
       - artifact/model/${item.ticker}_GRU.keras
     params:
-      - target_col
-      - train_size
-      - random_state
-      - epochs
+      - TARGET_COL
+      - TRAIN_SIZE
+      - RANDOM_STATE
+      - EPOCHS
     outs:
       - artifact/model/${item.ticker}_scaler.json
       - artifact/model/${item.ticker}_metrics.json
