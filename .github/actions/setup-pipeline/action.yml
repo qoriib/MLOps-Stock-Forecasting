@@ -38,13 +38,13 @@ runs:
       shell: bash
       run: poetry install --no-interaction
 
-    - name: Configure DVC Remote for DagsHub
+    - name: Configure DVC Remote for Cloudflare R2
       shell: bash
       run: |
-        if [ -n "$DAGSHUB_USER_TOKEN" ]; then
-          poetry run dvc remote modify origin --local access_key_id "$DAGSHUB_USER_TOKEN"
-          poetry run dvc remote modify origin --local secret_access_key "$DAGSHUB_USER_TOKEN"
-        fi
+        poetry run dvc remote modify origin --local access_key_id "$CLOUDFLARE_ACCESS_KEY"
+        poetry run dvc remote modify origin --local secret_access_key "$CLOUDFLARE_SECRET_KEY"
+        poetry run dvc remote modify origin --local endpointurl "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
+        poetry run dvc remote modify origin url "s3://$CLOUDFLARE_BUCKET_NAME"
 
     - name: DVC Pull
       shell: bash
