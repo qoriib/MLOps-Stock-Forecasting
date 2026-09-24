@@ -55,8 +55,8 @@ def store_metrics(
     random_state: int,
     epochs: int,
 ) -> dict | None:
-    """Mengekstrak konfigurasi terbaik dari hyperparameter.parquet dan menyimpan metadata JSON {ticker}_metrics.json."""
     parquet_path = config.MODEL_DIR / f"{ticker}_hyperparameter.parquet"
+
     if not parquet_path.exists():
         print(f"[Warning] File riwayat hyperparameter {parquet_path} tidak ditemukan.")
         fallback_metrics_path = config.MODEL_DIR / f"{ticker}_metrics.json"
@@ -90,6 +90,7 @@ def store_metrics(
                 clean_cfg[k] = str(v)
 
         clean_best_configs[m_name] = clean_cfg
+
         metrics_summary[m_name] = {
             "MSE": float(row.get("MSE", 0.0)),
             "RMSE": float(row.get("RMSE", 0.0)),
@@ -122,7 +123,6 @@ def store_metrics(
 
 
 def copy_backend_assets(tickers: list[str]) -> list[str]:
-    """Menyalin file Parquet data dan artefak model JSON langsung ke web/backend/assets."""
     backend_assets_dir = config.BASE_DIR / "web" / "backend" / "assets"
     backend_assets_dir.mkdir(parents=True, exist_ok=True)
     copied_files = []
@@ -151,6 +151,22 @@ def copy_backend_assets(tickers: list[str]) -> list[str]:
             shutil.copy2(src_metrics, dst_metrics)
             copied_files.append(str(dst_metrics))
             print(f"[Asset Copy] {src_metrics} -> {dst_metrics}")
+
+        # 4. Salin model Keras (LSTM & GRU)
+        for m_type in ["LSTM", "GRU"]:
+            src_model = config.MODEL_DIR / f"{ticker}_{m_type}.keras"
+            dst_model = backend_assets_dir / f"{ticker}_{m_type}.keras"
+            if src_model.exists():
+                shutil.copy2(src_model, dst_model)
+                copied_files.append(str(dst_model))
+                print(f"[Asset Copy] {src_model} -> {dst_model}")
+
+        # 5. Salin juga jika ada format model lain (misal .onnx)
+        for extra_model in config.MODEL_DIR.glob(f"{ticker}_*.onnx"):
+            dst_extra = backend_assets_dir / extra_model.name
+            shutil.copy2(extra_model, dst_extra)
+            copied_files.append(str(dst_extra))
+            print(f"[Asset Copy] {extra_model} -> {dst_extra}")
 
     return copied_files
 

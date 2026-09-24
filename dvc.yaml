@@ -58,6 +58,8 @@ stages:
       - src/store.py
       - artifact/data/${item.ticker}.parquet
       - artifact/model/${item.ticker}_hyperparameter.parquet
+      - artifact/model/${item.ticker}_LSTM.keras
+      - artifact/model/${item.ticker}_GRU.keras
     params:
       - target_col
       - train_size
@@ -69,3 +71,5 @@ stages:
       - web/backend/assets/${item.ticker}.parquet
       - web/backend/assets/${item.ticker}_scaler.json
       - web/backend/assets/${item.ticker}_metrics.json
+      - web/backend/assets/${item.ticker}_LSTM.keras
+      - web/backend/assets/${item.ticker}_GRU.keras
