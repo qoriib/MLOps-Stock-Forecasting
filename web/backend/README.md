@@ -1,53 +1,54 @@
-# Stock Forecast API (Hono + Cloudflare Workers)
+# Stock Forecast Inference Backend (FastAPI on Azure App Service)
 
-Backend serverless berbasis **TypeScript** dan framework **[Hono](https://hono.dev)** yang di-deploy di **Cloudflare Workers** dengan kapabilitas inferensi edge menggunakan **[TensorFlow.js](https://js.tensorflow.org)** CPU backend.
-
----
-
-## ⚡ Fitur Utama
-
-- **Ultra Low Latency:** Dijalankan di ratusan titik Cloudflare edge global.
-- **Zero Server Maintenance:** Arsitektur *serverless* tanpa perlu mengelola VM / Docker container.
-- **Edge Inference:** Inferensi model peramalan deret waktu autoregressive (LSTM & GRU) langsung di worker via TensorFlow.js.
-- **Ringan & Kompatibel:** Ukuran bundle terkompresi ~143 KiB dengan flag `nodejs_compat`.
+Backend inferensi machine learning berbasis **Python FastAPI** yang dirancang untuk melayani peramalan harga saham menggunakan model **Keras LSTM/GRU**, scaler MinMaxScaler, dan data historis berformat Parquet.
 
 ---
 
-## 🛠️ API Endpoints
+## 🚀 Fitur Utama
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| `GET` | `/` | Status API & daftar rute |
-| `GET` | `/health` | Pemeriksaan kesehatan service |
-| `GET` | `/api/models` | Ringkasan model, ticker yang didukung, dan metrik evaluasi |
-| `GET` | `/api/stocks/:ticker` | Data riwayat harga saham (parameter: `limit`, `start_date`, `end_date`) |
-| `POST` | `/api/predict` | Menjalankan inferensi peramalan harga saham multi-step |
+- **FastAPI Native**: Kinerja tinggi dengan dokumentasi OpenAPI Swagger otomatis (`/docs`).
+- **Real ML Inference**: Memuat model `.keras` terlatih langsung menggunakan Keras/TensorFlow.
+- **DVC Assets Integration**: Membaca dataset Parquet, scaler JSON, dan metrik langsung dari folder `web/backend/assets/`.
+- **Azure App Service Ready**: Siap dideploy menggunakan Gunicorn + Uvicorn worker atau direct container.
 
-### Contoh Request Prediksi (`POST /api/predict`):
-```json
-{
-  "ticker": "BBCA.JK",
-  "model_type": "lstm",
-  "steps": 30
-}
+---
+
+## 🛠️ Struktur Direktori
+
+```text
+web/backend/
+├── app/
+│   ├── config.py              # Konfigurasi paths & parameter inferensi
+│   ├── main.py                # Inisialisasi FastAPI & middleware CORS
+│   ├── models/
+│   │   └── schemas.py         # Pydantic schemas (typed API contract)
+│   ├── routes/
+│   │   ├── models.py          # GET /api/models
+│   │   ├── stocks.py          # GET /api/stocks/{ticker}
+│   │   └── predict.py         # POST /api/predict
+│   └── services/
+│       ├── data_service.py    # Handler data parquet, scaler, metrik
+│       └── forecast_service.py # Engine inferensi autoregressive multi-step
+├── assets/                    # Artefak model & data dari stage DVC 'store'
+├── gunicorn.conf.py           # Konfigurasi WSGI/ASGI untuk Azure App Service
+├── main.py                    # Root entrypoint ASGI
+└── requirements.txt           # Dependensi Python
 ```
 
 ---
 
-## 🚀 Menjalankan Secara Lokal
+## 💻 Menjalankan di Lokal
 
-```bash
-cd web/backend
-npm install
-npm run dev
-```
-Worker akan berjalan di `http://localhost:8787`.
-
----
-
-## 🚢 Deployment ke Cloudflare Workers
-
-```bash
-npm run deploy
-```
-Atau otomatis melalui pipeline CI/CD GitHub Actions.
+1. Masuk ke direktori backend:
+   ```bash
+   cd web/backend
+   ```
+2. Install dependensi:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Jalankan server FastAPI:
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+4. Buka dokumentasi interaktif di browser: [http://localhost:8000/docs](http://localhost:8000/docs)
