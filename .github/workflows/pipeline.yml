@@ -5,7 +5,6 @@ on:
   push:
     branches: [master, main]
   schedule:
-    # Retraining & deployment otomatis setiap hari Senin pukul 01:00 UTC (08:00 WIB)
     - cron: "0 1 * * 1"
 
 permissions:
@@ -15,18 +14,15 @@ permissions:
   issues: write
 
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
   CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+  MLFLOW_TRACKING_URI: https://dagshub.com/qoriib/MLOps-Stock-Forecasting.mlflow
+  MLFLOW_TRACKING_USERNAME: qoriib
+  MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_USER_TOKEN }}
 
-# ─────────────────────────────────────────────────────────
-# JOB 1 · Ingestion
-# Unduh data historis OHLCV dari Yahoo Finance → artifact/data/*.csv
-# ─────────────────────────────────────────────────────────
 jobs:
   ingestion:
-    name: "① Ingestion — Yahoo Finance → Raw CSV Data"
+    name: "Data Ingestion"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,24 +35,13 @@ jobs:
       - name: Run Ingestion
         run: poetry run python -m src.ingestion
 
-      - name: Push Pipeline Data & Git State
+      - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
         with:
           commit-message: "auto: update stock ingestion data [skip ci]"
 
-      - name: Upload Ingestion Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ingestion-artifacts
-          path: |
-            artifact/data/*.parquet
-
-# ─────────────────────────────────────────────────────────
-# JOB 2 · ML Pipeline & Store
-# Jalankan DVC ml_pipeline & store (LSTM/GRU tuning, scalers, metrik, SQL seeds)
-# ─────────────────────────────────────────────────────────
   pipeline:
-    name: "② ML Pipeline & Store — Training, Tuning & Seeding"
+    name: "ML Pipeline"
     needs: ingestion
     runs-on: ubuntu-latest
     steps:
@@ -67,53 +52,10 @@ jobs:
       - name: Setup Pipeline Environment
         uses: ./.github/actions/setup-pipeline
 
-      - name: Download Ingestion Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: ingestion-artifacts
-          path: artifact/data/
-
-      - name: Run DVC ML Pipeline & Store Stages
+      - name: Run DVC ML Pipeline
         run: poetry run dvc repro
 
-      - name: Setup CML
-        uses: iterative/setup-cml@v2
-
-      - name: Publish Notebook Reports to GitHub Summary
-        env:
-          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          shopt -s nullglob
-          notebooks=(artifact/notebook/*.ipynb)
-
-          mkdir -p artifact/notebook
-
-          for nb in "${notebooks[@]}"; do
-            if [ -f "$nb" ]; then
-              stage=$(basename "$nb" .ipynb)
-              echo "Processing $nb ($stage)..."
-              poetry run jupyter nbconvert --to markdown --no-input "$nb" --output-dir artifact/notebook || true
-
-              if [ -d "artifact/notebook/${stage}_files" ]; then
-                for img in artifact/notebook/${stage}_files/*.png; do
-                  if [ -f "$img" ]; then
-                    img_url=$(cml publish "$img" || echo "")
-                    filename=$(basename "$img")
-                    if [ -n "$img_url" ]; then
-                      sed -i "s|${stage}_files/${filename}|${img_url}|g" "artifact/notebook/${stage}.md" || true
-                    fi
-                  fi
-                done
-              fi
-
-              if [ -f "artifact/notebook/${stage}.md" ]; then
-                cat "artifact/notebook/${stage}.md" >> $GITHUB_STEP_SUMMARY
-                echo -e "\n\n---\n\n" >> $GITHUB_STEP_SUMMARY
-              fi
-            fi
-          done
-
-      - name: Push ML Artifacts & Git State
+      - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
         with:
           commit-message: "auto: update ml pipeline & store artifacts [skip ci]"
@@ -133,7 +75,7 @@ jobs:
             artifact/model/*_GRU.keras
             artifact/model/*_scaler.json
             artifact/model/*_metrics.json
-            artifact/model/*_hyperparameter.parquet
+            artifact/model/*_hyperparameter.csv
 
       - name: Upload Backend Assets
         uses: actions/upload-artifact@v4
@@ -141,12 +83,8 @@ jobs:
           name: backend-assets
           path: web/backend/assets/**
 
-# ─────────────────────────────────────────────────────────
-# JOB 3 · Deploy Backend
-# Build & deploy Cloudflare Workers API dengan aset Parquet & model tersemat langsung
-# ─────────────────────────────────────────────────────────
   deploy_backend:
-    name: "③ Deploy Backend — Cloudflare Workers"
+    name: "Deploy Backend"
     needs: pipeline
     runs-on: ubuntu-latest
     steps:
@@ -162,7 +100,6 @@ jobs:
         with:
           name: backend-assets
           path: web/backend/assets/
-
 
       - name: Install Backend Dependencies
         run: |
@@ -183,12 +120,8 @@ jobs:
           workingDirectory: web/backend
           command: deploy
 
-# ─────────────────────────────────────────────────────────
-# JOB 4 · Deploy Frontend
-# Build & deploy Cloudflare Pages (berjalan paralel dengan deploy_backend)
-# ─────────────────────────────────────────────────────────
   deploy_frontend:
-    name: "④ Deploy Frontend — Cloudflare Pages"
+    name: "Deploy Frontend"
     needs: pipeline
     runs-on: ubuntu-latest
     steps:

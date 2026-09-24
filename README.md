@@ -85,35 +85,35 @@ MLOps-Stock-Forecasting/
 ## ⚙️ Konfigurasi Pipeline (`params.yaml`)
 
 ```yaml
-tickers:
+TICKERS:
   - BBCA.JK
   - BBRI.JK
-start_date: "2021-09-03"
-end_date: "2026-09-03"
-target_col: "close"
+START_DATE: "2021-09-03"
+END_DATE: "2026-09-03"
 
-random_state: 42
-train_size: 0.8
-epochs: 50
+TARGET_COL: "close"
+RANDOM_STATE: 42
+TRAIN_SIZE: 0.8
+EPOCHS: 50
 
 # Hyperparameter
-time_steps:
+TIME_STEPS:
   - 10
   - 20
   - 30
-optimizers:
+OPTIMIZERS:
   - SGD
   - Adam
   - RMSprop
-batch_sizes:
+BATCH_SIZES:
   - 8
   - 16
   - 32
-learning_rates:
+LEARNING_RATES:
   - 0.01
   - 0.001
   - 0.0001
-models:
+MODELS:
   - LSTM
   - GRU
 ```
@@ -132,7 +132,17 @@ poetry run dvc repro
 poetry run dvc dag
 ```
 
-### 2. Menjalankan Backend API Lokal
+### 2. Tracking Eksperimen (DagsHub & MLflow)
+
+Pelacakan eksperimen model, hyperparameter tuning, dan metrik otomatis direkam ke server DagsHub MLflow:
+- **DagsHub MLflow Dashboard**: [https://dagshub.com/qoriib/MLOps-Stock-Forecasting.mlflow](https://dagshub.com/qoriib/MLOps-Stock-Forecasting.mlflow)
+
+Untuk autentikasi di mesin baru:
+```bash
+poetry run dagshub login
+```
+
+### 3. Menjalankan Backend API Lokal
 
 ```bash
 cd web/backend

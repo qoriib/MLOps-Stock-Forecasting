@@ -18,11 +18,9 @@ runs:
     - name: Commit and Push All Changes
       shell: bash
       run: |
-        # Staging seluruh perubahan di workspace
         git add -A
         
         if ! git diff --cached --quiet; then
-          echo "=== Changes detected. Committing and pushing to remote... ==="
           git commit -m "${{ inputs.commit-message }}"
           git pull --rebase origin main || git pull --rebase origin master || true
           git push

@@ -38,6 +38,14 @@ runs:
       shell: bash
       run: poetry install --no-interaction
 
+    - name: Configure DVC Remote for DagsHub
+      shell: bash
+      run: |
+        if [ -n "$DAGSHUB_USER_TOKEN" ]; then
+          poetry run dvc remote modify origin --local access_key_id "$DAGSHUB_USER_TOKEN"
+          poetry run dvc remote modify origin --local secret_access_key "$DAGSHUB_USER_TOKEN"
+        fi
+
     - name: DVC Pull
       shell: bash
       run: |
