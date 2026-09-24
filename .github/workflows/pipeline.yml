@@ -25,7 +25,7 @@ env:
 jobs:
   ingestion:
     name: "Data Ingestion"
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,7 +45,7 @@ jobs:
   pipeline:
     name: "ML Pipeline"
     needs: ingestion
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -82,7 +82,7 @@ jobs:
   deploy_backend:
     name: "Deploy Backend"
     needs: pipeline
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -116,7 +116,7 @@ jobs:
   deploy_frontend:
     name: "Deploy Frontend"
     needs: pipeline
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
