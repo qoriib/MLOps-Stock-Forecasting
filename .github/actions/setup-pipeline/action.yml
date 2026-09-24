@@ -38,12 +38,6 @@ runs:
       shell: bash
       run: poetry install --no-interaction
 
-    - name: Configure DVC Remote
-      shell: bash
-      run: |
-        poetry run dvc remote modify origin --local access_key_id "$CLOUDFLARE_ACCESS_KEY"
-        poetry run dvc remote modify origin --local secret_access_key "$CLOUDFLARE_SECRET_KEY"
-
     - name: DVC Pull
       shell: bash
       run: |
