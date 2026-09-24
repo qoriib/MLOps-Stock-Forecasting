@@ -1,5 +1,9 @@
 import { defineConfig } from 'nitro'
 
 export default defineConfig({
-  preset: 'cloudflare_pages',
+  preset: 'static',
+  prerender: {
+    crawlLinks: true,
+    routes: ['/'],
+  },
 })
