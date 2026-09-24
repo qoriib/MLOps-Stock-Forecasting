@@ -1,4 +1,4 @@
-import type { ScalerMeta } from './prediction.type'
+import type { ScalerMeta, BestConfigItem, ModelVariantMetrics } from './prediction.type'
 
 export interface Model {
   ticker: string
@@ -9,22 +9,18 @@ export interface Model {
   last_modified: string
 }
 
-export interface ModelVariantMetrics {
-  RMSE: number
-  MAPE: number
-  R2: number
-}
+export type { ModelVariantMetrics, BestConfigItem }
 
 export interface TickerMetrics {
   ticker: string
   target_col?: string
-  window_size?: number
-  batch_size?: number
-  epochs?: number
-  learning_rate?: number
+  train_size?: number
   train_size_ratio?: number
+  random_state?: number
+  epochs?: number
   best_model?: string
   best_variant?: string
+  best_configs?: Record<string, BestConfigItem>
   metrics: {
     LSTM?: ModelVariantMetrics
     GRU?: ModelVariantMetrics

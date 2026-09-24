@@ -15,6 +15,7 @@ export const createAppSlice: StateCreator<
   loadingTickers: true,
   backendHealthy: null,
   themeMode: 'dark',
+  modelMetrics: {},
 
   setTicker: (ticker: string) => {
     set({ ticker, predictResult: null, historyResult: null })
@@ -61,6 +62,7 @@ export const createAppSlice: StateCreator<
           availableTickers: tickers,
           ticker: nextTicker,
           modelType: get().modelType || data.default_model_type || DEFAULT_MODEL_TYPE,
+          modelMetrics: data.model_metrics || {},
           loadingTickers: false,
         })
         return
@@ -79,6 +81,7 @@ export const createAppSlice: StateCreator<
       backendHealthy: true,
       availableTickers: defaultTickers,
       ticker: nextTicker,
+      modelMetrics: {},
       loadingTickers: false,
     })
   },

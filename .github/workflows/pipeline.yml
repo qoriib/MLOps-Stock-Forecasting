@@ -22,12 +22,11 @@ env:
 
 # ─────────────────────────────────────────────────────────
 # JOB 1 · Ingestion
-# Unduh data historis OHLCV dari Yahoo Finance → artifact/data/
-# Hasilkan: <TICKER>.csv + <TICKER>_seed.sql
+# Unduh data historis OHLCV dari Yahoo Finance → artifact/data/*.csv
 # ─────────────────────────────────────────────────────────
 jobs:
   ingestion:
-    name: "① Ingestion — Yahoo Finance → CSV + SQL Seed"
+    name: "① Ingestion — Yahoo Finance → Raw CSV Data"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,24 +42,21 @@ jobs:
       - name: Push Pipeline Data & Git State
         uses: ./.github/actions/push-pipeline
         with:
-          commit-message: "auto: update stock ingestion artifacts [skip ci]"
+          commit-message: "auto: update stock ingestion data [skip ci]"
 
       - name: Upload Ingestion Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ingestion-artifacts
           path: |
-            artifact/data/*.csv
-            artifact/data/*_seed.sql
-            artifact/data/seed.sql
+            artifact/data/*.parquet
 
 # ─────────────────────────────────────────────────────────
-# JOB 2 · ML Pipeline
-# Jalankan DVC ml_pipeline (LSTM & GRU per ticker via matrix)
-# Hasilkan: *.keras, *_scaler.json, *_metrics.json, *_model_seed.sql
+# JOB 2 · ML Pipeline & Store
+# Jalankan DVC ml_pipeline & store (LSTM/GRU tuning, scalers, metrik, SQL seeds)
 # ─────────────────────────────────────────────────────────
   pipeline:
-    name: "② ML Pipeline — DVC LSTM & GRU Training"
+    name: "② ML Pipeline & Store — Training, Tuning & Seeding"
     needs: ingestion
     runs-on: ubuntu-latest
     steps:
@@ -77,8 +73,8 @@ jobs:
           name: ingestion-artifacts
           path: artifact/data/
 
-      - name: Run DVC ML Pipeline (LSTM & GRU)
-        run: poetry run dvc repro ml_pipeline
+      - name: Run DVC ML Pipeline & Store Stages
+        run: poetry run dvc repro
 
       - name: Setup CML
         uses: iterative/setup-cml@v2
@@ -120,7 +116,7 @@ jobs:
       - name: Push ML Artifacts & Git State
         uses: ./.github/actions/push-pipeline
         with:
-          commit-message: "auto: update ml pipeline artifacts [skip ci]"
+          commit-message: "auto: update ml pipeline & store artifacts [skip ci]"
 
       - name: Upload Notebook Reports
         uses: actions/upload-artifact@v4
@@ -137,21 +133,20 @@ jobs:
             artifact/model/*_GRU.keras
             artifact/model/*_scaler.json
             artifact/model/*_metrics.json
+            artifact/model/*_hyperparameter.parquet
 
-      - name: Upload SQL Seed Artifacts (dari pipeline)
+      - name: Upload Backend Assets
         uses: actions/upload-artifact@v4
         with:
-          name: pipeline-sql-artifacts
-          path: |
-            artifact/data/models_seed.sql
+          name: backend-assets
+          path: web/backend/assets/**
 
 # ─────────────────────────────────────────────────────────
-# JOB 3 · Seed D1
-# Jalankan migrasi D1, lalu seed stock_prices & stock_models
-# dari SQL files yang dihasilkan pipeline
+# JOB 3 · Deploy Backend
+# Build & deploy Cloudflare Workers API dengan aset Parquet & model tersemat langsung
 # ─────────────────────────────────────────────────────────
-  seed_d1:
-    name: "③ Seed D1 — Migrate & Seed Cloudflare D1"
+  deploy_backend:
+    name: "③ Deploy Backend — Cloudflare Workers"
     needs: pipeline
     runs-on: ubuntu-latest
     steps:
@@ -162,65 +157,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Backend Dependencies
-        run: |
-          cd web/backend
-          npm ci
-
-      - name: Download Ingestion Artifacts (stock_prices SQL seed)
+      - name: Download Backend Assets (Parquet & JSON)
         uses: actions/download-artifact@v4
         with:
-          name: ingestion-artifacts
-          path: artifact/data/
+          name: backend-assets
+          path: web/backend/assets/
 
-      - name: Download Pipeline SQL Artifacts (stock_models SQL seed)
-        uses: actions/download-artifact@v4
-        with:
-          name: pipeline-sql-artifacts
-          path: artifact/data/
-
-      - name: Run D1 Migrations (Remote)
-        uses: cloudflare/wrangler-action@v4
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          workingDirectory: web/backend
-          command: d1 migrations apply stock-forecast-db --remote
-
-      - name: Seed stock_prices into D1
-        uses: cloudflare/wrangler-action@v4
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          workingDirectory: web/backend
-          command: d1 execute stock-forecast-db --remote --file=../../artifact/data/seed.sql
-
-      - name: Seed stock_models into D1
-        uses: cloudflare/wrangler-action@v4
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          workingDirectory: web/backend
-          command: d1 execute stock-forecast-db --remote --file=../../artifact/data/models_seed.sql
-
-# ─────────────────────────────────────────────────────────
-# JOB 4 · Deploy Backend
-# Deploy Cloudflare Workers API setelah D1 siap
-# ─────────────────────────────────────────────────────────
-  deploy_backend:
-    name: "④ Deploy Backend — Cloudflare Workers"
-    needs: seed_d1
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
 
       - name: Install Backend Dependencies
         run: |
@@ -242,12 +184,12 @@ jobs:
           command: deploy
 
 # ─────────────────────────────────────────────────────────
-# JOB 5 · Deploy Frontend
+# JOB 4 · Deploy Frontend
 # Build & deploy Cloudflare Pages (berjalan paralel dengan deploy_backend)
 # ─────────────────────────────────────────────────────────
   deploy_frontend:
-    name: "⑤ Deploy Frontend — Cloudflare Pages"
-    needs: seed_d1
+    name: "④ Deploy Frontend — Cloudflare Pages"
+    needs: pipeline
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -274,4 +216,5 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: web/frontend
-          command: pages deploy .output/public --project-name stock-forecasting-web
+          command: pages deploy dist --project-name stock-forecasting-web
+

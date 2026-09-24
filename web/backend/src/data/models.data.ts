@@ -1,44 +1,37 @@
 import { APP_CONFIG } from '../configs/app.config'
 import type { ModelsResponse, TickerMetrics } from '../types'
+import { readAssetText } from '../utils/assets'
+import { getAvailableTickers } from './stocks.data'
 
 /**
- * Mendapatkan ringkasan seluruh model yang terdaftar secara dinamis dari Cloudflare D1.
- * Tidak ada ticker yang di-hardcode.
+ * Mengambil metadata metrik dan konfigurasi hyperparameter optimal per ticker dari JSON file di web/backend/assets.
  */
-export async function getModelsOverview(db?: D1Database): Promise<ModelsResponse> {
-  const modelMetrics: Record<string, TickerMetrics> = {}
-  let tickers: string[] = []
+export async function getTickerMetrics(ticker: string): Promise<TickerMetrics | null> {
+  const cleanTicker = ticker.trim().toUpperCase()
+  const content = await readAssetText(`${cleanTicker}_metrics.json`)
 
-  if (db) {
+  if (content) {
     try {
-      const { results } = await db
-        .prepare('SELECT ticker, metrics_json FROM stock_models ORDER BY ticker ASC')
-        .all<{ ticker: string; metrics_json: string }>()
-
-      if (results && results.length > 0) {
-        for (const row of results) {
-          tickers.push(row.ticker)
-          if (row.metrics_json) {
-            try {
-              modelMetrics[row.ticker] = JSON.parse(row.metrics_json)
-            } catch {
-              // Abaikan kegagalan parsing parsial
-            }
-          }
-        }
-      }
-
-      // Jika tabel stock_models kosong, ambil daftar ticker dari stock_prices
-      if (tickers.length === 0) {
-        const pricesTickers = await db
-          .prepare('SELECT DISTINCT ticker FROM stock_prices ORDER BY ticker ASC')
-          .all<{ ticker: string }>()
-        if (pricesTickers && pricesTickers.results) {
-          tickers = pricesTickers.results.map((r) => r.ticker)
-        }
-      }
+      return JSON.parse(content) as TickerMetrics
     } catch (err) {
-      console.warn('[D1 Models Warning] Gagal mengambil data model:', err)
+      console.warn(`[Metrics JSON Parse Warning] Gagal membaca metrics untuk '${cleanTicker}':`, err)
+    }
+  }
+
+  return null
+}
+
+/**
+ * Mendapatkan ringkasan seluruh model yang terdaftar secara dinamis dari folder web/backend/assets.
+ */
+export async function getModelsOverview(): Promise<ModelsResponse> {
+  const tickers = await getAvailableTickers()
+  const modelMetrics: Record<string, TickerMetrics> = {}
+
+  for (const ticker of tickers) {
+    const metrics = await getTickerMetrics(ticker)
+    if (metrics) {
+      modelMetrics[ticker] = metrics
     }
   }
 

@@ -1,5 +1,5 @@
 import type { DateRange } from '@astryxdesign/core/DateRangeInput'
-import type { HistoricalResponse, PredictResponse } from '@/types'
+import type { HistoricalResponse, PredictResponse, TickerMetrics } from '@/types'
 
 export type ThemeMode = 'light' | 'dark'
 
@@ -10,6 +10,7 @@ export interface AppSlice {
   loadingTickers: boolean
   backendHealthy: boolean | null
   themeMode: ThemeMode
+  modelMetrics: Record<string, TickerMetrics>
   setTicker: (ticker: string) => void
   setModelType: (modelType: string) => void
   setThemeMode: (mode: ThemeMode) => void

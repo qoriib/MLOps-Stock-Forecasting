@@ -12,7 +12,7 @@ stocksRoute.get('/stocks/:ticker', async (c) => {
 
   const limit = limitParam ? parseInt(limitParam, 10) : 500
 
-  const history = await getStockHistory(ticker, limit, startDate, endDate, c.get('db'))
+  const history = await getStockHistory(ticker, limit, startDate, endDate)
   if (!history) {
     return c.json(
       {

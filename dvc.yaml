@@ -4,56 +4,68 @@ params:
 stages:
   ingestion:
     desc: "Unduh data historis harga saham bank dari Yahoo Finance"
-    cmd: python -m src.ingestion
+    matrix:
+      ticker: ${tickers}
+    cmd: python -m src.ingestion --ticker ${item.ticker}
     deps:
       - src/config.py
       - src/ingestion.py
     params:
-      - tickers
       - start_date
       - end_date
     outs:
-      - artifact/data
+      - artifact/data/${item.ticker}.parquet
+
   ml_pipeline:
-    desc: "Pelatihan model LSTM & GRU serta penyimpanan model, scaler, dan metrik per ticker"
+    desc: "Pelatihan model LSTM & GRU serta pencarian hyperparameter optimal per ticker"
     matrix:
       ticker: ${tickers}
     cmd: >-
       papermill
+      --cwd .
       src/ml_pipeline.ipynb
       artifact/notebook/ml_pipeline_${item.ticker}.ipynb
       -p TICKER ${item.ticker}
       -p TARGET_COL ${target_col}
-      -p TRAIN_SIZE_RATIO ${train_size_ratio}
       -p RANDOM_STATE ${random_state}
-      -p WINDOW_SIZE ${window_size}
-      -p BATCH_SIZE ${batch_size}
+      -p TRAIN_SIZE ${train_size}
       -p EPOCHS ${epochs}
-      -p LEARNING_RATE ${learning_rate}
       --report-mode
       --log-output
       --progress-bar
     deps:
       - src/ml_pipeline.ipynb
-      - artifact/data/${item.ticker}.csv
+      - artifact/data/${item.ticker}.parquet
     params:
       - target_col
-      - train_size_ratio
+      - train_size
       - random_state
-      - window_size
-      - batch_size
       - epochs
-      - learning_rate
     outs:
       - artifact/notebook/ml_pipeline_${item.ticker}.ipynb:
           cache: false
       - artifact/model/${item.ticker}_LSTM.keras
       - artifact/model/${item.ticker}_GRU.keras
+      - artifact/model/${item.ticker}_hyperparameter.parquet
+
+  store:
+    desc: "Ekspor parameter scaler, metrik evaluasi, dan penyalinan aset backend"
+    matrix:
+      ticker: ${tickers}
+    cmd: python -m src.store --ticker ${item.ticker}
+    deps:
+      - src/config.py
+      - src/store.py
+      - artifact/data/${item.ticker}.parquet
+      - artifact/model/${item.ticker}_hyperparameter.parquet
+    params:
+      - target_col
+      - train_size
+      - random_state
+      - epochs
+    outs:
       - artifact/model/${item.ticker}_scaler.json
       - artifact/model/${item.ticker}_metrics.json
-      - artifact/model/${item.ticker}_model_seed.sql
-
-
-
-
-
+      - web/backend/assets/${item.ticker}.parquet
+      - web/backend/assets/${item.ticker}_scaler.json
+      - web/backend/assets/${item.ticker}_metrics.json

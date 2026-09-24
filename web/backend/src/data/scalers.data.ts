@@ -1,3 +1,5 @@
+import { readAssetText } from '../utils/assets'
+
 export interface ScalerInfo {
   scaler_type: string
   ticker: string
@@ -14,24 +16,17 @@ export interface ScalerInfo {
 }
 
 /**
- * Mendapatkan parameter scaler MinMaxScaler secara dinamis dari Cloudflare D1.
- * Tidak ada ticker yang di-hardcode.
+ * Mendapatkan parameter scaler MinMaxScaler secara dinamis dari file JSON di web/backend/assets.
  */
-export async function getStockScaler(ticker: string, db?: D1Database): Promise<ScalerInfo | null> {
+export async function getStockScaler(ticker: string): Promise<ScalerInfo | null> {
   const cleanTicker = ticker.trim().toUpperCase()
+  const content = await readAssetText(`${cleanTicker}_scaler.json`)
 
-  if (db) {
+  if (content) {
     try {
-      const row = await db
-        .prepare('SELECT scaler_json FROM stock_models WHERE ticker = ?')
-        .bind(cleanTicker)
-        .first<{ scaler_json: string }>()
-
-      if (row && row.scaler_json) {
-        return JSON.parse(row.scaler_json) as ScalerInfo
-      }
+      return JSON.parse(content) as ScalerInfo
     } catch (err) {
-      console.warn(`[D1 Scaler Warning] Gagal membaca scaler untuk '${cleanTicker}':`, err)
+      console.warn(`[Scaler JSON Parse Warning] Gagal parse scaler untuk '${cleanTicker}':`, err)
     }
   }
 

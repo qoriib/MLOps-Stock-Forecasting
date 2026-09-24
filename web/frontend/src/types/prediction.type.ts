@@ -24,11 +24,37 @@ export interface ScalerMeta {
   total_samples?: number
 }
 
+export interface BestConfigItem {
+  model: string
+  time_steps: number
+  optimizer: string
+  batch_size: number
+  learning_rate: number
+  MSE: number
+  RMSE: number
+  MAPE: number
+  R2?: number
+}
+
+export interface ModelVariantMetrics {
+  MSE?: number
+  RMSE: number
+  MAPE: number
+  R2?: number
+  time_steps?: number
+  optimizer?: string
+  batch_size?: number
+  learning_rate?: number
+}
+
 export interface PredictResponse {
   ticker: string
   model_type?: string
   model_name: string
   forecast_steps: number
+  window_size?: number
+  best_config?: BestConfigItem
+  metrics?: ModelVariantMetrics
   last_historical_date: string | null
   scaler_info?: ScalerMeta
   predictions: PredictionItem[]

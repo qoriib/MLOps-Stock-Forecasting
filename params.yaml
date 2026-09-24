@@ -3,12 +3,29 @@ tickers:
   - BBRI.JK
 start_date: "2021-09-03"
 end_date: "2026-09-03"
-train_size_ratio: 0.8
 target_col: "close"
-random_state: 42
 
-# Hyperparameter Deep Learning
-window_size: 30
-batch_size: 32
+random_state: 42
+train_size: 0.8
 epochs: 50
-learning_rate: 0.001
+
+# Hyperparameter
+time_steps:
+  - 10
+  - 20
+  - 30
+optimizers:
+  - SGD
+  - Adam
+  - RMSprop
+batch_sizes:
+  - 8
+  - 16
+  - 32
+learning_rates:
+  - 0.01
+  - 0.001
+  - 0.0001
+models:
+  - LSTM
+  - GRU

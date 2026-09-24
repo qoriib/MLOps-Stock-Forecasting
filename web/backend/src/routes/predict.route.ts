@@ -18,7 +18,7 @@ predictRoute.post('/predict', async (c) => {
       )
     }
 
-    const result = await executeForecast(body, c.get('db'))
+    const result = await executeForecast(body)
     return c.json(result)
   } catch (err: any) {
     const errorMessage = err?.message || 'Terjadi kegagalan saat proses inferensi model.'

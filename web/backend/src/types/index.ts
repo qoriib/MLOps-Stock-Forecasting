@@ -39,33 +39,53 @@ export interface ScalerMeta {
   min: number
 }
 
+export interface BestConfigItem {
+  model: string
+  time_steps: number
+  optimizer: string
+  batch_size: number
+  learning_rate: number
+  MSE: number
+  RMSE: number
+  MAPE: number
+  R2?: number
+}
+
+export interface ModelVariantMetrics {
+  MSE?: number
+  RMSE: number
+  MAPE: number
+  R2?: number
+  time_steps?: number
+  optimizer?: string
+  batch_size?: number
+  learning_rate?: number
+}
+
 export interface PredictResponse {
   ticker: string
   model_type: string
   model_name: string
   forecast_steps: number
+  window_size?: number
+  best_config?: BestConfigItem
+  metrics?: ModelVariantMetrics
   last_historical_date: string
   scaler_info?: ScalerMeta
   predictions: PredictionItem[]
   history?: HistoricalItem[]
 }
 
-export interface ModelVariantMetrics {
-  RMSE: number
-  MAPE: number
-  R2: number
-}
-
 export interface TickerMetrics {
   ticker: string
   target_col?: string
-  window_size?: number
-  batch_size?: number
-  epochs?: number
-  learning_rate?: number
+  train_size?: number
   train_size_ratio?: number
+  random_state?: number
+  epochs?: number
   best_model?: string
   best_variant?: string
+  best_configs?: Record<string, BestConfigItem>
   metrics: {
     LSTM?: ModelVariantMetrics
     GRU?: ModelVariantMetrics
@@ -84,12 +104,9 @@ export interface ModelsResponse {
 }
 
 /**
- * HonoEnv menggunakan context Variables (bukan Bindings) agar tidak terikat
- * ke platform Cloudflare secara langsung. D1 di-inject oleh middleware Nitro
- * dari event.req.runtime.cloudflare.env, bukan dari c.env.
+ * HonoEnv interface untuk typed context Hono.
  */
 export interface HonoEnv {
-  Variables: {
-    db?: D1Database
-  }
+  Variables: Record<string, unknown>
 }
+

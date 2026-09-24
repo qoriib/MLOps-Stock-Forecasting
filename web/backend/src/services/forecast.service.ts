@@ -1,7 +1,8 @@
 import * as tf from '@tensorflow/tfjs-core'
-import '@tensorflow/tfjs-backend-cpu'
+import { version_cpu } from '@tensorflow/tfjs-backend-cpu'
 import { getStockHistory } from '../data/stocks.data'
 import { getStockScaler } from '../data/scalers.data'
+import { getTickerMetrics } from '../data/models.data'
 import { APP_CONFIG } from '../configs/app.config'
 import type { PredictRequest, PredictResponse, PredictionItem } from '../types'
 
@@ -9,11 +10,16 @@ let isTfInitialized = false
 
 async function ensureTfBackend() {
   if (!isTfInitialized) {
+    // Explicitly reference version_cpu so bundler does not tree-shake backend registration
+    if (!version_cpu) {
+      console.warn('[TensorFlow.js] CPU backend version not found')
+    }
     await tf.setBackend('cpu')
     await tf.ready()
     isTfInitialized = true
   }
 }
+
 
 /**
  * Membuat tanggal hari kerja bursa ke depan (Business Days: Senin - Jumat).
@@ -40,19 +46,30 @@ function generateFutureBusinessDates(lastDateStr: string, steps: number): string
 /**
  * Engine inferensi peramalan harga saham menggunakan TensorFlow.js CPU Backend.
  */
-export async function executeForecast(params: PredictRequest, db?: D1Database): Promise<PredictResponse> {
+export async function executeForecast(params: PredictRequest): Promise<PredictResponse> {
   await ensureTfBackend()
 
   const ticker = params.ticker.trim().toUpperCase()
   const rawModel = (params.model_type || APP_CONFIG.defaultModelType).toLowerCase()
   const modelType: 'lstm' | 'gru' = rawModel === 'gru' ? 'gru' : 'lstm'
+  const modelTypeUpper = modelType.toUpperCase()
   const steps = params.steps && params.steps > 0 ? params.steps : APP_CONFIG.defaultSteps
   const historyLimit =
     params.history_limit || (params as { historyLimit?: number }).historyLimit || APP_CONFIG.defaultHistoryLimit
-  const windowSize = APP_CONFIG.defaultWindowSize
 
-  // 1. Dapatkan data historis (dari Cloudflare D1 atau memory summary)
-  const history = await getStockHistory(ticker, 500, params.start_date, params.end_date, db)
+  // Dapatkan metrik dan hyperparameter hasil grid search
+  const modelMetrics = await getTickerMetrics(ticker)
+  const bestConfig = modelMetrics?.best_configs?.[modelTypeUpper]
+  const variantMetrics = modelMetrics?.metrics?.[modelTypeUpper]
+
+  // Gunakan window size hasil hyperparameter tuning (atau default)
+  const windowSize =
+    bestConfig?.time_steps ||
+    variantMetrics?.time_steps ||
+    APP_CONFIG.defaultWindowSize
+
+  // 1. Dapatkan data historis langsung dari CSV
+  const history = await getStockHistory(ticker, 500, params.start_date, params.end_date)
   if (!history || history.data.length === 0) {
     throw new Error(`Data historis pasar untuk ticker '${ticker}' tidak ditemukan.`)
   }
@@ -67,7 +84,7 @@ export async function executeForecast(params: PredictRequest, db?: D1Database): 
   const closePrices = allRecords.map((r) => r.close)
 
   // 2. Normalisasi dengan parameter MinMaxScaler hasil pelatihan Machine Learning
-  const scaler = await getStockScaler(ticker, db)
+  const scaler = await getStockScaler(ticker)
   const { minVal, maxVal, rangeVal, scaledPrices } = tf.tidy(() => {
     const tensorPrices = tf.tensor1d(closePrices)
     const min = scaler ? scaler.data_min : tf.min(tensorPrices).dataSync()[0]
@@ -144,8 +161,11 @@ export async function executeForecast(params: PredictRequest, db?: D1Database): 
   return {
     ticker,
     model_type: modelType,
-    model_name: `TensorFlow.js (${modelType.toUpperCase()}) [Nitro Edge]`,
+    model_name: `TensorFlow.js (${modelTypeUpper}) [Nitro Edge]`,
     forecast_steps: steps,
+    window_size: windowSize,
+    best_config: bestConfig,
+    metrics: variantMetrics,
     last_historical_date: lastHistoricalDate,
     scaler_info: scaler
       ? {

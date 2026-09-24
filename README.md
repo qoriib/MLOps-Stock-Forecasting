@@ -1,15 +1,6 @@
-# MLOps Stock Forecasting - In-Browser Edge AI
+# MLOps Stock Forecasting - Deep Learning Pipeline & Edge Inference
 
-Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) menggunakan arsitektur Deep Learning recurrent neural networks (**LSTM** & **GRU**). Seluruh proses inferensi peramalan dijalankan secara **100% Client-Side di browser pengguna menggunakan TensorFlow.js (@tensorflow/tfjs)** dengan akselerasi perangkat keras WebGL/GPU.
-
----
-
-## 🚀 Keunggulan Arsitektur In-Browser Edge AI
-
-1. **Zero Server Cost & Infinite Scalability**: Tidak memerlukan server GPU/CPU inference backend (seperti Google Cloud Run atau VM) yang mahal. Web dapat di-host secara statis dan melayani jutaan pengguna secara gratis.
-2. **Zero Latency**: Hasil inferensi peramalan multi-step dihitung seketika langsung di browser klien tanpa round-trip delay jaringan.
-3. **Privasi & Keamanan Penuh**: Parameter inferensi dan manipulasi rentang data berjalan lokal di sisi klien.
-4. **Offline-Capable**: Aplikasi tetap dapat melakukan inferensi peramalan tanpa koneksi internet setelah aset statis ter-cache di browser.
+Proyek end-to-end MLOps untuk peramalan harga saham temporal perbankan Indonesia (BBCA.JK, BBRI.JK, dll.) menggunakan arsitektur Deep Learning (**LSTM** & **GRU**) dengan **Hyperparameter Grid Search** otomatis berbasis DVC, pemisahan modular pipeline (Ingestion, Modeling, Store), penyimpanan artefak langsung dari file biner **Parquet** & **JSON**, penyalinan aset terisolasi ke `web/backend/assets` (tanpa traversal relatif `../..`), serta inferensi performa tinggi melalui Cloudflare Workers (Nitro/Hono + TensorFlow.js + hyparquet) dan dashboard interaktif Cloudflare Pages (React 19 + TanStack + Astryx Design).
 
 ---
 
@@ -18,28 +9,35 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
 ```text
 [ Yahoo Finance API ]
         │
-        ▼ (ingestion)
-[ artifact/data/{ticker}.csv ] ──(dvc push)──► [ Cloudflare R2 ] (S3 Storage)
+        ▼ (Stage 1: ingestion - python -m src.ingestion --ticker {ticker})
+[ artifact/data/{ticker}.parquet ] ──(dvc push)──► [ Cloudflare R2 ]
         │
-        ▼ (ml_pipeline)
-[ artifact/model/{ticker}_LSTM.keras ] ──(dvc push)──► [ Cloudflare R2 ]
-[ artifact/model/{ticker}_GRU.keras  ]
-        │
-        ▼ (export_web: src/export_web_models.py)
-[ web/frontend/public/data/{ticker}.json ]
-[ web/frontend/public/models/overview.json ]
-        │
-        ▼ (build & deploy)
-[ Cloudflare Pages / Static Hosting ]
-        │
-        ▼ (Client Browser)
+        ▼ (Stage 2: ml_pipeline - papermill src/ml_pipeline.ipynb)
 ┌────────────────────────────────────────────────────────┐
-│  Browser Client Runtime (TanStack + React + ApexChart) │
-│  └─► TensorFlow.js Engine (WebGL Accelerated)         │
-│      ├─ In-Browser LSTM / GRU Model Evaluation         │
-│      ├─ Autoregressive Multi-step Forecasting          │
-│      └─ 95% Confidence Interval Calculation            │
+│  Hyperparameter Grid Search (LSTM & GRU)              │
+│  ├─ Parameter: Time Steps, Optimizer, Batch, LR, Epoch │
+│  ├─ Model Selection: Evaluasi RMSE, MAPE, & R²        │
+│  ├─ Simpan Model: {ticker}_LSTM.keras, {ticker}_GRU    │
+│  └─ Riwayat Eksperimen: {ticker}_hyperparameter.parquet│
 └────────────────────────────────────────────────────────┘
+        │
+        ▼ (Stage 3: store - python -m src.store --ticker {ticker})
+┌────────────────────────────────────────────────────────┐
+│  Penyimpanan Artefak & Salin ke Backend (src/store.py) │
+│  ├─ Normalisasi Skala: artifact/model/{ticker}_scaler.json
+│  ├─ Metadata Metrik: artifact/model/{ticker}_metrics.json
+│  └─ Copy Backend: web/backend/assets/{ticker}.*        │
+└────────────────────────────────────────────────────────┘
+        │
+        ▼ (Deployment: Nitro Server Assets Bundle)
+   ┌────┴───────────────────────────┐
+   ▼                                ▼
+[ Cloudflare Workers Backend ]    [ Cloudflare Pages Frontend ]
+  ├─ Nitro + Hono API Runtime       ├─ React 19 + TanStack Router
+  ├─ TensorFlow.js Edge Inference   ├─ Astryx Design System
+  ├─ hyparquet Binary Engine        ├─ Wawasan Hyperparameter Optimal
+  ├─ Direct web/backend/assets      └─ Visualisasi Chart Interaktif
+  └─ Endpoint: /api/predict
 ```
 
 ---
@@ -50,95 +48,114 @@ Proyek end-to-end MLOps untuk peramalan harga saham (Stock Forecasting) mengguna
 MLOps-Stock-Forecasting/
 ├── .github/
 │   └── workflows/
-│       └── pipeline.yml          # GitHub Actions CI/CD (Ingestion, Train, Export, Deploy)
+│       └── pipeline.yml          # GitHub Actions CI/CD (Ingestion, Train, Store, Deploy)
 ├── artifact/
-│   ├── data/                     # Dataset harga saham mentah (.csv) - dilacak DVC
-│   └── model/                    # Model terlatih Keras (.keras), scaler & metrik - dilacak DVC
+│   ├── data/                     # Dataset harga pasar historis biner (.parquet)
+│   ├── model/                    # Model Keras (.keras), hyperparameter.parquet, scaler & metrics JSON
+│   └── notebook/                 # Notebook hasil eksekusi Papermill & CML reports
 ├── src/
-│   ├── config.py                 # Konfigurasi path dan environment pipeline
-│   ├── export_web_models.py      # Ekspor data & metadata model ke web static assets
-│   ├── ingestion.py              # Pengunduh data historis Yahoo Finance
-│   └── ml_pipeline.ipynb         # Notebook pelatihan & evaluasi LSTM & GRU
+│   ├── config.py                 # Konfigurasi path pipeline
+│   ├── ingestion.py              # Pengunduh data Yahoo Finance (murni Parquet)
+│   ├── ml_pipeline.ipynb         # Notebook ML: Grid Search LSTM/GRU, evaluasi, & plotting
+│   └── store.py                  # Penyimpanan scaler JSON, metrics JSON, & copy backend assets
 ├── web/
-│   └── frontend/                 # Aplikasi Web Modern (React 19 + TanStack + Astryx Design)
-│       ├── public/
-│       │   ├── data/             # JSON harga historis per ticker (BBCA, BBRI, dll)
-│       │   └── models/           # overview.json metadata model & metrik
+│   ├── backend/                  # API Serverless Nitro + Hono + TensorFlow.js Edge + hyparquet
+│   │   ├── assets/               # Aset Parquet & JSON lokal mandiri (bebas dari traversal ../..)
+│   │   ├── src/
+│   │   │   ├── configs/          # Konfigurasi runtime backend
+│   │   │   ├── data/             # Data access layer (pembacaan langsung Parquet via hyparquet)
+│   │   │   ├── routes/           # Routing API (/api/stocks, /api/models, /api/predict)
+│   │   │   ├── services/         # Engine peramalan adaptif TensorFlow.js
+│   │   │   └── utils/            # Asset reading helper (Nitro serverAssets & fs fallback)
+│   │   └── nitro.config.ts       # Konfigurasi Nitro serverAssets (dir: ./assets)
+│   └── frontend/                 # Web Dashboard React 19 + Astryx Design System
 │       ├── src/
-│       │   ├── configs/          # Konfigurasi aplikasi & URL aset
-│       │   ├── services/
-│       │   │   └── tfjsForecast.service.ts # Engine inferensi TensorFlow.js in-browser
-│       │   ├── stores/           # Manajemen state global Zustand
-│       │   └── routes/           # Routing TanStack Router (Forecast & History)
-│       └── package.json
-├── dvc.yaml                      # Definisi pipeline MLOps deklaratif
-├── params.yaml                   # Parameter konfigurasi pelatihan & dataset
-├── pyproject.toml                # Konfigurasi Poetry & dependensi Python
+│       │   ├── components/       # ForecastChart, ForecastModelInsights, ForecastTable
+│       │   ├── routes/           # TanStack Router (Prediksi & Histori)
+│       │   └── stores/           # Zustand state management
+│       └── vite.config.ts
+├── dvc.yaml                      # Definisi tahapan pipeline MLOps deklaratif (DAG)
+├── params.yaml                   # Konfigurasi hyperparameter grid search & dataset
+├── pyproject.toml                # Manajemen dependensi Python (Poetry)
 └── README.md
 ```
 
 ---
 
-## 🛠️ Panduan Memulai Cepat (Local Development)
+## ⚙️ Konfigurasi Pipeline (`params.yaml`)
 
-### 1. Menjalankan Dashboard Web Lokal
+```yaml
+tickers:
+  - BBCA.JK
+  - BBRI.JK
+start_date: "2021-09-03"
+end_date: "2026-09-03"
+target_col: "close"
 
-Aplikasi web dapat langsung dijalankan tanpa perlu menyalakan backend Python apa pun:
+random_state: 42
+train_size: 0.8
+epochs: 50
+
+# Hyperparameter
+time_steps:
+  - 10
+  - 20
+  - 30
+optimizers:
+  - SGD
+  - Adam
+  - RMSprop
+batch_sizes:
+  - 8
+  - 16
+  - 32
+learning_rates:
+  - 0.01
+  - 0.001
+  - 0.0001
+models:
+  - LSTM
+  - GRU
+```
+
+---
+
+## 🛠️ Panduan Menjalankan Pipeline & Aplikasi
+
+### 1. Menjalankan Pipeline MLOps (DVC)
+
+```bash
+# Jalankan seluruh tahapan pipeline (ingestion -> ml_pipeline -> store)
+poetry run dvc repro
+
+# Menampilkan grafik visual DAG pipeline
+poetry run dvc dag
+```
+
+### 2. Menjalankan Backend API Lokal
+
+```bash
+cd web/backend
+npm install
+npm run dev
+```
+API akan berjalan di `http://localhost:3000`.
+
+### 3. Menjalankan Frontend Dashboard Lokal
 
 ```bash
 cd web/frontend
 npm install
 npm run dev
 ```
-
-Buka browser di `http://localhost:3000`. Dashboard akan langsung memuat data pasar dan menjalankan inferensi LSTM/GRU via WebGL.
-
-### 2. Memperbarui Data Pasar & Ekspor Web Aset
-
-Jalankan script ekspor untuk memperbarui data JSON di `web/frontend/public/`:
-
-```bash
-# Menggunakan Python bawaan (Zero-Dependency)
-python3 src/export_web_models.py
-
-# Atau menggunakan environment Poetry
-poetry run python -m src.export_web_models
-```
-
-### 3. Menjalankan Pipeline MLOps (DVC)
-
-Untuk melatih ulang model dan mengekspor seluruh artefak:
-
-```bash
-# Menjalankan seluruh tahapan pipeline
-poetry run dvc repro
-
-# Sinkronisasi ke Cloudflare R2 Remote Storage
-poetry run dvc push
-```
+Buka `http://localhost:3000` di browser untuk mengakses dashboard.
 
 ---
 
-## 🌐 Panduan Deployment ke Cloudflare Pages
+## 🌐 Otomasi CI/CD (GitHub Actions)
 
-Frontend web dikompilasi menjadi artefak statis murni yang siap disajikan melalui CDN global Cloudflare Pages:
-
-```bash
-cd web/frontend
-
-# 1. Build bundle produksi
-npm run build
-
-# 2. Deploy ke Cloudflare Pages
-npx wrangler pages deploy .output/public --project-name stock-forecasting-web
-```
-
----
-
-## ⚙️ Otomasi CI/CD (GitHub Actions)
-
-Alur kerja `.github/workflows/pipeline.yml` berjalan secara terjadwal setiap hari Senin atau dapat dipicu secara manual via `workflow_dispatch`:
-1. **Ingestion**: Mengunduh pembaruan harga saham terbaru dari Yahoo Finance.
-2. **DVC Pipeline**: Melatih model LSTM & GRU, menghitung metrik evaluasi (RMSE, MAPE, R2), dan mengekspor notebook CML.
-3. **Export Web**: Mengonversi dataset dan model metadata menjadi aset static web di `web/frontend/public/`.
-4. **Deploy Frontend**: Melakukan build frontend dan mempublikasikannya langsung ke Cloudflare Pages.
+Alur kerja `.github/workflows/pipeline.yml` berjalan secara otomatis via jadwal mingguan atau pemicu manual:
+1. **Ingestion**: Mengunduh data terbaru Yahoo Finance → `artifact/data/{ticker}.parquet`.
+2. **ML Pipeline & Store**: Melatih model LSTM & GRU dengan hyperparameter tuning via Papermill, lalu mengeksekusi `src/store.py` untuk menghasilkan model `.keras`, `hyperparameter.parquet`, `scaler.json`, dan `metrics.json`, kemudian menyalin file yang dibutuhkan ke `web/backend/assets/`.
+3. **Deploy Backend**: Membangun dan merilis API Nitro ke Cloudflare Workers dengan file Parquet & model dari `web/backend/assets/` tersemat langsung.
+4. **Deploy Frontend**: Membangun aplikasi web dan mempublikasikannya ke Cloudflare Pages.

@@ -9,19 +9,6 @@ import type { HonoEnv } from './types'
 
 const app = new Hono<HonoEnv>()
 
-// Middleware: Inject Cloudflare D1 binding dari Nitro runtime context ke Hono context variable.
-// Pola ini memisahkan lapisan platform (Nitro) dari lapisan aplikasi (Hono),
-// sehingga preset Nitro bisa diganti tanpa menyentuh kode routes/services.
-app.use('*', async (c, next) => {
-  // Akses D1 via Nitro event runtime (sesuai best practice nitro.build)
-  // Fallback ke c.env.DB untuk kompatibilitas wrangler dev langsung
-  const nitroCloudflare = (c.req.raw as any)?.[Symbol.for('nitro:event')]?.req?.runtime?.cloudflare
-  const db: D1Database | undefined = nitroCloudflare?.env?.DB ?? (c.env as any)?.DB
-  if (db) {
-    c.set('db', db)
-  }
-  await next()
-})
 
 // Middleware
 app.use('*', logger())

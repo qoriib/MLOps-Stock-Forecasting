@@ -5,6 +5,7 @@ import type { HonoEnv } from '../types'
 export const modelsRoute = new Hono<HonoEnv>()
 
 modelsRoute.get('/models', async (c) => {
-  const overview = await getModelsOverview(c.get('db'))
+  const overview = await getModelsOverview()
   return c.json(overview)
 })
+
