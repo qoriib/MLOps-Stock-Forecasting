@@ -77,12 +77,6 @@ jobs:
             artifact/model/*_metrics.json
             artifact/model/*_hyperparameter.csv
 
-      - name: Upload Backend Assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-assets
-          path: web/backend/assets/**
-
   deploy_backend:
     name: "Deploy Backend"
     needs: pipeline
@@ -90,16 +84,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Pipeline Environment (DVC Pull)
+        uses: ./.github/actions/setup-pipeline
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Download Backend Assets (Parquet & JSON)
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-assets
-          path: web/backend/assets/
 
       - name: Install Backend Dependencies
         run: |
