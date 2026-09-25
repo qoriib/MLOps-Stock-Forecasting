@@ -1,15 +1,23 @@
 import argparse
+import os
 import json
+import logging
+import pickle
 import shutil
 import dvc.api
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-import config
+from src import config
+from src.database import upsert_stock_prices, upsert_model_metrics
+
+logger = logging.getLogger("store_stage")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-def store_scaler(ticker: str, target_col: str, train_size: float) -> dict:
-    parquet_path = config.DATA_DIR / f"{ticker}.parquet"
+def store_scaler(ticker: str, target_col: str, train_size: float) -> MinMaxScaler:
+    """Melatih dan menyimpan scaler MinMaxScaler ke file .pkl (artifact & backend assets)."""
+    parquet_path = config.get_data_path(ticker)
     df = pd.read_parquet(parquet_path)
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date").reset_index(drop=True)
@@ -20,140 +28,76 @@ def store_scaler(ticker: str, target_col: str, train_size: float) -> dict:
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaler.fit(train_df[[target_col]].values)
 
-    scaler_data = {
-        "scaler_type": "MinMaxScaler",
-        "ticker": ticker,
-        "target_col": target_col,
-        "feature_range": list(scaler.feature_range),
-        "data_min": float(scaler.data_min_[0]),
-        "data_max": float(scaler.data_max_[0]),
-        "data_range": float(scaler.data_range_[0]),
-        "scale": float(scaler.scale_[0]),
-        "min": float(scaler.min_[0]),
-        "n_samples_seen": int(scaler.n_samples_seen_),
-        "train_samples": len(train_df),
-        "total_samples": len(df),
-    }
+    # 1. Simpan di direktori artifact/model
+    scaler_path = config.get_scaler_path(ticker)
+    with open(scaler_path, "wb") as f:
+        pickle.dump(scaler, f)
+    logger.info(f"[Scaler PKL] Scaler disimpan ke: {scaler_path}")
 
-    config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    scaler_path = config.MODEL_DIR / f"{ticker}_scaler.json"
-    with open(scaler_path, "w", encoding="utf-8") as f:
-        json.dump(scaler_data, f, indent=2)
-    print(f"[Scaler JSON] Scaler disimpan ke: {scaler_path}")
-
-    return scaler_data
-
-
-def store_metrics(
-    ticker: str,
-    target_col: str,
-    train_size: float,
-    random_state: int,
-    epochs: int,
-) -> dict:
-    csv_path = config.MODEL_DIR / f"{ticker}_hyperparameter.csv"
-    results_df = pd.read_csv(csv_path)
-
-    grouped_by_model = results_df.groupby("model")
-    best_indices = grouped_by_model["RMSE"].idxmin().values
-    best_configs_df = results_df.loc[best_indices].reset_index(drop=True)
-
-    best_overall_row = best_configs_df.loc[best_configs_df["RMSE"].idxmin()]
-    best_overall_model = str(best_overall_row["model"])
-
-    clean_best_configs = {}
-    metrics_summary = {}
-
-    for _, row in best_configs_df.iterrows():
-        m_name = str(row["model"])
-        cfg_dict = row.to_dict()
-
-        clean_cfg = {}
-        for k, v in cfg_dict.items():
-            if isinstance(v, (np.integer, int)):
-                clean_cfg[k] = int(v)
-            elif isinstance(v, (np.floating, float)):
-                clean_cfg[k] = float(v)
-            else:
-                clean_cfg[k] = str(v)
-
-        clean_best_configs[m_name] = clean_cfg
-
-        metrics_summary[m_name] = {
-            "MSE": float(row["MSE"]),
-            "RMSE": float(row["RMSE"]),
-            "MAPE": float(row["MAPE"]),
-            "R2": float(row.get("R2", 0.0)) if "R2" in row and not pd.isna(row["R2"]) else 0.0,
-            "time_steps": int(row["time_steps"]),
-            "optimizer": str(row["optimizer"]),
-            "batch_size": int(row["batch_size"]),
-            "learning_rate": float(row["learning_rate"]),
-        }
-
-    metadata = {
-        "ticker": ticker,
-        "target_col": target_col,
-        "train_size": float(train_size),
-        "random_state": int(random_state),
-        "epochs": int(epochs),
-        "best_model": best_overall_model,
-        "best_configs": clean_best_configs,
-        "metrics": metrics_summary,
-    }
-
-    config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    metrics_path = config.MODEL_DIR / f"{ticker}_metrics.json"
-    with open(metrics_path, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
-    print(f"[Metrics JSON] Metrik disimpan ke: {metrics_path}")
-
-    return metadata
-
-
-def copy_backend_assets(tickers: list[str]) -> list[str]:
+    # 2. Salin ke web/backend/assets untuk runtime backend
     backend_assets_dir = config.BASE_DIR / "web" / "backend" / "assets"
     backend_assets_dir.mkdir(parents=True, exist_ok=True)
-    copied_files = []
+    backend_scaler_path = backend_assets_dir / f"{ticker}_scaler.pkl"
+    shutil.copy2(scaler_path, backend_scaler_path)
+    logger.info(f"[Asset Scaler] Scaler disalin ke backend: {backend_scaler_path}")
 
-    for ticker in tickers:
-        # 1. Salin dataset harga saham .parquet
-        src_parquet = config.DATA_DIR / f"{ticker}.parquet"
-        dst_parquet = backend_assets_dir / f"{ticker}.parquet"
-        if src_parquet.exists():
-            shutil.copy2(src_parquet, dst_parquet)
-            copied_files.append(str(dst_parquet))
-            print(f"[Asset Copy] {src_parquet} -> {dst_parquet}")
+    return scaler
 
-        # 2. Salin scaler JSON
-        src_scaler = config.MODEL_DIR / f"{ticker}_scaler.json"
-        dst_scaler = backend_assets_dir / f"{ticker}_scaler.json"
-        if src_scaler.exists():
-            shutil.copy2(src_scaler, dst_scaler)
-            copied_files.append(str(dst_scaler))
-            print(f"[Asset Copy] {src_scaler} -> {dst_scaler}")
 
-        # 3. Salin metrics JSON
-        src_metrics = config.MODEL_DIR / f"{ticker}_metrics.json"
-        dst_metrics = backend_assets_dir / f"{ticker}_metrics.json"
-        if src_metrics.exists():
-            shutil.copy2(src_metrics, dst_metrics)
-            copied_files.append(str(dst_metrics))
-            print(f"[Asset Copy] {src_metrics} -> {dst_metrics}")
+def store_stock_data_to_postgres(ticker: str) -> None:
+    """Memasukkan data historis saham dari parquet ke PostgreSQL tanpa redundansi."""
+    parquet_path = config.get_data_path(ticker)
+    if not parquet_path.exists():
+        logger.warning(f"File parquet tidak ditemukan: {parquet_path}")
+        return
 
-        # 4. Salin model Keras (LSTM & GRU)
-        for m_type in ["LSTM", "GRU"]:
-            src_model = config.MODEL_DIR / f"{ticker}_{m_type}.keras"
-            dst_model = backend_assets_dir / f"{ticker}_{m_type}.keras"
-            if src_model.exists():
-                shutil.copy2(src_model, dst_model)
-                copied_files.append(str(dst_model))
-                print(f"[Asset Copy] {src_model} -> {dst_model}")
+    df = pd.read_parquet(parquet_path)
+    try:
+        count = upsert_stock_prices(df, ticker)
+        logger.info(f"[PostgreSQL Data] Berhasil upsert {count} baris data saham {ticker} ke tabel stock_prices")
+    except Exception as e:
+        logger.warning(f"[PostgreSQL Data] Upsert ke PostgreSQL dilewati / error ({e}).")
 
-    return copied_files
+
+def promote_models_to_production(ticker: str) -> None:
+    """Mempromosikan versi model terbaru ke stage Production di MLflow Model Registry."""
+    try:
+        import mlflow
+        from mlflow.tracking import MlflowClient
+
+        tracking_uri = getattr(config, "MLFLOW_TRACKING_URI", os.getenv("MLFLOW_TRACKING_URI", ""))
+        if tracking_uri:
+            mlflow.set_tracking_uri(tracking_uri)
+
+        client = MlflowClient()
+
+        for model_type in ["LSTM", "GRU"]:
+            reg_model_name = f"{ticker}_{model_type}"
+            try:
+                latest_versions = client.get_latest_versions(reg_model_name)
+                if latest_versions:
+                    target_version = latest_versions[-1].version
+                    client.transition_model_version_stage(
+                        name=reg_model_name,
+                        version=target_version,
+                        stage="Production",
+                        archive_existing_versions=True
+                    )
+                    logger.info(f"[MLflow Registry] {reg_model_name} versi {target_version} dipromosikan ke stage: Production")
+
+                    try:
+                        client.set_registered_model_alias(name=reg_model_name, alias="champion", version=target_version)
+                        client.set_registered_model_alias(name=reg_model_name, alias="production", version=target_version)
+                    except Exception:
+                        pass
+            except Exception as me:
+                logger.info(f"[MLflow Registry] Model {reg_model_name} belum terdaftar di MLflow ({me})")
+    except Exception as e:
+        logger.warning(f"[MLflow Registry] Promosi model ke Production dilewati ({e})")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Penyimpanan artefak scaler, metrik evaluasi, dan penyalinan aset backend")
+    parser = argparse.ArgumentParser(description="Penyimpanan scaler .pkl, upsert data, dan promosi model MLflow ke Production")
     parser.add_argument("--ticker", type=str, help="Ticker spesifik yang ingin diproses")
     args = parser.parse_args()
 
@@ -162,17 +106,19 @@ def main():
 
     TARGET_COL = params["TARGET_COL"]
     TRAIN_SIZE = float(params["TRAIN_SIZE"])
-    RANDOM_STATE = int(params["RANDOM_STATE"])
-    EPOCHS = int(params["EPOCHS"])
 
     tickers_to_process = [args.ticker.strip().upper()] if args.ticker else tickers
-    print(f"=== Memproses Artefak Scaler, Metrik & Copy Aset untuk: {tickers_to_process} ===")
+    logger.info(f"=== Menjalankan Stage Store untuk: {tickers_to_process} ===")
 
     for ticker in tickers_to_process:
+        # 1. Simpan Scaler tetap berupa file .pkl
         store_scaler(ticker, TARGET_COL, TRAIN_SIZE)
-        store_metrics(ticker, TARGET_COL, TRAIN_SIZE, RANDOM_STATE, EPOCHS)
 
-    copy_backend_assets(tickers_to_process)
+        # 2. Masukkan data historis ke PostgreSQL (tanpa redundansi)
+        store_stock_data_to_postgres(ticker)
+
+        # 3. Promosikan model ke stage Production di MLflow Model Registry
+        promote_models_to_production(ticker)
 
 
 if __name__ == "__main__":
