@@ -42,21 +42,7 @@ class StockPrice(Base):
     )
 
 
-class ModelMetric(Base):
-    __tablename__ = "model_metrics"
 
-    ticker = Column(String(20), primary_key=True)
-    model_name = Column(String(20), primary_key=True)
-    mse = Column(Float, nullable=False)
-    rmse = Column(Float, nullable=False)
-    mape = Column(Float, nullable=False)
-    r2 = Column(Float, nullable=False, default=0.0)
-    time_steps = Column(Integer, nullable=False)
-    optimizer = Column(String(20), nullable=False)
-    batch_size = Column(Integer, nullable=False)
-    learning_rate = Column(Float, nullable=False)
-    is_best = Column(Boolean, nullable=False, default=False)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 _engine = None
