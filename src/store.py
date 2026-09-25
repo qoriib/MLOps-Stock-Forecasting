@@ -1,23 +1,25 @@
 import argparse
 import logging
 import shutil
-import dvc.api
+from typing import List
+
 import mlflow
 from mlflow.tracking import MlflowClient
+
 from src import config
 
 logger = logging.getLogger("store_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-def promote_champion_models(ticker: str) -> None:
+def promote_champion_models(ticker: str, models: List[str]) -> None:
     """Mempromosikan versi model terbaru ke alias @champion dan @production di MLflow."""
     try:
         if config.MLFLOW_TRACKING_URI:
             mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
 
         client = MlflowClient()
-        for model_type in ["LSTM", "GRU"]:
+        for model_type in models:
             reg_model_name = f"{ticker}_{model_type}"
             versions = client.search_model_versions(f"name = '{reg_model_name}'")
             if versions:
@@ -29,12 +31,12 @@ def promote_champion_models(ticker: str) -> None:
         logger.info(f"[MLflow] Promosi model {ticker} dilewati: {e}")
 
 
-def sync_backend_assets(ticker: str) -> None:
+def sync_backend_assets(ticker: str, models: List[str]) -> None:
     """Menyalin artefak model, scaler, dan data ke backend assets mengandalkan config."""
     config.BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. Salin Model (.keras)
-    for model_type in ["LSTM", "GRU"]:
+    for model_type in models:
         src_model = config.get_model_path(ticker, model_type)
         dst_model = config.get_backend_model_path(ticker, model_type)
         if src_model.exists():
@@ -64,16 +66,28 @@ def sync_backend_assets(ticker: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Penyalinan aset ke backend dan promosi model MLflow")
-    parser.add_argument("--ticker", type=str, help="Ticker spesifik yang ingin diproses")
+    parser.add_argument("--ticker", type=str, required=True, help="Ticker saham yang diproses (misal: BBCA.JK)")
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        default=["LSTM", "GRU"],
+        help="Daftar tipe model yang diproses (misal: LSTM GRU)",
+    )
     args = parser.parse_args()
 
-    params = dvc.api.params_show()
-    tickers = [args.ticker.strip().upper()] if args.ticker else [t.strip().upper() for t in params["TICKERS"]]
-    logger.info(f"=== Menjalankan Stage Store untuk: {tickers} ===")
+    ticker = args.ticker.strip().upper()
 
-    for ticker in tickers:
-        promote_champion_models(ticker)
-        sync_backend_assets(ticker)
+    # Normalisasi list models jika dilewatkan sebagai argumen terpisah atau koma
+    models: List[str] = []
+    for m in args.models:
+        for sub_m in m.split(","):
+            clean_m = sub_m.strip().upper()
+            if clean_m and clean_m not in models:
+                models.append(clean_m)
+
+    logger.info(f"=== Menjalankan Stage Store untuk: {ticker} (Models: {models}) ===")
+    promote_champion_models(ticker, models)
+    sync_backend_assets(ticker, models)
 
 
 if __name__ == "__main__":
