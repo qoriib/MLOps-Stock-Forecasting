@@ -35,12 +35,32 @@ def fetch_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame | No
 
 def main():
     parser = argparse.ArgumentParser(description="Akuisisi data saham dari Yahoo Finance")
-    parser.add_argument("--ticker", type=str, required=True, help="Ticker saham yang diproses (misal: BBCA.JK)")
-    parser.add_argument("--start-date", "--start_date", dest="start_date", type=str, required=True, help="Tanggal awal (YYYY-MM-DD)")
-    parser.add_argument("--end-date", "--end_date", dest="end_date", type=str, required=True, help="Tanggal akhir (YYYY-MM-DD)")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--ticker",
+        type=str,
+        required=True,
+        help="Ticker saham yang diproses (misal: BBCA.JK)"
+    )
+    parser.add_argument(
+        "--start-date",
+        "--start_date",
+        dest="start_date",
+        type=str,
+        required=True,
+        help="Tanggal awal (YYYY-MM-DD)"
+    )
+    parser.add_argument(
+        "--end-date",
+        "--end_date",
+        dest="end_date",
+        type=str,
+        required=True,
+        help="Tanggal akhir (YYYY-MM-DD)"
+    )
 
+    args = parser.parse_args()
     ticker = args.ticker.strip().upper()
+
     logger.info(f"=== Menjalankan Stage Ingestion untuk: {ticker} ({args.start_date} s.d. {args.end_date}) ===")
     fetch_data(ticker, args.start_date, args.end_date)
     logger.info(f"=== Selesai Stage Ingestion untuk: {ticker} ===")
