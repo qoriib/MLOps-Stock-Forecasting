@@ -5,8 +5,12 @@ stages:
   ingestion:
     desc: "Unduh data historis harga saham bank dari Yahoo Finance"
     matrix:
-      ticker: ${TICKERS}
-    cmd: python -m src.ingestion --ticker ${item.ticker}
+      TICKER: ${TICKERS}
+    cmd: >-
+      python -m src.ingestion
+        --ticker ${item.TICKER}
+        --start-date ${START_DATE}
+        --end-date ${END_DATE}
     deps:
       - src/config.py
       - src/ingestion.py
@@ -14,25 +18,26 @@ stages:
       - START_DATE
       - END_DATE
     outs:
-      - artifact/data/${item.ticker}.parquet
+      - artifact/data/${item.TICKER}.parquet
 
   ml_pipeline:
     desc: "Pelatihan model LSTM & GRU serta pencarian hyperparameter optimal per ticker"
     matrix:
-      ticker: ${TICKERS}
+      TICKER: ${TICKERS}
     cmd: >-
       papermill
       --cwd .
       src/ml_pipeline.ipynb
-      artifact/notebook/ml_pipeline_${item.ticker}.ipynb
+      artifact/notebook/ml_pipeline_${item.TICKER}.ipynb
       -f params.yaml
-      -p TICKER ${item.ticker}
+      -p TICKER ${item.TICKER}
       --report-mode
       --log-output
       --progress-bar
     deps:
+      - src/config.py
       - src/ml_pipeline.ipynb
-      - artifact/data/${item.ticker}.parquet
+      - artifact/data/${item.TICKER}.parquet
     params:
       - TARGET_COL
       - TRAIN_SIZE
@@ -44,34 +49,27 @@ stages:
       - LEARNING_RATES
       - MODELS
     outs:
-      - artifact/notebook/ml_pipeline_${item.ticker}.ipynb:
+      - artifact/notebook/ml_pipeline_${item.TICKER}.ipynb:
           cache: false
-      - artifact/model/${item.ticker}_LSTM.keras
-      - artifact/model/${item.ticker}_GRU.keras
-      - artifact/model/${item.ticker}_hyperparameter.csv
+      - artifact/model/${item.TICKER}_LSTM.keras
+      - artifact/model/${item.TICKER}_GRU.keras
+      - artifact/model/${item.TICKER}_hyperparameter.csv
 
   store:
-    desc: "Ekspor parameter scaler, metrik evaluasi, dan penyalinan aset backend"
+    desc: "Ekspor parameter scaler dan penyalinan aset backend"
     matrix:
-      ticker: ${TICKERS}
-    cmd: python -m src.store --ticker ${item.ticker}
+      TICKER: ${TICKERS}
+    cmd: python -m src.store --ticker ${item.TICKER}
     deps:
       - src/config.py
+      - src/database.py
       - src/store.py
-      - artifact/data/${item.ticker}.parquet
-      - artifact/model/${item.ticker}_hyperparameter.csv
-      - artifact/model/${item.ticker}_LSTM.keras
-      - artifact/model/${item.ticker}_GRU.keras
+      - artifact/data/${item.TICKER}.parquet
+      - artifact/model/${item.TICKER}_LSTM.keras
+      - artifact/model/${item.TICKER}_GRU.keras
     params:
       - TARGET_COL
       - TRAIN_SIZE
-      - RANDOM_STATE
-      - EPOCHS
     outs:
-      - artifact/model/${item.ticker}_scaler.json
-      - artifact/model/${item.ticker}_metrics.json
-      - web/backend/assets/${item.ticker}.parquet
-      - web/backend/assets/${item.ticker}_scaler.json
-      - web/backend/assets/${item.ticker}_metrics.json
-      - web/backend/assets/${item.ticker}_LSTM.keras
-      - web/backend/assets/${item.ticker}_GRU.keras
+      - artifact/model/${item.TICKER}_scaler.pkl
+      - web/backend/assets/${item.TICKER}_scaler.pkl
