@@ -43,11 +43,16 @@ web/backend/
    ```bash
    cd web/backend
    ```
-2. Install dependensi:
+2. Buat dan aktifkan virtual environment:
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   ```
+3. Install dependensi:
    ```bash
    pip install -r requirements.txt
    ```
-3. Jalankan server FastAPI:
+4. Jalankan server FastAPI:
    ```bash
    uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```

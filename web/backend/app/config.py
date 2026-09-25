@@ -6,6 +6,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Assets path can be overridden by ASSETS_DIR environment variable
 ASSETS_DIR = Path(os.getenv("ASSETS_DIR", BASE_DIR / "assets"))
 
+# Database & MLOps Tracking Configuration
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/stock_db")
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
+
 # Application Metadata
 APP_NAME = "Stock Forecast Inference API"
 APP_VERSION = "2.0.0"

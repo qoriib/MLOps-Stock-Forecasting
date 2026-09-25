@@ -7,6 +7,7 @@ import numpy as np
 
 from app.config import (
     ASSETS_DIR,
+    MLFLOW_TRACKING_URI,
     CONFIDENCE_INTERVAL_Z,
     DEFAULT_HISTORY_LIMIT,
     DEFAULT_MODEL_TYPE,
@@ -18,6 +19,7 @@ from app.models.schemas import (
     PredictRequest,
     PredictResponse,
     PredictionItem,
+    ScalerMeta,
 )
 from app.services.data_service import (
     get_stock_history,
@@ -32,26 +34,48 @@ _MODEL_CACHE = {}
 
 
 def _get_keras_model(ticker: str, model_type: str):
-    """Load and cache Keras model."""
+    """Memuat dan menyimpan model Keras ke cache dari MLflow Model Registry (Production) dengan fallback lokal."""
     key = f"{ticker}_{model_type.upper()}"
     if key in _MODEL_CACHE:
         return _MODEL_CACHE[key]
 
-    model_path = ASSETS_DIR / f"{ticker}_{model_type.upper()}.keras"
-    if not model_path.exists():
-        logger.warning(f"Keras model file not found at: {model_path}")
-        return None
-
+    # 1. Muat langsung dari MLflow Model Registry (Stage Production)
     try:
-        import keras
+        import mlflow
+        import mlflow.keras
 
-        logger.info(f"Loading Keras model from {model_path}...")
-        model = keras.models.load_model(model_path)
-        _MODEL_CACHE[key] = model
-        return model
+        if MLFLOW_TRACKING_URI:
+            mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+        model_uri = f"models:/{key}/Production"
+        logger.info(f"Memuat model Keras dari MLflow Model Registry: {model_uri}...")
+        model = mlflow.keras.load_model(model_uri)
+        if model is not None:
+            _MODEL_CACHE[key] = model
+            logger.info(f"Model {key} berhasil dimuat dari MLflow Registry ({model_uri})")
+            return model
     except Exception as e:
-        logger.warning(f"Could not load Keras model ({e}). Using numerical recurrent engine.")
-        return None
+        logger.warning(f"Gagal memuat model {key} dari MLflow Registry ({e}). Memeriksa penyimpanan lokal...")
+
+    # 2. Fallback ke file lokal di ASSETS_DIR atau artifact/model/
+    candidate_paths = [
+        ASSETS_DIR / f"{key}.keras",
+        Path("artifact/model") / f"{key}.keras",
+    ]
+    for model_path in candidate_paths:
+        if model_path.exists():
+            try:
+                import keras
+
+                logger.info(f"Memuat model Keras dari penyimpanan lokal: {model_path}...")
+                model = keras.models.load_model(model_path)
+                _MODEL_CACHE[key] = model
+                return model
+            except Exception as e:
+                logger.warning(f"Gagal memuat model lokal dari {model_path}: {e}")
+
+    logger.warning(f"Model {key} tidak ditemukan di MLflow Registry maupun lokal. Menggunakan mesin peramalan rekuren numerik.")
+    return None
 
 
 def generate_future_business_dates(last_date_str: str, steps: int) -> List[str]:
@@ -106,18 +130,27 @@ def execute_forecast(params: PredictRequest) -> PredictResponse:
 
     close_prices = np.array([r.close for r in all_records], dtype=np.float32)
 
-    # 3. Normalisasi dengan Scaler hasil training
+    # 3. Normalisasi dengan Scaler hasil training (.pkl)
     scaler = get_ticker_scaler(ticker)
-    if scaler:
-        min_val = scaler.data_min
-        max_val = scaler.data_max
-        range_val = scaler.data_range if scaler.data_range > 0 else 1.0
+    if scaler is not None and hasattr(scaler, "transform") and hasattr(scaler, "data_min_"):
+        min_val = float(scaler.data_min_[0])
+        max_val = float(scaler.data_max_[0])
+        range_val = float(scaler.data_range_[0]) if scaler.data_range_[0] > 0 else 1.0
+        scaled_prices = scaler.transform(close_prices.reshape(-1, 1)).flatten()
+        scaler_meta = ScalerMeta(
+            scaler_type="MinMaxScaler",
+            data_min=min_val,
+            data_max=max_val,
+            data_range=range_val,
+            scale=float(scaler.scale_[0]),
+            min=float(scaler.min_[0]),
+        )
     else:
         min_val = float(np.min(close_prices))
         max_val = float(np.max(close_prices))
         range_val = max_val - min_val if (max_val - min_val) > 0 else 1.0
-
-    scaled_prices = (close_prices - min_val) / range_val
+        scaled_prices = (close_prices - min_val) / range_val
+        scaler_meta = None
 
     # 4. Inferensi Autoregressive Multi-step
     current_window = list(scaled_prices[-window_size:])
@@ -158,9 +191,15 @@ def execute_forecast(params: PredictRequest) -> PredictResponse:
         engine_name = f"Keras/Autoregressive Engine ({model_type_upper}) [Azure App Service]"
 
     # 5. Denormalisasi hasil prediksi
-    predicted_prices = [
-        round(float(s * range_val + min_val), 2) for s in predicted_scaled
-    ]
+    if scaler is not None and hasattr(scaler, "inverse_transform"):
+        pred_2d = np.array(predicted_scaled, dtype=np.float32).reshape(-1, 1)
+        predicted_prices = [
+            round(float(p), 2) for p in scaler.inverse_transform(pred_2d).flatten()
+        ]
+    else:
+        predicted_prices = [
+            round(float(s * range_val + min_val), 2) for s in predicted_scaled
+        ]
 
     # 6. Hitung Confidence Interval 95%
     last_60 = close_prices[-60:]
@@ -198,7 +237,7 @@ def execute_forecast(params: PredictRequest) -> PredictResponse:
         best_config=best_config,
         metrics=variant_metrics,
         last_historical_date=last_historical_date,
-        scaler_info=scaler,
+        scaler_info=scaler_meta,
         predictions=prediction_items,
         history=all_records[-history_limit:],
     )

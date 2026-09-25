@@ -1,10 +1,12 @@
-/BBCA.JK.parquet
-/BBCA.JK_scaler.json
-/BBCA.JK_metrics.json
-/BBRI.JK.parquet
-/BBRI.JK_scaler.json
-/BBRI.JK_metrics.json
-/BBCA.JK_LSTM.keras
-/BBCA.JK_GRU.keras
-/BBRI.JK_LSTM.keras
-/BBRI.JK_GRU.keras
+# Abaikan seluruh artefak model dan data yang di-generate untuk semua ticker
+*.parquet
+*.keras
+*.h5
+*.pkl
+*_scaler.pkl
+*_scaler.json
+*_metrics.json
+*_hyperparameter.csv
+
+# Jangan abaikan file .gitignore ini
+!.gitignore
