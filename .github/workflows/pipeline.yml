@@ -18,7 +18,7 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_ACCESS_KEY }}
   MLFLOW_TRACKING_URI: https://dagshub.com/qoriib/MLOps-Stock-Forecasting.mlflow
   MLFLOW_TRACKING_USERNAME: qoriib
-  MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_USER_TOKEN }}
+  MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
   AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
 
@@ -55,8 +55,7 @@ jobs:
           path: |
             artifact/model/*_LSTM.keras
             artifact/model/*_GRU.keras
-            artifact/model/*_scaler.json
-            artifact/model/*_metrics.json
+            artifact/model/*_scaler.pkl
             artifact/model/*_hyperparameter.csv
 
   deploy_backend:
