@@ -12,7 +12,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 
 def promote_champion_models(ticker: str) -> None:
-    """Mempromosikan versi model terbaru ke alias @champion dan @production di MLflow."""
     try:
         if config.MLFLOW_TRACKING_URI:
             mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
@@ -22,22 +21,21 @@ def promote_champion_models(ticker: str) -> None:
         for model_type in config.MODELS:
             reg_model_name = f"{ticker}_{model_type}"
             versions = client.search_model_versions(f"name = '{reg_model_name}'")
-            
+
             if versions:
                 latest_v = sorted(versions, key=lambda v: int(v.version))[-1].version
                 client.set_registered_model_alias(reg_model_name, "champion", latest_v)
                 client.set_registered_model_alias(reg_model_name, "production", latest_v)
                 logger.info(f"[MLflow] {reg_model_name} v{latest_v} dipromosikan ke @champion & @production")
-    
+
     except Exception as e:
         logger.info(f"[MLflow] Promosi model {ticker} dilewati: {e}")
 
 
 def sync_backend_assets(ticker: str) -> None:
-    """Menyalin artefak model dan scaler ke backend assets mengandalkan config."""
     config.BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 1. Salin Model (.keras)
+    # Salin Model
     for model_type in config.MODELS:
         src_model = config.get_model_path(ticker, model_type)
         dst_model = config.get_backend_model_path(ticker, model_type)
@@ -45,7 +43,7 @@ def sync_backend_assets(ticker: str) -> None:
             shutil.copy2(src_model, dst_model)
             logger.info(f"[Backend Asset] Model disalin: {dst_model.name}")
 
-    # 2. Salin Scaler (.pkl)
+    # Salin Scaler
     src_scaler = config.get_scaler_path(ticker)
     dst_scaler = config.get_backend_scaler_path(ticker)
     if src_scaler.exists():
@@ -62,6 +60,7 @@ def main():
     logger.info(f"=== Menjalankan Stage Store untuk: {ticker} ===")
     promote_champion_models(ticker)
     sync_backend_assets(ticker)
+    logger.info(f"=== Selesai Stage Store untuk: {ticker} ===")
 
 
 if __name__ == "__main__":
