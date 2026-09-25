@@ -6,11 +6,7 @@ stages:
     desc: "Unduh data historis harga saham bank dari Yahoo Finance"
     matrix:
       TICKER: ${TICKERS}
-    cmd: >-
-      python -m src.ingestion
-        --ticker ${item.TICKER}
-        --start-date ${START_DATE}
-        --end-date ${END_DATE}
+    cmd: python -m src.ingestion --ticker ${item.TICKER} --start-date ${START_DATE} --end-date ${END_DATE}
     deps:
       - src/config.py
       - src/ingestion.py
@@ -26,7 +22,6 @@ stages:
       TICKER: ${TICKERS}
     cmd: >-
       papermill
-      --cwd .
       src/ml_pipeline.ipynb
       artifact/notebook/ml_pipeline_${item.TICKER}.ipynb
       -f params.yaml
@@ -53,10 +48,11 @@ stages:
           cache: false
       - artifact/model/${item.TICKER}_LSTM.keras
       - artifact/model/${item.TICKER}_GRU.keras
+      - artifact/model/${item.TICKER}_scaler.pkl
       - artifact/model/${item.TICKER}_hyperparameter.csv
 
   store:
-    desc: "Ekspor parameter scaler dan penyalinan aset backend"
+    desc: "Penyalinan model champion dan artefak scaler dari MLflow ke backend assets"
     matrix:
       TICKER: ${TICKERS}
     cmd: python -m src.store --ticker ${item.TICKER}
@@ -67,9 +63,8 @@ stages:
       - artifact/data/${item.TICKER}.parquet
       - artifact/model/${item.TICKER}_LSTM.keras
       - artifact/model/${item.TICKER}_GRU.keras
-    params:
-      - TARGET_COL
-      - TRAIN_SIZE
-    outs:
       - artifact/model/${item.TICKER}_scaler.pkl
+    outs:
       - web/backend/assets/${item.TICKER}_scaler.pkl
+      - web/backend/assets/${item.TICKER}_LSTM.keras
+      - web/backend/assets/${item.TICKER}_GRU.keras

@@ -1,16 +1,17 @@
 schema: '2.0'
 stages:
   ingestion@BBCA.JK:
-    cmd: python -m src.ingestion --ticker BBCA.JK
+    cmd: python -m src.ingestion --ticker BBCA.JK --start-date 2025-09-03 
+      --end-date 2026-09-03
     deps:
     - path: src/config.py
       hash: md5
-      md5: cb407d031d718b0516775fbbc79d6e2a
-      size: 279
+      md5: 22cc49685cebcdf7360efa767791e099
+      size: 1264
     - path: src/ingestion.py
       hash: md5
-      md5: 687f42a3571a253446e25806d4d7e2c3
-      size: 1631
+      md5: 8f36be8c18e8da4747ee24e5e99ce834
+      size: 1537
     params:
       params.yaml:
         END_DATE: '2026-09-03'
@@ -18,19 +19,20 @@ stages:
     outs:
     - path: artifact/data/BBCA.JK.parquet
       hash: md5
-      md5: e8420892b3b65f0de726c509f109c532
-      size: 16072
+      md5: 585a7a8051a45f1e1cbc5e0b11869347
+      size: 16077
   ingestion@BBRI.JK:
-    cmd: python -m src.ingestion --ticker BBRI.JK
+    cmd: python -m src.ingestion --ticker BBRI.JK --start-date 2025-09-03 
+      --end-date 2026-09-03
     deps:
     - path: src/config.py
       hash: md5
-      md5: cb407d031d718b0516775fbbc79d6e2a
-      size: 279
+      md5: 22cc49685cebcdf7360efa767791e099
+      size: 1264
     - path: src/ingestion.py
       hash: md5
-      md5: 687f42a3571a253446e25806d4d7e2c3
-      size: 1631
+      md5: 8f36be8c18e8da4747ee24e5e99ce834
+      size: 1537
     params:
       params.yaml:
         END_DATE: '2026-09-03'
@@ -38,8 +40,8 @@ stages:
     outs:
     - path: artifact/data/BBRI.JK.parquet
       hash: md5
-      md5: 408f83ac2320dc289e17b57f27d09981
-      size: 15510
+      md5: 09f3d14af9bd95d32ea094d7671207ed
+      size: 15506
   ml_pipeline@BBCA.JK:
     cmd: papermill --cwd . src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBCA.JK.ipynb -p TICKER BBCA.JK -p 

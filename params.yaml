@@ -6,7 +6,7 @@ END_DATE: "2026-09-03"
 
 TARGET_COL: "close"
 RANDOM_STATE: 42
-TRAIN_SIZE: 0.8
+TRAIN_SIZE: 0.9
 EPOCHS: 50
 
 # Hyperparameter
