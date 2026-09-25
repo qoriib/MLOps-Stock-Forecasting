@@ -24,25 +24,27 @@ logger = logging.getLogger("data_service")
 
 
 def get_available_tickers() -> List[str]:
-    """Mendapatkan daftar ticker dari PostgreSQL (fallback ke assets .parquet jika belum ada DB)."""
-    # 1. Coba dari PostgreSQL
+    """Mendapatkan daftar ticker yang tersedia dari assets lokal dan PostgreSQL."""
+    tickers = set()
+
+    # 1. Ambil dari assets .parquet (sumber data utama lokal hasil pipeline)
+    if ASSETS_DIR.exists():
+        for f in ASSETS_DIR.glob("*.parquet"):
+            tickers.add(f.stem.upper())
+
+    # 2. Tambahkan dari PostgreSQL jika sudah ada data tersimpan
     try:
         session = get_db_session()
         stmt = select(StockPrice.ticker).distinct().order_by(StockPrice.ticker)
         db_tickers = session.scalars(stmt).all()
         session.close()
-        if db_tickers:
-            return sorted([str(t).upper() for t in db_tickers])
+        for t in db_tickers:
+            tickers.add(str(t).upper())
     except Exception as e:
-        logger.warning(f"Gagal mengambil daftar ticker dari PostgreSQL ({e}), mencoba fallback ke assets...")
+        logger.debug(f"Pengecekan ticker di PostgreSQL dilewati: {e}")
 
-    # 2. Fallback ke assets directory
-    if ASSETS_DIR.exists():
-        tickers = []
-        for f in ASSETS_DIR.glob("*.parquet"):
-            tickers.append(f.stem.upper())
-        if tickers:
-            return sorted(tickers)
+    if tickers:
+        return sorted(list(tickers))
 
     return [DEFAULT_TICKER]
 
@@ -201,7 +203,7 @@ def get_stock_history(
     except Exception as e:
         logger.warning(f"Gagal membaca stock history dari PostgreSQL ({e}), mencoba fallback ke .parquet...")
 
-    # 2. Fallback ke file .parquet
+    # 2. Fallback ke file .parquet & On-Demand Cache ke PostgreSQL
     candidate_parquets = [
         ASSETS_DIR / f"{clean_ticker}.parquet",
         Path("artifact/data") / f"{clean_ticker}.parquet",
@@ -209,7 +211,17 @@ def get_stock_history(
     for parquet_file in candidate_parquets:
         if parquet_file.exists():
             try:
-                df = pd.read_parquet(parquet_file)
+                raw_df = pd.read_parquet(parquet_file)
+
+                # Cache ke PostgreSQL on-demand agar request berikutnya langsung membaca dari DB
+                try:
+                    from app.database import upsert_stock_prices
+                    cached_count = upsert_stock_prices(raw_df, clean_ticker)
+                    logger.info(f"[PostgreSQL Cache] Berhasil cache on-demand {cached_count} baris data {clean_ticker} ke PostgreSQL")
+                except Exception as ce:
+                    logger.debug(f"[PostgreSQL Cache] Caching ke PostgreSQL dilewati ({ce})")
+
+                df = raw_df.copy()
                 df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
                 df = df.sort_values("date").reset_index(drop=True)
 
