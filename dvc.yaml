@@ -59,7 +59,6 @@ stages:
     deps:
       - src/config.py
       - src/store.py
-      - artifact/data/${item.TICKER}.parquet
       - artifact/model/${item.TICKER}_LSTM.keras
       - artifact/model/${item.TICKER}_GRU.keras
       - artifact/model/${item.TICKER}_scaler.pkl

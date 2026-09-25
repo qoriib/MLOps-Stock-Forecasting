@@ -50,19 +50,6 @@ def sync_backend_assets(ticker: str, models: List[str]) -> None:
         shutil.copy2(src_scaler, dst_scaler)
         logger.info(f"[Backend Asset] Scaler disalin: {dst_scaler.name}")
 
-    # 3. Salin Data Parquet & Hyperparameter CSV
-    src_parquet = config.get_data_path(ticker)
-    dst_parquet = config.get_backend_asset_path(f"{ticker}.parquet")
-    if src_parquet.exists():
-        shutil.copy2(src_parquet, dst_parquet)
-        logger.info(f"[Backend Asset] Parquet disalin: {dst_parquet.name}")
-
-    src_hp = config.get_hyperparameter_path(ticker)
-    dst_hp = config.get_backend_asset_path(f"{ticker}_hyperparameter.csv")
-    if src_hp.exists():
-        shutil.copy2(src_hp, dst_hp)
-        logger.info(f"[Backend Asset] Hyperparameter CSV disalin: {dst_hp.name}")
-
 
 def main():
     parser = argparse.ArgumentParser(description="Penyalinan aset ke backend dan promosi model MLflow")
