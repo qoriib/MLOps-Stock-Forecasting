@@ -7,6 +7,7 @@ from typing import Any, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import keras
 
 from app.config import (
     ASSETS_DIR,
@@ -51,8 +52,6 @@ def _get_forecast_model(ticker: str, model_type: str) -> Tuple[Optional[Any], st
     for p in candidate_model_paths:
         if p.exists():
             try:
-                import keras
-
                 local_keras = keras.models.load_model(p)
                 engine_desc = f"Local Keras Model ({model_type.upper()}) [Asset: {p.name}]"
                 _MODEL_CACHE[key] = (local_keras, engine_desc)

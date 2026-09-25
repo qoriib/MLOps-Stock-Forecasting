@@ -10,6 +10,7 @@ from app.config import ASSETS_DIR, DEFAULT_TICKER, DATABASE_URL
 from app.database import (
     get_db_session,
     StockPrice,
+    upsert_stock_prices,
 )
 from app.models.schemas import (
     HistoricalItem,
@@ -215,7 +216,6 @@ def get_stock_history(
 
                 # Cache ke PostgreSQL on-demand agar request berikutnya langsung membaca dari DB
                 try:
-                    from app.database import upsert_stock_prices
                     cached_count = upsert_stock_prices(raw_df, clean_ticker)
                     logger.info(f"[PostgreSQL Cache] Berhasil cache on-demand {cached_count} baris data {clean_ticker} ke PostgreSQL")
                 except Exception as ce:
