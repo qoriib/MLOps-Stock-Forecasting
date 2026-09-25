@@ -2,6 +2,8 @@ import argparse
 import logging
 import shutil
 import dvc.api
+import mlflow
+from mlflow.tracking import MlflowClient
 from src import config
 
 logger = logging.getLogger("store_stage")
@@ -11,9 +13,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 def promote_champion_models(ticker: str) -> None:
     """Mempromosikan versi model terbaru ke alias @champion dan @production di MLflow."""
     try:
-        import mlflow
-        from mlflow.tracking import MlflowClient
-
         if config.MLFLOW_TRACKING_URI:
             mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
 
