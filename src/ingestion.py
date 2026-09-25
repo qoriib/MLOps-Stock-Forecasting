@@ -7,7 +7,6 @@ from src import config
 logger = logging.getLogger("ingestion_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-
 def fetch_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame | None:
     logger.info(f"[Yahoo Finance] Mengunduh data historis {ticker} ({start_date} s.d. {end_date})...")
 
@@ -34,7 +33,6 @@ def fetch_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame | No
     logger.info(f"[Artifact] {len(df)} baris data disimpan ke: {parquet_path.name}")
     return df
 
-
 def main():
     parser = argparse.ArgumentParser(description="Akuisisi data saham dari Yahoo Finance")
     parser.add_argument("--ticker", type=str, required=True, help="Ticker saham yang diproses (misal: BBCA.JK)")
@@ -46,7 +44,6 @@ def main():
     logger.info(f"=== Menjalankan Stage Ingestion untuk: {ticker} ({args.start_date} s.d. {args.end_date}) ===")
     fetch_data(ticker, args.start_date, args.end_date)
     logger.info(f"=== Selesai Stage Ingestion untuk: {ticker} ===")
-
 
 if __name__ == "__main__":
     main()

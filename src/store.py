@@ -1,15 +1,12 @@
 import argparse
 import logging
 import shutil
-
 import mlflow
 from mlflow.tracking import MlflowClient
-
 from src import config
 
 logger = logging.getLogger("store_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
 
 def promote_champion_models(ticker: str) -> None:
     try:
@@ -25,12 +22,10 @@ def promote_champion_models(ticker: str) -> None:
             if versions:
                 latest_v = sorted(versions, key=lambda v: int(v.version))[-1].version
                 client.set_registered_model_alias(reg_model_name, "champion", latest_v)
-                client.set_registered_model_alias(reg_model_name, "production", latest_v)
-                logger.info(f"[MLflow] {reg_model_name} v{latest_v} dipromosikan ke @champion & @production")
+                logger.info(f"[MLflow] {reg_model_name} v{latest_v} dipromosikan ke @champion")
 
     except Exception as e:
         logger.info(f"[MLflow] Promosi model {ticker} dilewati: {e}")
-
 
 def sync_backend_assets(ticker: str) -> None:
     config.BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
@@ -50,7 +45,6 @@ def sync_backend_assets(ticker: str) -> None:
         shutil.copy2(src_scaler, dst_scaler)
         logger.info(f"[Backend Asset] Scaler disalin: {dst_scaler.name}")
 
-
 def main():
     parser = argparse.ArgumentParser(description="Penyalinan aset ke backend dan promosi model MLflow")
     parser.add_argument("--ticker", type=str, required=True, help="Ticker saham yang diproses (misal: BBCA.JK)")
@@ -61,7 +55,6 @@ def main():
     promote_champion_models(ticker)
     sync_backend_assets(ticker)
     logger.info(f"=== Selesai Stage Store untuk: {ticker} ===")
-
 
 if __name__ == "__main__":
     main()
