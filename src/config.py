@@ -13,7 +13,6 @@ load_dotenv()
 ARTIFACT_DIR = BASE_DIR / "artifact"
 DATA_DIR = ARTIFACT_DIR / "data"
 MODEL_DIR = ARTIFACT_DIR / "model"
-NOTEBOOK_DIR = ARTIFACT_DIR / "notebook"
 
 # Direktori Backend Assets
 BACKEND_DIR = BASE_DIR / "web" / "backend"
@@ -53,7 +52,3 @@ def get_backend_model_path(ticker: str, model_type: str) -> Path:
 def get_backend_scaler_path(ticker: str) -> Path:
     BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
     return BACKEND_ASSETS_DIR / f"{ticker}_scaler.pkl"
-
-def get_backend_asset_path(filename: str) -> Path:
-    BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-    return BACKEND_ASSETS_DIR / filename
