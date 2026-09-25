@@ -15,16 +15,17 @@ DATA_DIR = ARTIFACT_DIR / "data"
 MODEL_DIR = ARTIFACT_DIR / "model"
 NOTEBOOK_DIR = ARTIFACT_DIR / "notebook"
 
+# Direktori Backend Assets
+BACKEND_DIR = BASE_DIR / "web" / "backend"
+BACKEND_ASSETS_DIR = BACKEND_DIR / "assets"
+
 # MLflow Tracking
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
 
-# Database Configuration 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/stock_db"
-)
+# Helper Path Artifact
+def get_experiment_name(ticker: str) -> str:
+    return f"Stock-Forecasting-{ticker}"
 
-# Helper Path
 def get_data_path(ticker: str) -> Path:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     return DATA_DIR / f"{ticker}.parquet"
@@ -37,9 +38,19 @@ def get_model_path(ticker: str, model_type: str) -> Path:
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     return MODEL_DIR / f"{ticker}_{model_type}.keras"
 
-def get_experiment_name(ticker: str) -> str:
-    return f"Stock-Forecasting-{ticker}"
-
 def get_hyperparameter_path(ticker: str) -> Path:
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     return MODEL_DIR / f"{ticker}_hyperparameter.csv"
+
+# Helper Path Backend Assets
+def get_backend_model_path(ticker: str, model_type: str) -> Path:
+    BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+    return BACKEND_ASSETS_DIR / f"{ticker}_{model_type}.keras"
+
+def get_backend_scaler_path(ticker: str) -> Path:
+    BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+    return BACKEND_ASSETS_DIR / f"{ticker}_scaler.pkl"
+
+def get_backend_asset_path(filename: str) -> Path:
+    BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+    return BACKEND_ASSETS_DIR / filename
