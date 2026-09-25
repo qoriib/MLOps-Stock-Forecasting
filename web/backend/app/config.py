@@ -1,8 +1,16 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = BASE_DIR.parent.parent
+
+# Load environment variables
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(ROOT_DIR / ".env")
+
 # Assets path can be overridden by ASSETS_DIR environment variable
 ASSETS_DIR = Path(os.getenv("ASSETS_DIR", BASE_DIR / "assets"))
 

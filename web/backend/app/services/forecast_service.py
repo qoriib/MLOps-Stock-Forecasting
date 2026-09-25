@@ -1,13 +1,15 @@
 import datetime
 import logging
 import math
+import os
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
+
 import numpy as np
+import pandas as pd
 
 from app.config import (
     ASSETS_DIR,
-    MLFLOW_TRACKING_URI,
     CONFIDENCE_INTERVAL_Z,
     DEFAULT_HISTORY_LIMIT,
     DEFAULT_MODEL_TYPE,
@@ -29,53 +31,40 @@ from app.services.data_service import (
 
 logger = logging.getLogger("forecast_service")
 
-# Cache model in memory
+# Cache model in memory: key -> (model, engine_label)
 _MODEL_CACHE = {}
 
 
-def _get_keras_model(ticker: str, model_type: str):
-    """Memuat dan menyimpan model Keras ke cache dari MLflow Model Registry (Production) dengan fallback lokal."""
+def _get_forecast_model(ticker: str, model_type: str) -> Tuple[Optional[Any], str]:
+    """
+    Memuat model Keras murni langsung dari asset lokal (ASSETS_DIR) yang disimpan oleh store.py.
+    """
     key = f"{ticker}_{model_type.upper()}"
     if key in _MODEL_CACHE:
         return _MODEL_CACHE[key]
 
-    # 1. Muat langsung dari MLflow Model Registry (Stage Production)
-    try:
-        import mlflow
-        import mlflow.keras
-
-        if MLFLOW_TRACKING_URI:
-            mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-
-        model_uri = f"models:/{key}/Production"
-        logger.info(f"Memuat model Keras dari MLflow Model Registry: {model_uri}...")
-        model = mlflow.keras.load_model(model_uri)
-        if model is not None:
-            _MODEL_CACHE[key] = model
-            logger.info(f"Model {key} berhasil dimuat dari MLflow Registry ({model_uri})")
-            return model
-    except Exception as e:
-        logger.warning(f"Gagal memuat model {key} dari MLflow Registry ({e}). Memeriksa penyimpanan lokal...")
-
-    # 2. Fallback ke file lokal di ASSETS_DIR atau artifact/model/
-    candidate_paths = [
+    candidate_model_paths = [
         ASSETS_DIR / f"{key}.keras",
         Path("artifact/model") / f"{key}.keras",
     ]
-    for model_path in candidate_paths:
-        if model_path.exists():
+
+    for p in candidate_model_paths:
+        if p.exists():
             try:
                 import keras
 
-                logger.info(f"Memuat model Keras dari penyimpanan lokal: {model_path}...")
-                model = keras.models.load_model(model_path)
-                _MODEL_CACHE[key] = model
-                return model
-            except Exception as e:
-                logger.warning(f"Gagal memuat model lokal dari {model_path}: {e}")
+                local_keras = keras.models.load_model(p)
+                engine_desc = f"Local Keras Model ({model_type.upper()}) [Asset: {p.name}]"
+                _MODEL_CACHE[key] = (local_keras, engine_desc)
+                logger.info(f"Model Keras lokal berhasil dimuat dari: {p}")
+                return _MODEL_CACHE[key]
+            except Exception as ke:
+                logger.warning(f"Gagal memuat file Keras lokal {p}: {ke}")
 
-    logger.warning(f"Model {key} tidak ditemukan di MLflow Registry maupun lokal. Menggunakan mesin peramalan rekuren numerik.")
-    return None
+    logger.warning(
+        f"File model {key}.keras tidak ditemukan di asset lokal ({ASSETS_DIR}). Menggunakan mesin peramalan simulasi."
+    )
+    return (None, f"Numerical Recurrent Simulation Engine ({model_type.upper()}) [Fallback]")
 
 
 def generate_future_business_dates(last_date_str: str, steps: int) -> List[str]:
@@ -93,7 +82,7 @@ def generate_future_business_dates(last_date_str: str, steps: int) -> List[str]:
 
 
 def execute_forecast(params: PredictRequest) -> PredictResponse:
-    """Eksekusi inferensi peramalan harga saham menggunakan model Keras LSTM/GRU."""
+    """Eksekusi inferensi peramalan harga saham multi-step langsung menggunakan Keras Model dan MinMaxScaler."""
     ticker = params.ticker.strip().upper()
     raw_model = (params.model_type or DEFAULT_MODEL_TYPE).lower()
     model_type = "gru" if raw_model == "gru" else "lstm"
@@ -103,7 +92,11 @@ def execute_forecast(params: PredictRequest) -> PredictResponse:
 
     # 1. Dapatkan metrik dan konfigurasi terbaik
     model_metrics = get_ticker_metrics(ticker)
-    best_config = model_metrics.best_configs.get(model_type_upper) if model_metrics and model_metrics.best_configs else None
+    best_config = (
+        model_metrics.best_configs.get(model_type_upper)
+        if model_metrics and model_metrics.best_configs
+        else None
+    )
     variant_metrics = model_metrics.metrics.get(model_type_upper) if model_metrics else None
 
     window_size = (
@@ -112,7 +105,7 @@ def execute_forecast(params: PredictRequest) -> PredictResponse:
         else (variant_metrics.time_steps if variant_metrics and variant_metrics.time_steps else DEFAULT_WINDOW_SIZE)
     )
 
-    # 2. Ambil data historis
+    # 2. Ambil data historis pasar
     history_res = get_stock_history(
         ticker=ticker,
         limit=500,
@@ -128,80 +121,82 @@ def execute_forecast(params: PredictRequest) -> PredictResponse:
             f"Jumlah data ({len(all_records)}) belum memenuhi window size minimal ({window_size})."
         )
 
+    # Harga penutupan asli (Rp)
     close_prices = np.array([r.close for r in all_records], dtype=np.float32)
 
-    # 3. Normalisasi dengan Scaler hasil training (.pkl)
+    # 3. Eksekusi inferensi peramalan multi-step
+    forecast_model, engine_name = _get_forecast_model(ticker, model_type)
     scaler = get_ticker_scaler(ticker)
-    if scaler is not None and hasattr(scaler, "transform") and hasattr(scaler, "data_min_"):
-        min_val = float(scaler.data_min_[0])
-        max_val = float(scaler.data_max_[0])
-        range_val = float(scaler.data_range_[0]) if scaler.data_range_[0] > 0 else 1.0
-        scaled_prices = scaler.transform(close_prices.reshape(-1, 1)).flatten()
-        scaler_meta = ScalerMeta(
-            scaler_type="MinMaxScaler",
-            data_min=min_val,
-            data_max=max_val,
-            data_range=range_val,
-            scale=float(scaler.scale_[0]),
-            min=float(scaler.min_[0]),
-        )
-    else:
-        min_val = float(np.min(close_prices))
-        max_val = float(np.max(close_prices))
-        range_val = max_val - min_val if (max_val - min_val) > 0 else 1.0
-        scaled_prices = (close_prices - min_val) / range_val
-        scaler_meta = None
 
-    # 4. Inferensi Autoregressive Multi-step
-    current_window = list(scaled_prices[-window_size:])
-    predicted_scaled = []
-    keras_model = _get_keras_model(ticker, model_type)
+    predicted_prices = []
+    current_window_raw = list(close_prices[-window_size:])
 
-    if keras_model is not None:
+    if forecast_model is not None and scaler is not None:
         try:
             for _ in range(steps):
-                x = np.array(current_window[-window_size:], dtype=np.float32).reshape(1, window_size, 1)
-                pred = float(keras_model.predict(x, verbose=0)[0, 0])
-                predicted_scaled.append(pred)
-                current_window.append(pred)
-            engine_name = f"TensorFlow/Keras ({model_type_upper}) [Azure App Service]"
-        except Exception as e:
-            logger.error(f"Error during Keras predict: {e}. Falling back to simulation engine.")
-            keras_model = None
+                # Ambil window terakhir sebesar window_size (harga asli Rp)
+                window_raw = np.array(current_window_raw[-window_size:], dtype=np.float32).reshape(-1, 1)
 
-    if keras_model is None:
-        # Fallback recurrent simulation engine
-        recent_window = current_window[-10:]
+                # 1. Normalisasi fitur dengan Scaler (0, 1)
+                window_scaled = scaler.transform(window_raw)
+
+                # 2. Bentuk input 3D: (1, time_steps, 1)
+                input_3d = window_scaled.reshape(1, window_size, 1)
+
+                # 3. Prediksi menggunakan Keras model
+                pred_scaled = forecast_model.predict(input_3d, verbose=0)
+
+                # 4. Inverse transform kembali ke harga asli Rupiah
+                pred_price_arr = scaler.inverse_transform(pred_scaled)
+                pred_price = float(pred_price_arr.flatten()[0])
+
+                predicted_prices.append(pred_price)
+                current_window_raw.append(pred_price)
+        except Exception as e:
+            logger.error(
+                f"Error saat inferensi Keras untuk {ticker}: {e}. Beralih ke mesin simulasi.",
+                exc_info=True,
+            )
+            forecast_model = None
+            predicted_prices = []
+            current_window_raw = list(close_prices[-window_size:])
+
+    if forecast_model is None:
+        # Fallback recurrent simulation engine langsung pada harga asli
+        recent_window = current_window_raw[-10:]
         trend_momentum = (recent_window[-1] - recent_window[0]) / len(recent_window)
         weights = np.linspace(0.5, 1.0, window_size)
         weight_sum = np.sum(weights)
 
         for step in range(steps):
-            window_slice = np.array(current_window[-window_size:])
+            window_slice = np.array(current_window_raw[-window_size:])
             base_est = float(np.sum(window_slice * weights) / weight_sum)
             decay = math.exp(-0.03 * step)
             multiplier = 1.05 if model_type == "lstm" else 0.95
             delta = trend_momentum * decay * multiplier
-            activated_delta = math.tanh(delta * 2.0) * 0.03
+            activated_delta = math.tanh(delta / (base_est * 0.01 + 1e-6)) * (base_est * 0.005)
             next_val = float(base_est + activated_delta)
 
-            predicted_scaled.append(next_val)
-            current_window.append(next_val)
+            predicted_prices.append(next_val)
+            current_window_raw.append(next_val)
 
-        engine_name = f"Keras/Autoregressive Engine ({model_type_upper}) [Azure App Service]"
+        engine_name = f"Numerical Recurrent Simulation Engine ({model_type_upper}) [Fallback]"
 
-    # 5. Denormalisasi hasil prediksi
-    if scaler is not None and hasattr(scaler, "inverse_transform"):
-        pred_2d = np.array(predicted_scaled, dtype=np.float32).reshape(-1, 1)
-        predicted_prices = [
-            round(float(p), 2) for p in scaler.inverse_transform(pred_2d).flatten()
-        ]
+    # 4. Ambil metadata Scaler untuk respons API (jika tersedia)
+    scaler = get_ticker_scaler(ticker)
+    if scaler is not None and hasattr(scaler, "data_min_"):
+        scaler_meta = ScalerMeta(
+            scaler_type="MinMaxScaler",
+            data_min=float(scaler.data_min_[0]),
+            data_max=float(scaler.data_max_[0]),
+            data_range=float(scaler.data_range_[0]) if scaler.data_range_[0] > 0 else 1.0,
+            scale=float(scaler.scale_[0]),
+            min=float(scaler.min_[0]),
+        )
     else:
-        predicted_prices = [
-            round(float(s * range_val + min_val), 2) for s in predicted_scaled
-        ]
+        scaler_meta = None
 
-    # 6. Hitung Confidence Interval 95%
+    # 5. Hitung Confidence Interval 95%
     last_60 = close_prices[-60:]
     if len(last_60) > 1:
         diffs = np.diff(last_60)
@@ -214,7 +209,7 @@ def execute_forecast(params: PredictRequest) -> PredictResponse:
 
     prediction_items = []
     for idx, date in enumerate(future_dates):
-        price = predicted_prices[idx]
+        price = round(float(predicted_prices[idx]), 2)
         margin = CONFIDENCE_INTERVAL_Z * rmse * math.sqrt(1.0 + 0.04 * idx)
         lower_bound = round(max(0.0, price - margin), 2)
         upper_bound = round(price + margin, 2)

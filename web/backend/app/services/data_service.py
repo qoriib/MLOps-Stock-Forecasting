@@ -10,7 +10,6 @@ from app.config import ASSETS_DIR, DEFAULT_TICKER, DATABASE_URL
 from app.database import (
     get_db_session,
     StockPrice,
-    ModelMetric,
 )
 from app.models.schemas import (
     HistoricalItem,
@@ -49,64 +48,79 @@ def get_available_tickers() -> List[str]:
 
 
 def get_ticker_metrics(ticker: str) -> Optional[TickerMetrics]:
-    """Mengambil metadata metrik dan konfigurasi hyperparameter optimal dari PostgreSQL (fallback ke JSON)."""
+    """Mengambil metadata metrik dan konfigurasi model optimal langsung dari file asset CSV hyperparameter."""
     clean_ticker = ticker.strip().upper()
 
-    # 1. Coba dari PostgreSQL
-    try:
-        session = get_db_session()
-        stmt = select(ModelMetric).where(ModelMetric.ticker == clean_ticker)
-        db_metrics = session.scalars(stmt).all()
-        session.close()
+    # 1. Baca langsung dari file CSV hyperparameter di assets lokal
+    csv_candidates = [
+        ASSETS_DIR / f"{clean_ticker}_hyperparameter.csv",
+        Path("artifact/model") / f"{clean_ticker}_hyperparameter.csv",
+    ]
+    for csv_file in csv_candidates:
+        if csv_file.exists():
+            try:
+                df_hp = pd.read_csv(csv_file)
+                if not df_hp.empty:
+                    metrics_summary = {}
+                    best_configs = {}
+                    best_model_name = "LSTM"
+                    min_overall_rmse = float("inf")
 
-        if db_metrics:
-            metrics_summary = {}
-            best_configs = {}
-            best_model_name = "LSTM"
+                    for m_name in ["LSTM", "GRU"]:
+                        sub_df = df_hp[df_hp["model"].str.upper() == m_name]
+                        if not sub_df.empty:
+                            best_row = sub_df.sort_values("RMSE").iloc[0]
+                            rmse_val = float(best_row["RMSE"])
+                            mse_val = float(best_row["MSE"])
+                            mape_val = float(best_row["MAPE"])
+                            ts_val = int(best_row["time_steps"])
+                            opt_val = str(best_row["optimizer"])
+                            bs_val = int(best_row["batch_size"])
+                            lr_val = float(best_row["learning_rate"])
 
-            for m in db_metrics:
-                m_name = m.model_name.upper()
-                if m.is_best:
-                    best_model_name = m_name
+                            eval_obj = ModelVariantMetrics(
+                                MSE=mse_val,
+                                RMSE=rmse_val,
+                                MAPE=mape_val,
+                                R2=0.0,
+                                time_steps=ts_val,
+                                optimizer=opt_val,
+                                batch_size=bs_val,
+                                learning_rate=lr_val,
+                            )
+                            metrics_summary[m_name] = eval_obj
 
-                eval_obj = ModelVariantMetrics(
-                    MSE=float(m.mse),
-                    RMSE=float(m.rmse),
-                    MAPE=float(m.mape),
-                    R2=float(m.r2 or 0.0),
-                    time_steps=int(m.time_steps),
-                    optimizer=str(m.optimizer),
-                    batch_size=int(m.batch_size),
-                    learning_rate=float(m.learning_rate),
-                )
-                metrics_summary[m_name] = eval_obj
+                            best_cfg_obj = BestConfigItem(
+                                model=m_name,
+                                time_steps=ts_val,
+                                optimizer=opt_val,
+                                batch_size=bs_val,
+                                learning_rate=lr_val,
+                                RMSE=rmse_val,
+                                MAPE=mape_val,
+                                MSE=mse_val,
+                            )
+                            best_configs[m_name] = best_cfg_obj
 
-                best_cfg_obj = BestConfigItem(
-                    model=m_name,
-                    time_steps=int(m.time_steps),
-                    optimizer=str(m.optimizer),
-                    batch_size=int(m.batch_size),
-                    learning_rate=float(m.learning_rate),
-                    RMSE=float(m.rmse),
-                    MAPE=float(m.mape),
-                    MSE=float(m.mse),
-                )
-                best_configs[m_name] = best_cfg_obj
+                            if rmse_val < min_overall_rmse:
+                                min_overall_rmse = rmse_val
+                                best_model_name = m_name
 
-            return TickerMetrics(
-                ticker=clean_ticker,
-                target_col="close",
-                train_size=0.8,
-                random_state=42,
-                epochs=50,
-                best_model=best_model_name,
-                best_configs=best_configs,
-                metrics=metrics_summary,
-            )
-    except Exception as e:
-        logger.warning(f"Gagal membaca metrik dari PostgreSQL ({e}), mencoba fallback ke file JSON...")
+                    if metrics_summary:
+                        return TickerMetrics(
+                            ticker=clean_ticker,
+                            target_col="close",
+                            train_size=0.8,
+                            random_state=42,
+                            epochs=50,
+                            best_model=best_model_name,
+                            best_configs=best_configs,
+                            metrics=metrics_summary,
+                        )
+            except Exception as ce:
+                logger.error(f"Error parsing hyperparameter CSV for {clean_ticker}: {ce}")
 
-    # 2. Fallback ke file JSON di assets
+    # 2. Fallback ke file JSON di assets jika tersedia
     metrics_file = ASSETS_DIR / f"{clean_ticker}_metrics.json"
     if metrics_file.exists():
         try:
@@ -115,11 +129,12 @@ def get_ticker_metrics(ticker: str) -> Optional[TickerMetrics]:
         except Exception as e:
             logger.error(f"Error reading metrics JSON for {clean_ticker}: {e}")
 
+    logger.warning(f"File metrik hyperparameter tidak ditemukan untuk {clean_ticker}")
     return None
 
 
 def get_ticker_scaler(ticker: str):
-    """Mengambil objek MinMaxScaler dari file .pkl (ASSETS_DIR, artifact/model/, atau unduh otomatis dari MLflow)."""
+    """Mengambil objek MinMaxScaler dari file asset lokal .pkl (ASSETS_DIR atau artifact/model/)."""
     clean_ticker = ticker.strip().upper()
 
     candidate_paths = [
@@ -135,27 +150,7 @@ def get_ticker_scaler(ticker: str):
             except Exception as e:
                 logger.error(f"Error reading scaler pkl from {scaler_path}: {e}")
 
-    # Fallback: Unduh otomatis dari MLflow jika belum tersedia di disk lokal
-    try:
-        import mlflow
-        from mlflow.artifacts import download_artifacts
-        from app.config import MLFLOW_TRACKING_URI
-
-        if MLFLOW_TRACKING_URI:
-            mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-
-        logger.info(f"Mencoba mengunduh artefak scaler untuk {clean_ticker} dari MLflow...")
-        downloaded_file = download_artifacts(
-            artifact_uri=f"models:/{clean_ticker}_LSTM/Production/scaler/{clean_ticker}_scaler.pkl",
-            dst_path=str(ASSETS_DIR)
-        )
-        if Path(downloaded_file).exists():
-            with open(downloaded_file, "rb") as f:
-                return pickle.load(f)
-    except Exception as e:
-        logger.info(f"Fallback download scaler dari MLflow dilewati ({e})")
-
-    logger.warning(f"Scaler PKL tidak ditemukan untuk {clean_ticker}")
+    logger.warning(f"Scaler PKL tidak ditemukan di {ASSETS_DIR} untuk {clean_ticker}")
     return None
 
 
