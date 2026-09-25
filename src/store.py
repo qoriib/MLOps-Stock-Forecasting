@@ -1,7 +1,6 @@
 import argparse
 import logging
 import shutil
-from typing import List
 
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -12,31 +11,34 @@ logger = logging.getLogger("store_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-def promote_champion_models(ticker: str, models: List[str]) -> None:
+def promote_champion_models(ticker: str) -> None:
     """Mempromosikan versi model terbaru ke alias @champion dan @production di MLflow."""
     try:
         if config.MLFLOW_TRACKING_URI:
             mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
 
         client = MlflowClient()
-        for model_type in models:
+
+        for model_type in config.MODELS:
             reg_model_name = f"{ticker}_{model_type}"
             versions = client.search_model_versions(f"name = '{reg_model_name}'")
+            
             if versions:
                 latest_v = sorted(versions, key=lambda v: int(v.version))[-1].version
                 client.set_registered_model_alias(reg_model_name, "champion", latest_v)
                 client.set_registered_model_alias(reg_model_name, "production", latest_v)
                 logger.info(f"[MLflow] {reg_model_name} v{latest_v} dipromosikan ke @champion & @production")
+    
     except Exception as e:
         logger.info(f"[MLflow] Promosi model {ticker} dilewati: {e}")
 
 
-def sync_backend_assets(ticker: str, models: List[str]) -> None:
-    """Menyalin artefak model, scaler, dan data ke backend assets mengandalkan config."""
+def sync_backend_assets(ticker: str) -> None:
+    """Menyalin artefak model dan scaler ke backend assets mengandalkan config."""
     config.BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. Salin Model (.keras)
-    for model_type in models:
+    for model_type in config.MODELS:
         src_model = config.get_model_path(ticker, model_type)
         dst_model = config.get_backend_model_path(ticker, model_type)
         if src_model.exists():
@@ -54,27 +56,12 @@ def sync_backend_assets(ticker: str, models: List[str]) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Penyalinan aset ke backend dan promosi model MLflow")
     parser.add_argument("--ticker", type=str, required=True, help="Ticker saham yang diproses (misal: BBCA.JK)")
-    parser.add_argument(
-        "--models",
-        nargs="+",
-        default=["LSTM", "GRU"],
-        help="Daftar tipe model yang diproses (misal: LSTM GRU)",
-    )
     args = parser.parse_args()
 
     ticker = args.ticker.strip().upper()
-
-    # Normalisasi list models jika dilewatkan sebagai argumen terpisah atau koma
-    models: List[str] = []
-    for m in args.models:
-        for sub_m in m.split(","):
-            clean_m = sub_m.strip().upper()
-            if clean_m and clean_m not in models:
-                models.append(clean_m)
-
-    logger.info(f"=== Menjalankan Stage Store untuk: {ticker} (Models: {models}) ===")
-    promote_champion_models(ticker, models)
-    sync_backend_assets(ticker, models)
+    logger.info(f"=== Menjalankan Stage Store untuk: {ticker} ===")
+    promote_champion_models(ticker)
+    sync_backend_assets(ticker)
 
 
 if __name__ == "__main__":

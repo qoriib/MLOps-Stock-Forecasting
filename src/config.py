@@ -19,6 +19,9 @@ NOTEBOOK_DIR = ARTIFACT_DIR / "notebook"
 BACKEND_DIR = BASE_DIR / "web" / "backend"
 BACKEND_ASSETS_DIR = BACKEND_DIR / "assets"
 
+# Model Architecture Types
+MODELS = ["LSTM", "GRU"]
+
 # MLflow Tracking
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
 

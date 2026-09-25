@@ -42,7 +42,6 @@ stages:
       - OPTIMIZERS
       - BATCH_SIZES
       - LEARNING_RATES
-      - MODELS
     outs:
       - artifact/notebook/ml_pipeline_${item.TICKER}.ipynb:
           cache: false
@@ -55,15 +54,13 @@ stages:
     desc: "Penyalinan model champion dan artefak scaler dari MLflow ke backend assets"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.store --ticker ${item.TICKER} --models ${MODELS.0} ${MODELS.1}
+    cmd: python -m src.store --ticker ${item.TICKER}
     deps:
       - src/config.py
       - src/store.py
       - artifact/model/${item.TICKER}_LSTM.keras
       - artifact/model/${item.TICKER}_GRU.keras
       - artifact/model/${item.TICKER}_scaler.pkl
-    params:
-      - MODELS
     outs:
       - web/backend/assets/${item.TICKER}_scaler.pkl
       - web/backend/assets/${item.TICKER}_LSTM.keras
