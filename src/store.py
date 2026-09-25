@@ -9,25 +9,9 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from src import config
-from src.database import upsert_stock_prices
 
 logger = logging.getLogger("store_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-
-
-def store_stock_data_to_postgres(ticker: str) -> None:
-    """Memasukkan data historis saham dari parquet ke PostgreSQL tanpa redundansi."""
-    parquet_path = config.get_data_path(ticker)
-    if not parquet_path.exists():
-        logger.warning(f"File parquet tidak ditemukan: {parquet_path}")
-        return
-
-    df = pd.read_parquet(parquet_path)
-    try:
-        count = upsert_stock_prices(df, ticker)
-        logger.info(f"[PostgreSQL Data] Berhasil upsert {count} baris data saham {ticker} ke tabel stock_prices")
-    except Exception as e:
-        logger.warning(f"[PostgreSQL Data] Upsert ke PostgreSQL dilewati / error ({e}).")
 
 
 def promote_and_store_champion_models(ticker: str) -> None:
@@ -183,10 +167,7 @@ def main():
     logger.info(f"=== Menjalankan Stage Store untuk: {tickers_to_process} ===")
 
     for ticker in tickers_to_process:
-        # 1. Masukkan data historis ke PostgreSQL (tanpa redundansi)
-        store_stock_data_to_postgres(ticker)
-
-        # 2. Promosikan model ke @champion di MLflow, ambil scaler & model seluruhnya dari MLflow, dan bundle ke backend assets
+        # Promosikan model ke @champion di MLflow, ambil scaler & model seluruhnya dari MLflow, dan bundle ke backend assets
         promote_and_store_champion_models(ticker)
 
 
