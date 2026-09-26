@@ -1,4 +1,4 @@
-name: Deploy Backend to Azure Container Apps
+name: Test & Deploy Backend to Azure Container Apps
 
 on:
   workflow_dispatch:
@@ -11,14 +11,15 @@ on:
 permissions:
   contents: read
 
-env:
-  AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
-  ACR_NAME: acrstockforecast
-  CONTAINER_APP_NAME: ca-stock-backend
-
 jobs:
-  build-and-deploy:
+  test_and_deploy_backend:
+    name: "Test & Deploy Backend (Standalone)"
     runs-on: ubuntu-latest
+    env:
+      AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
+      AZURE_ACR_NAME: acrstockforecast
+      CONTAINER_APP_NAME: ca-stock-backend
+      CONTAINER_APP_ENVIRONMENT: ca-stock-backend-env
 
     steps:
       - name: Checkout Code
@@ -32,8 +33,21 @@ jobs:
       - name: Build and Deploy Container App
         uses: azure/container-apps-deploy-action@v2
         with:
-          appSourcePath: ${{ github.workspace }}/web/backend
-          acrName: ${{ env.ACR_NAME }}
-          containerAppName: ${{ env.CONTAINER_APP_NAME }}
-          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
           location: eastasia
+          appSourcePath: ${{ github.workspace }}/web/backend
+          acrName: ${{ env.AZURE_ACR_NAME }}
+          acrUsername: ${{ secrets.AZURE_ACR_USERNAME }}
+          acrPassword: ${{ secrets.AZURE_ACR_PASSWORD }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+
+      - name: Verify Backend Health
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          echo "Backend URL: https://$FQDN"
+          curl -sS -f "https://$FQDN/" || exit 1

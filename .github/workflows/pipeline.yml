@@ -22,7 +22,7 @@ jobs:
     name: "ML Pipeline"
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -36,13 +36,13 @@ jobs:
         uses: ./.github/actions/push-pipeline
 
       - name: Upload Notebook Reports
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: artifact-notebook
           path: artifact/notebook/**
 
       - name: Upload Model Artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: artifact-model
           path: |
@@ -54,29 +54,53 @@ jobs:
   deploy_backend:
     name: "Deploy Backend"
     needs: pipeline
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    env:
+      AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
+      AZURE_ACR_NAME: acrstockforecast
+      CONTAINER_APP_NAME: ca-stock-backend
+      CONTAINER_APP_ENVIRONMENT: ca-stock-backend-env
+    outputs:
+      backend_url: ${{ steps.get-backend-url.outputs.backend_url }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - name: Setup Pipeline Environment (DVC Pull)
-        uses: ./.github/actions/setup-pipeline
-
-      - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          clean: true
-          package: web/backend
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and Deploy Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          location: eastasia
+          appSourcePath: ${{ github.workspace }}/web/backend
+          acrName: ${{ env.AZURE_ACR_NAME }}
+          acrUsername: ${{ secrets.AZURE_ACR_USERNAME }}
+          acrPassword: ${{ secrets.AZURE_ACR_PASSWORD }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+
+      - name: Get Container App URL
+        id: get-backend-url
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+          echo "backend_url=https://$FQDN" >> $GITHUB_OUTPUT
 
   deploy_frontend:
     name: "Deploy Frontend"
-    needs: pipeline
+    needs: [pipeline, deploy_backend]
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
@@ -87,7 +111,7 @@ jobs:
 
       - name: Build Frontend
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: ${{ needs.deploy_backend.outputs.backend_url || secrets.VITE_API_URL }}
         run: |
           cd web/frontend
           npm run build
