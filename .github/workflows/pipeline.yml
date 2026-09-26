@@ -3,31 +3,26 @@ name: End-to-End Stock Forecasting Data & ML Pipeline
 on:
   workflow_dispatch:
   push:
-    branches: [master, main]
+    branches: [master]
   schedule:
     - cron: "0 1 * * 1"
 
 permissions:
   contents: write
-  statuses: write
-  pull-requests: write
-  issues: write
 
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_ACCESS_KEY }}
-  MLFLOW_TRACKING_URI: https://dagshub.com/qoriib/MLOps-Stock-Forecasting.mlflow
-  MLFLOW_TRACKING_USERNAME: qoriib
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
   MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
-  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-  AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
 
 jobs:
   pipeline:
     name: "ML Pipeline"
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -39,19 +34,17 @@ jobs:
 
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
-        with:
-          commit-message: "auto: update ml pipeline & store artifacts [skip ci]"
 
       - name: Upload Notebook Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: notebook-reports
+          name: artifact-notebook
           path: artifact/notebook/**
 
       - name: Upload Model Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: model-artifacts
+          name: artifact-model
           path: |
             artifact/model/*_LSTM.keras
             artifact/model/*_GRU.keras
@@ -63,28 +56,29 @@ jobs:
     needs: pipeline
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Pipeline Environment (DVC Pull)
         uses: ./.github/actions/setup-pipeline
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
-        if: ${{ env.AZURE_WEBAPP_NAME != '' }}
         with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          clean: true
           package: web/backend
+          app-name: stock-forecast-api
+          startup-command: "gunicorn --config gunicorn.conf.py main:app"
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
   deploy_frontend:
     name: "Deploy Frontend"
     needs: pipeline
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -102,11 +96,10 @@ jobs:
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
-        if: ${{ env.AZURE_STATIC_WEB_APPS_API_TOKEN != '' }}
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "web/frontend"
           output_location: ".output/public"
           skip_app_build: true
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}

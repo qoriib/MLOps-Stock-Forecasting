@@ -1,8 +1,8 @@
-name: 'Setup Pipeline Environment'
-description: 'Sets up Python, Poetry, installs dependencies, and pulls DVC data.'
+name: 'Setup Pipeline'
+description: 'Sets up Python, Poetry, installs dependencies, and pulls data.'
 inputs:
   python-version:
-    description: 'Python version to set up'
+    description: 'Python version'
     required: false
     default: '3.12'
 runs:
@@ -10,12 +10,15 @@ runs:
   steps:
     - name: Configure Git Bot
       shell: bash
+      env:
+        GIT_USER_NAME: "github-actions[bot]"
+        GIT_USER_EMAIL: "github-actions[bot]@users.noreply.github.com"
       run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "$GIT_USER_NAME"
+        git config --global user.email "$GIT_USER_EMAIL"
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ inputs.python-version }}
 
@@ -23,9 +26,6 @@ runs:
       uses: snok/install-poetry@v1
       with:
         version: latest
-        virtualenvs-create: true
-        virtualenvs-in-project: false
-        installer-parallel: true
 
     - name: Install Dependencies (Local Cache)
       shell: bash
@@ -33,5 +33,4 @@ runs:
 
     - name: DVC Pull
       shell: bash
-      run: |
-        poetry run dvc pull --run-cache || echo "DVC pull completed or skipped"
+      run: poetry run dvc pull --run-cache

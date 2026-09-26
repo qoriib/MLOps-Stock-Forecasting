@@ -1,4 +1,4 @@
-name: 'Push Pipeline Artifacts & State'
+name: 'Push Pipeline'
 description: 'Pushes updated data cache to DVC remote and commits/pushes all working tree changes to GitHub.'
 
 inputs:
@@ -10,20 +10,22 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: DVC Commit
+      shell: bash
+      run: poetry run dvc commit -f
+
     - name: DVC Push
       shell: bash
-      run: |
-        poetry run dvc push || echo "DVC push completed or skipped"
+      run: poetry run dvc push
 
-    - name: Commit and Push All Changes
+    - name: Git Commit and Push
       shell: bash
+      env:
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
       run: |
         git add -A
-        
         if ! git diff --cached --quiet; then
-          git commit -m "${{ inputs.commit-message }}"
-          git pull --rebase origin main || git pull --rebase origin master || true
+          git commit -m "$COMMIT_MESSAGE"
+          git pull --rebase || true
           git push
-        else
-          echo "=== No changes detected in working tree. Skipping commit. ==="
         fi

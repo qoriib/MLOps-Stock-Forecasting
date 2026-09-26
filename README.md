@@ -165,7 +165,25 @@ Buka `http://localhost:3000` di browser untuk mengakses dashboard.
 ## 🌐 Otomasi CI/CD (GitHub Actions)
 
 Alur kerja `.github/workflows/pipeline.yml` berjalan secara otomatis via jadwal mingguan atau pemicu manual:
-1. **Ingestion**: Mengunduh data terbaru Yahoo Finance → `artifact/data/{ticker}.parquet`.
-2. **ML Pipeline & Store**: Melatih model LSTM & GRU dengan hyperparameter tuning via Papermill, lalu mengeksekusi `src/store.py` untuk menghasilkan model `.keras`, `hyperparameter.parquet`, `scaler.json`, dan `metrics.json`, kemudian menyalin file yang dibutuhkan ke `web/backend/assets/`.
-3. **Deploy Backend**: Membangun dan merilis API Nitro ke Cloudflare Workers dengan file Parquet & model dari `web/backend/assets/` tersemat langsung.
-4. **Deploy Frontend**: Membangun aplikasi web dan mempublikasikannya ke Cloudflare Pages.
+1. **Ingestion**: Mengunduh data terbaru Yahoo Finance → `artifact/data/{ticker}.csv`.
+2. **ML Pipeline & Store**: Melatih model LSTM & GRU dengan hyperparameter tuning via Papermill, lalu mengeksekusi `src/store.py` untuk menghasilkan model `.keras`, `hyperparameter.csv`, dan scaler `.pkl`, kemudian menyinkronkan champion model ke MLflow & backend assets.
+3. **Deploy Backend**: Menerapkan backend API FastAPI ke Azure App Service.
+4. **Deploy Frontend**: Membangun aplikasi web dan mempublikasikannya ke Azure Static Web Apps.
+
+### 🔐 GitHub Secrets yang Perlu Dikonfigurasi
+
+Buka **Settings > Secrets and variables > Actions > New repository secret** di repositori GitHub, lalu tambahkan *secrets* berikut:
+
+| Secret Name | Kategori | Deskripsi | Contoh Nilai |
+|---|---|---|---|
+| `AWS_ACCESS_KEY_ID` | DVC Storage | Access Key ID untuk remote storage DVC (Cloudflare R2 / AWS S3) | `9a8b7c6d...` |
+| `AWS_SECRET_ACCESS_KEY` | DVC Storage | Secret Access Key untuk remote storage DVC (Cloudflare R2 / AWS S3) | `1f2e3d4c...` |
+| `MLFLOW_TRACKING_URI` | MLflow / Tracking | URL endpoint MLflow Tracking Server | `https://dagshub.com/<user>/<repo>.mlflow` |
+| `MLFLOW_TRACKING_USERNAME` | MLflow / Tracking | Username akun DagsHub / MLflow | `username_kamu` |
+| `MLFLOW_TRACKING_PASSWORD` | MLflow / Tracking | Password atau Personal Access Token DagsHub / MLflow | `token_kamu` |
+| `AZURE_WEBAPP_PUBLISH_PROFILE` | Deployment | Konten XML Publish Profile dari Azure App Service | `<?xml ...><publishData>...</publishData>` |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | Deployment | Deployment token dari Azure Static Web Apps frontend *(opsional)* | `c3a2b1...` |
+| `VITE_API_URL` | Deployment | URL publik backend API untuk frontend saat proses build | `https://stock-forecasting-api.azurewebsites.net` |
+
+> [!NOTE]
+> `GITHUB_TOKEN` tidak perlu dibuat secara manual karena disediakan otomatis oleh GitHub Actions untuk proses push state dan commit tracking.
