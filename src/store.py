@@ -34,36 +34,26 @@ def promote_champion_models(ticker: str) -> None:
             logger.info(f"[MLflow] Promosi model {reg_model_name} dilewati: {e}")
 
 def sync_backend_assets(ticker: str) -> None:
-    config.BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Salin model champion dan scaler dari MLflow
     for model_type in config.MODELS:
         reg_model_name = f"{ticker}_{model_type}"
-        try:
-            model_version = client.get_model_version_by_alias(reg_model_name, "champion")
+        model_version = client.get_model_version_by_alias(reg_model_name, "champion")
 
-            # Salin Model (.keras) dari model champion
-            artifact_dir = mlflow.artifacts.download_artifacts(
-                artifact_uri=f"models:/{reg_model_name}@champion"
-            )
-            keras_files = list(Path(artifact_dir).rglob("*.keras"))
-            if keras_files:
-                dst_keras = config.get_backend_model_path(ticker, model_type)
-                shutil.copy2(keras_files[0], dst_keras)
-                logger.info(f"[Backend Asset] Model disalin: {dst_keras.name}")
+        # Salin Model (.keras)
+        src_keras = mlflow.artifacts.download_artifacts(
+            artifact_uri=f"models:/{reg_model_name}@champion/data/model.keras"
+        )
+        dst_keras = config.get_backend_model_path(ticker, model_type)
+        shutil.copy2(src_keras, dst_keras)
+        logger.info(f"[Backend Asset] Model disalin: {dst_keras.name}")
 
-            # Salin Scaler (.pkl) dari run MLflow
-            scaler_dir = mlflow.artifacts.download_artifacts(
-                run_id=model_version.run_id, artifact_path="scaler"
-            )
-            scaler_files = list(Path(scaler_dir).rglob("*.pkl"))
-            if scaler_files:
-                dst_scaler = config.get_backend_scaler_path(ticker)
-                shutil.copy2(scaler_files[0], dst_scaler)
-                logger.info(f"[Backend Asset] Scaler disalin: {dst_scaler.name}")
-
-        except Exception as e:
-            logger.info(f"[MLflow] Sinkronisasi {reg_model_name} dari MLflow dilewati ({e})")
+        # Salin Scaler (.pkl)
+        src_scaler = mlflow.artifacts.download_artifacts(
+            run_id=model_version.run_id,
+            artifact_path=f"scaler/{ticker}_scaler.pkl",
+        )
+        dst_scaler = config.get_backend_scaler_path(ticker)
+        shutil.copy2(src_scaler, dst_scaler)
+        logger.info(f"[Backend Asset] Scaler disalin: {dst_scaler.name}")
 
 def main():
     parser = argparse.ArgumentParser(description="Promosi model MLflow")
