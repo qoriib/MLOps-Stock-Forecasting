@@ -66,8 +66,6 @@ jobs:
         with:
           clean: true
           package: web/backend
-          app-name: stock-forecast-api
-          startup-command: "gunicorn --config gunicorn.conf.py main:app"
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
   deploy_frontend:
@@ -95,11 +93,11 @@ jobs:
           npm run build
 
       - name: Deploy to Azure Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          action: "upload"
-          app_location: "web/frontend"
-          output_location: ".output/public"
-          skip_app_build: true
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        run: |
+          cd web/frontend
+          npx -y @azure/static-web-apps-cli deploy .output/public \
+            --env production \
+            --deployment-token "$AZURE_STATIC_WEB_APPS_API_TOKEN" \
+            --no-use-keychain
