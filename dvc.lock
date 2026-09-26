@@ -84,24 +84,24 @@ stages:
     outs:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: f0cb066b48cb4c63e56659951f62a744
-      size: 120293
+      md5: d1ebcd16968bd8266db6db84e8fc55f2
+      size: 120299
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: 8ca21d325d93e6251628d0f6b44ce267
-      size: 106037
+      md5: 67221341a1ffadbf938733408e916a68
+      size: 106043
     - path: artifact/model/BBCA.JK_hyperparameter.csv
       hash: md5
-      md5: fb8dfb5c3436cb3cd5230da7782ba733
-      size: 13126
+      md5: 3c9e7dd820c1f1c24e0f40bf573591ce
+      size: 13124
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
       size: 522
     - path: artifact/notebook/ml_pipeline_BBCA.JK.ipynb
       hash: md5
-      md5: a7eacfc67bee8e828341df925f53a0c9
-      size: 389553
+      md5: d47bd06e24dbeb60c87c54f9d8f83e46
+      size: 399912
   ml_pipeline@BBRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBRI.JK.ipynb -f params.yaml -p TICKER 
@@ -144,35 +144,35 @@ stages:
     outs:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: dde26fdab1f07a239248e225d144b272
-      size: 120293
+      md5: 772657e376dd08afa5baa835cbf1b0d6
+      size: 86436
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 896c81b2de04a21eb9a9ff6c82ead73a
+      md5: f677e239714279c38b5d299b6f7246c9
       size: 149700
     - path: artifact/model/BBRI.JK_hyperparameter.csv
       hash: md5
-      md5: d66be11b5e5387f57173b3424f4d3924
-      size: 12986
+      md5: 289323a134e172a70dd8cc911bebad40
+      size: 12985
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
       md5: 573105d1564e6278c31ced55d133e8f3
       size: 522
     - path: artifact/notebook/ml_pipeline_BBRI.JK.ipynb
       hash: md5
-      md5: 1ad27ff83570b7fb12905c18f2f154b3
-      size: 401628
+      md5: d69658fdf419a5b3db00b2244d6f0759
+      size: 411417
   store@BBCA.JK:
     cmd: python -m src.store --ticker BBCA.JK
     deps:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: f0cb066b48cb4c63e56659951f62a744
-      size: 120293
+      md5: d1ebcd16968bd8266db6db84e8fc55f2
+      size: 120299
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: 8ca21d325d93e6251628d0f6b44ce267
-      size: 106037
+      md5: 67221341a1ffadbf938733408e916a68
+      size: 106043
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
@@ -188,12 +188,12 @@ stages:
     outs:
     - path: web/backend/assets/BBCA.JK_GRU.keras
       hash: md5
-      md5: 803495d982e13c86f2bb522ee359d23f
-      size: 120197
+      md5: 70f859ed3fd5cb82b633100731dd6d24
+      size: 120200
     - path: web/backend/assets/BBCA.JK_LSTM.keras
       hash: md5
-      md5: c24bca4335d3dd0b861f9db2e878ab9f
-      size: 105941
+      md5: 2f66a3f9f8db1648880f66b71e7b9a39
+      size: 105944
     - path: web/backend/assets/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
@@ -203,11 +203,11 @@ stages:
     deps:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: dde26fdab1f07a239248e225d144b272
-      size: 120293
+      md5: 772657e376dd08afa5baa835cbf1b0d6
+      size: 86436
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 896c81b2de04a21eb9a9ff6c82ead73a
+      md5: f677e239714279c38b5d299b6f7246c9
       size: 149700
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
@@ -224,12 +224,12 @@ stages:
     outs:
     - path: web/backend/assets/BBRI.JK_GRU.keras
       hash: md5
-      md5: 539e93f3166369fa2f885c20c36f4957
-      size: 120197
+      md5: f1450538950933b6bc41d01f29ed04ff
+      size: 86337
     - path: web/backend/assets/BBRI.JK_LSTM.keras
       hash: md5
-      md5: a5dba10f5724469bc49641d18c667c78
-      size: 149604
+      md5: e219cd3d3f2db3ffdc34e50d5f630544
+      size: 149607
     - path: web/backend/assets/BBRI.JK_scaler.pkl
       hash: md5
       md5: 573105d1564e6278c31ced55d133e8f3
