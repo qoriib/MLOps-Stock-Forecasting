@@ -1,53 +1,39 @@
-import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from app.config import APP_NAME, APP_RUNTIME, APP_VERSION
+from app.config import APP_NAME
 from app.routes.models import router as models_router
 from app.routes.stocks import router as stocks_router
-from app.routes.predict import router as predict_router
 
 app = FastAPI(
     title=APP_NAME,
-    version=APP_VERSION,
-    description="Production-ready FastAPI Inference Backend for Stock Forecasting MLOps on Azure App Service.",
+    description="FastAPI Inference Backend for Stock Forecasting",
 )
 
-# CORS configuration
+allowed_origins = ["*"]
+allowed_methods = ["*"]
+allowed_headers = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=allowed_methods,
+    allow_headers=allowed_headers,
 )
 
-# Register routes
 app.include_router(models_router)
 app.include_router(stocks_router)
-app.include_router(predict_router)
-
 
 @app.get("/")
 def root():
-    return {
-        "status": "healthy",
+    available_endpoints = {
+        "models": "/api/models",
+        "predict": "/api/models/predict",
+        "stocks": "/api/stocks/{ticker}",
+        "docs": "/docs",
+    }
+    response_payload = {
         "project": APP_NAME,
-        "version": APP_VERSION,
-        "runtime": APP_RUNTIME,
-        "endpoints": {
-            "health": "/health",
-            "models": "/api/models",
-            "stocks": "/api/stocks/{ticker}",
-            "predict": "/api/predict",
-            "docs": "/docs",
-        },
+        "endpoints": available_endpoints,
     }
-
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "ok",
-        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    }
+    return response_payload

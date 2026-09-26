@@ -1,34 +1,23 @@
 from fastapi import APIRouter
-from app.config import (
-    APP_RUNTIME,
-    AVAILABLE_MODEL_TYPES,
-    DEFAULT_MODEL_TYPE,
-    DEFAULT_TICKER,
-)
-from app.models.schemas import ModelsResponse
-from app.services.data_service import get_available_tickers, get_ticker_metrics
+from app.models.schemas import ModelsResponse, PredictRequest, PredictResponse
+from app.controllers.models_controller import ModelsController
 
 router = APIRouter(prefix="/api", tags=["models"])
 
-
-@router.get("/models", response_model=ModelsResponse)
+@router.get(
+    "/models",
+    response_model=ModelsResponse,
+    summary="Get Models Overview",
+    description="Mendapatkan metadata seluruh model",
+)
 def get_models_overview():
-    """Mendapatkan metadata seluruh model dan metrik optimal per ticker."""
-    tickers = get_available_tickers()
-    model_metrics = {}
+    return ModelsController.get_models_overview()
 
-    for ticker in tickers:
-        metrics = get_ticker_metrics(ticker)
-        if metrics:
-            model_metrics[ticker] = metrics
-
-    default_ticker = tickers[0] if tickers else DEFAULT_TICKER
-
-    return ModelsResponse(
-        tickers=tickers,
-        default_ticker=default_ticker,
-        default_model_type=DEFAULT_MODEL_TYPE,
-        available_model_types=list(AVAILABLE_MODEL_TYPES),
-        runtime=APP_RUNTIME,
-        model_metrics=model_metrics,
-    )
+@router.post(
+    "/models/predict",
+    response_model=PredictResponse,
+    summary="Predict Stock Prices",
+    description="Melakukan inferensi peramalan harga saham",
+)
+def predict_stock_price(payload: PredictRequest):
+    return ModelsController.predict_stock_price(payload)

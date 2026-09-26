@@ -1,23 +1,45 @@
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Path, Query
 from app.models.schemas import HistoricalResponse
-from app.services.data_service import get_stock_history
+from app.controllers.stocks_controller import StocksController
 
 router = APIRouter(prefix="/api", tags=["stocks"])
 
-
-@router.get("/stocks/{ticker}", response_model=HistoricalResponse)
+@router.get(
+    "/stocks/{ticker}",
+    response_model=HistoricalResponse,
+    summary="Get Stock Prices",
+    description="Mengambil data historis harga saham OHLCV untuk ticker tertentu"
+)
 def get_stock_data(
-    ticker: str,
-    limit: int = Query(default=500, ge=1, le=2000),
-    start_date: Optional[str] = Query(default=None),
-    end_date: Optional[str] = Query(default=None),
+    ticker: str = Path(
+        ...,
+        min_length=2,
+        max_length=20,
+        pattern=r"^[A-Za-z0-9.]+$",
+        description="Ticker simbol saham (misal: BBCA.JK)",
+        examples=["BBCA.JK"],
+    ),
+    limit: int = Query(
+        ge=1,
+        le=5000,
+        default=500,
+        description="Maksimal jumlah baris data (1 - 5000)",
+    ),
+    start_date: Optional[str] = Query(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Filter tanggal awal (YYYY-MM-DD)",
+    ),
+    end_date: Optional[str] = Query(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Filter tanggal akhir (YYYY-MM-DD)",
+    ),
 ):
-    """Mendapatkan data historis harga saham untuk ticker tertentu."""
-    history = get_stock_history(ticker, limit=limit, start_date=start_date, end_date=end_date)
-    if not history:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Data saham untuk ticker '{ticker}' tidak ditemukan.",
-        )
-    return history
+    return StocksController.get_stock_history(
+        ticker=ticker,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date,
+    )
