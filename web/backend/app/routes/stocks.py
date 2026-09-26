@@ -20,12 +20,6 @@ def get_stock_data(
         description="Ticker simbol saham (misal: BBCA.JK)",
         examples=["BBCA.JK"],
     ),
-    limit: int = Query(
-        ge=1,
-        le=5000,
-        default=500,
-        description="Maksimal jumlah baris data (1 - 5000)",
-    ),
     start_date: Optional[str] = Query(
         default=None,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
@@ -39,7 +33,6 @@ def get_stock_data(
 ):
     return StocksController.get_stock_history(
         ticker=ticker,
-        limit=limit,
         start_date=start_date,
         end_date=end_date,
     )
