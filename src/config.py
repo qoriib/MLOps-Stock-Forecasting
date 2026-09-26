@@ -30,7 +30,7 @@ def get_experiment_name(ticker: str) -> str:
 
 def get_data_path(ticker: str) -> Path:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    return DATA_DIR / f"{ticker}.parquet"
+    return DATA_DIR / f"{ticker}.csv"
 
 def get_scaler_path(ticker: str) -> Path:
     MODEL_DIR.mkdir(parents=True, exist_ok=True)

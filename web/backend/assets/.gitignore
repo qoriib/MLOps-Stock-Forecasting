@@ -1,5 +1,5 @@
 # Abaikan seluruh artefak model dan data yang di-generate untuk semua ticker
-*.parquet
+*.csv
 *.keras
 *.h5
 *.pkl

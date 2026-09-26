@@ -28,10 +28,12 @@ def get_available_tickers() -> List[str]:
     """Mendapatkan daftar ticker yang tersedia dari assets lokal dan PostgreSQL."""
     tickers = set()
 
-    # 1. Ambil dari assets .parquet (sumber data utama lokal hasil pipeline)
-    if ASSETS_DIR.exists():
-        for f in ASSETS_DIR.glob("*.parquet"):
-            tickers.add(f.stem.upper())
+    # 1. Ambil dari file .csv di artifact/data atau assets (sumber data utama lokal hasil pipeline)
+    for p_dir in [ASSETS_DIR, Path("artifact/data")]:
+        if p_dir.exists():
+            for f in p_dir.glob("*.csv"):
+                if not f.name.endswith("_hyperparameter.csv"):
+                    tickers.add(f.stem.upper())
 
     # 2. Tambahkan dari PostgreSQL jika sudah ada data tersimpan
     try:
@@ -163,7 +165,7 @@ def get_stock_history(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
 ) -> Optional[HistoricalResponse]:
-    """Membaca data historis saham langsung dari PostgreSQL (fallback ke .parquet)."""
+    """Membaca data historis saham langsung dari PostgreSQL (fallback ke .csv)."""
     clean_ticker = ticker.strip().upper()
 
     # 1. Coba dari PostgreSQL
@@ -202,17 +204,17 @@ def get_stock_history(
                 data=items,
             )
     except Exception as e:
-        logger.warning(f"Gagal membaca stock history dari PostgreSQL ({e}), mencoba fallback ke .parquet...")
+        logger.warning(f"Gagal membaca stock history dari PostgreSQL ({e}), mencoba fallback ke .csv...")
 
-    # 2. Fallback ke file .parquet & On-Demand Cache ke PostgreSQL
-    candidate_parquets = [
-        ASSETS_DIR / f"{clean_ticker}.parquet",
-        Path("artifact/data") / f"{clean_ticker}.parquet",
+    # 2. Fallback ke file .csv & On-Demand Cache ke PostgreSQL
+    candidate_csvs = [
+        ASSETS_DIR / f"{clean_ticker}.csv",
+        Path("artifact/data") / f"{clean_ticker}.csv",
     ]
-    for parquet_file in candidate_parquets:
-        if parquet_file.exists():
+    for csv_file in candidate_csvs:
+        if csv_file.exists():
             try:
-                raw_df = pd.read_parquet(parquet_file)
+                raw_df = pd.read_csv(csv_file)
 
                 # Cache ke PostgreSQL on-demand agar request berikutnya langsung membaca dari DB
                 try:
@@ -252,6 +254,6 @@ def get_stock_history(
                     data=items,
                 )
             except Exception as e:
-                logger.error(f"Error loading stock history from parquet for {clean_ticker}: {e}")
+                logger.error(f"Error loading stock history from csv for {clean_ticker}: {e}")
 
     return None
