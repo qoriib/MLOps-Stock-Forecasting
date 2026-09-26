@@ -20,6 +20,7 @@ class StockService:
     def sync_yfinance_records(cls, ticker: str, start_date: Optional[str] = None) -> None:
         try:
             ticker_instance = yf.Ticker(ticker)
+
             if start_date is not None:
                 tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
                 dataframe = ticker_instance.history(
@@ -94,6 +95,7 @@ class StockService:
 
         with DatabaseService.session_scope() as database_session:
             query = select(StockPrice).where(StockPrice.ticker == clean_ticker)
+
             if start_date is not None:
                 parsed_start_date = pd.to_datetime(start_date).date()
                 query = query.where(StockPrice.date >= parsed_start_date)

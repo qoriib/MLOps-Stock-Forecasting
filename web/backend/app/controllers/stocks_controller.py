@@ -13,6 +13,7 @@ class StocksController:
     ) -> HistoricalResponse:
         clean_ticker = ticker.strip().upper()
         available_tickers, _ = ModelService.get_available_assets()
+        
         if clean_ticker not in available_tickers:
             raise HTTPException(
                 status_code=404,
