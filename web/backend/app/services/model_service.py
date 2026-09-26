@@ -97,7 +97,6 @@ class ModelService:
 
         history_response = StockService.get_stock_history(
             ticker=ticker,
-            limit=500,
             start_date=parameters.start_date,
             end_date=parameters.end_date,
         )
