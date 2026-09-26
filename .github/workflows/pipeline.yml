@@ -70,25 +70,17 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Safeguard ACR Admin & Cleanup Stuck Container App
+      - name: Get ACR Credentials
         id: acr-creds
         run: |
-          az acr update -n ${{ env.AZURE_ACR_NAME }} --admin-enabled true
-          ACR_USER=$(az acr credential show --name ${{ env.AZURE_ACR_NAME }} --query username --output tsv)
-          ACR_PASS=$(az acr credential show --name ${{ env.AZURE_ACR_NAME }} --query "passwords[0].value" --output tsv)
-          echo "username=$ACR_USER" >> $GITHUB_OUTPUT
-          echo "::add-mask::$ACR_PASS"
-          echo "password=$ACR_PASS" >> $GITHUB_OUTPUT
-
-          APP_STATE=$(az containerapp show -n ${{ env.CONTAINER_APP_NAME }} -g ${{ env.AZURE_RESOURCE_GROUP }} --query properties.provisioningState -o tsv 2>/dev/null || echo "NotFound")
-          if [ "$APP_STATE" = "Failed" ]; then
-            echo "Container app is stuck in Failed state. Deleting to allow clean recreation..."
-            az containerapp delete -n ${{ env.CONTAINER_APP_NAME }} -g ${{ env.AZURE_RESOURCE_GROUP }} --yes
-          fi
+          echo "username=$(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query username -o tsv)" >> $GITHUB_OUTPUT
+          echo "password=$(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query 'passwords[0].value' -o tsv)" >> $GITHUB_OUTPUT
 
       - name: Build and Deploy Container App
         uses: azure/container-apps-deploy-action@v2
         with:
+          targetPort: 8000
+          ingress: external
           location: eastasia
           appSourcePath: ${{ github.workspace }}/web/backend
           acrName: ${{ env.AZURE_ACR_NAME }}
