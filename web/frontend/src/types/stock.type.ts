@@ -11,7 +11,5 @@ export type StockDataPoint = HistoricalItem
 
 export interface HistoricalResponse {
   ticker: string
-  total_records: number
-  returned_records: number
   data: HistoricalItem[]
 }

@@ -1,5 +1,4 @@
 import type { StateCreator } from 'zustand'
-import { DEFAULT_HISTORY_LIMIT } from '@/configs'
 import { extractErrorMessage } from '@/utils'
 import { fetchStockHistoryData } from '@/services/apiForecast.service'
 import type { DateRange } from '@astryxdesign/core/DateRangeInput'
@@ -32,7 +31,6 @@ export const createHistorySlice: StateCreator<
     try {
       const data = await fetchStockHistoryData(
         targetTicker,
-        DEFAULT_HISTORY_LIMIT,
         targetRange?.start,
         targetRange?.end,
       )

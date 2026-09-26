@@ -39,12 +39,11 @@ export async function fetchForecastPrediction(params: {
  */
 export async function fetchStockHistoryData(
   ticker: string,
-  limit = 500,
   startDate?: string,
   endDate?: string,
 ): Promise<HistoricalResponse> {
   const cleanTicker = ticker.trim().toUpperCase()
-  const endpoint = API_ENDPOINTS.stockHistory(cleanTicker, limit, startDate, endDate)
+  const endpoint = API_ENDPOINTS.stockHistory(cleanTicker, startDate, endDate)
 
   const response = await fetch(endpoint)
 
