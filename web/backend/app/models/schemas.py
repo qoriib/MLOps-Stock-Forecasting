@@ -12,8 +12,6 @@ class HistoricalItem(BaseModel):
 
 class HistoricalResponse(BaseModel):
     ticker: str
-    total_records: int
-    returned_records: int
     data: List[HistoricalItem]
 
 class PredictRequest(BaseModel):
