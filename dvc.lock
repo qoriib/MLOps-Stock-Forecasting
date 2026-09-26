@@ -84,24 +84,24 @@ stages:
     outs:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: 5591ae75bb069fdea1111ec298548a4b
+      md5: f0cb066b48cb4c63e56659951f62a744
       size: 120293
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: 56eab7d19fbd2b2f47d3a50d0a52663b
-      size: 106043
+      md5: 8ca21d325d93e6251628d0f6b44ce267
+      size: 106037
     - path: artifact/model/BBCA.JK_hyperparameter.csv
       hash: md5
-      md5: 3c9e7dd820c1f1c24e0f40bf573591ce
-      size: 13124
+      md5: fb8dfb5c3436cb3cd5230da7782ba733
+      size: 13126
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
       size: 522
     - path: artifact/notebook/ml_pipeline_BBCA.JK.ipynb
       hash: md5
-      md5: c653cd0cc496c438403a25a6e59e0913
-      size: 399831
+      md5: a7eacfc67bee8e828341df925f53a0c9
+      size: 389553
   ml_pipeline@BBRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBRI.JK.ipynb -f params.yaml -p TICKER 
@@ -144,35 +144,35 @@ stages:
     outs:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: 6b114c33493afdf2f6146feda4aab82c
-      size: 86436
+      md5: dde26fdab1f07a239248e225d144b272
+      size: 120293
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 83bb75c1199ea1b96b4caaa0d59e9f6c
+      md5: 896c81b2de04a21eb9a9ff6c82ead73a
       size: 149700
     - path: artifact/model/BBRI.JK_hyperparameter.csv
       hash: md5
-      md5: 289323a134e172a70dd8cc911bebad40
-      size: 12985
+      md5: d66be11b5e5387f57173b3424f4d3924
+      size: 12986
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
       md5: 573105d1564e6278c31ced55d133e8f3
       size: 522
     - path: artifact/notebook/ml_pipeline_BBRI.JK.ipynb
       hash: md5
-      md5: 944e2d11214ad89ad7ea730e44e4c00c
-      size: 411416
+      md5: 1ad27ff83570b7fb12905c18f2f154b3
+      size: 401628
   store@BBCA.JK:
     cmd: python -m src.store --ticker BBCA.JK
     deps:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: 5591ae75bb069fdea1111ec298548a4b
+      md5: f0cb066b48cb4c63e56659951f62a744
       size: 120293
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: 56eab7d19fbd2b2f47d3a50d0a52663b
-      size: 106043
+      md5: 8ca21d325d93e6251628d0f6b44ce267
+      size: 106037
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
@@ -188,12 +188,12 @@ stages:
     outs:
     - path: web/backend/assets/BBCA.JK_GRU.keras
       hash: md5
-      md5: 7f3e157eccdf961c1cccd7c507c048f6
-      size: 120200
+      md5: 803495d982e13c86f2bb522ee359d23f
+      size: 120197
     - path: web/backend/assets/BBCA.JK_LSTM.keras
       hash: md5
-      md5: 6538c37ace94c4d7fc0a70b237ea0b3c
-      size: 105944
+      md5: c24bca4335d3dd0b861f9db2e878ab9f
+      size: 105941
     - path: web/backend/assets/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
@@ -203,11 +203,11 @@ stages:
     deps:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: 6b114c33493afdf2f6146feda4aab82c
-      size: 86436
+      md5: dde26fdab1f07a239248e225d144b272
+      size: 120293
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 83bb75c1199ea1b96b4caaa0d59e9f6c
+      md5: 896c81b2de04a21eb9a9ff6c82ead73a
       size: 149700
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
@@ -224,12 +224,12 @@ stages:
     outs:
     - path: web/backend/assets/BBRI.JK_GRU.keras
       hash: md5
-      md5: 4490e6a070a1040eea7c80a0e5b6b9a5
-      size: 86337
+      md5: 539e93f3166369fa2f885c20c36f4957
+      size: 120197
     - path: web/backend/assets/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 539113e8e0c54c1614f4c4bbc767224e
-      size: 149607
+      md5: a5dba10f5724469bc49641d18c667c78
+      size: 149604
     - path: web/backend/assets/BBRI.JK_scaler.pkl
       hash: md5
       md5: 573105d1564e6278c31ced55d133e8f3
