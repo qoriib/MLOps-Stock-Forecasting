@@ -9,12 +9,11 @@ on:
       - ".github/workflows/deploy-backend-aca.yml"
 
 permissions:
-  id-token: write
   contents: read
 
 env:
-  ACR_NAME: acrstockforecast
   AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
+  ACR_NAME: acrstockforecast
   CONTAINER_APP_NAME: ca-stock-backend
 
 jobs:
@@ -25,12 +24,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login via OIDC
+      - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Build and Deploy Container App
         uses: azure/container-apps-deploy-action@v2
