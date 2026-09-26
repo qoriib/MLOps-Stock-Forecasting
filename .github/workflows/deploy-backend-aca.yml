@@ -1,0 +1,41 @@
+name: Deploy Backend to Azure Container Apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "web/backend/**"
+      - ".github/workflows/deploy-backend-aca.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: acrstockforecast
+  AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
+  CONTAINER_APP_NAME: ca-stock-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and Deploy Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}/web/backend
+          acrName: ${{ env.ACR_NAME }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
