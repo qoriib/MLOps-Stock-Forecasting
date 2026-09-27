@@ -84,11 +84,11 @@ stages:
     outs:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: c99211aac096a82e1e128ffe72f4855c
+      md5: 0fc682398ef2fc2c8928a4f887e053b7
       size: 120293
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: f89cb51c3c09c99edcc8e12b4d92279c
+      md5: fa62f2a279c85ded41a8833277c654d3
       size: 106043
     - path: artifact/model/BBCA.JK_hyperparameter.csv
       hash: md5
@@ -100,8 +100,8 @@ stages:
       size: 522
     - path: artifact/notebook/ml_pipeline_BBCA.JK.ipynb
       hash: md5
-      md5: f2ce8d1a096194de98196788047b2f1b
-      size: 399910
+      md5: 8dba3662b96bda4669994249676c2d0f
+      size: 399913
   ml_pipeline@BBRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBRI.JK.ipynb -f params.yaml -p TICKER 
@@ -144,11 +144,11 @@ stages:
     outs:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: ad23b3bf7b9e7b04e14443a3a83a610c
+      md5: 362466e7cdfe15ca291062f75392e6c1
       size: 86436
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: ef99f8dc488d61256d47f709455980fe
+      md5: 1ef7fd8c044363460cc99cb6c42cdd69
       size: 149700
     - path: artifact/model/BBRI.JK_hyperparameter.csv
       hash: md5
@@ -160,18 +160,18 @@ stages:
       size: 522
     - path: artifact/notebook/ml_pipeline_BBRI.JK.ipynb
       hash: md5
-      md5: b47a5739bde43ca9aeaaaf919f26d19d
-      size: 411418
+      md5: 42cc2520d45a1ace1e6f8832e6832c5b
+      size: 411420
   store@BBCA.JK:
     cmd: python -m src.store --ticker BBCA.JK
     deps:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: c99211aac096a82e1e128ffe72f4855c
+      md5: 0fc682398ef2fc2c8928a4f887e053b7
       size: 120293
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: f89cb51c3c09c99edcc8e12b4d92279c
+      md5: fa62f2a279c85ded41a8833277c654d3
       size: 106043
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
@@ -188,11 +188,11 @@ stages:
     outs:
     - path: web/backend/assets/BBCA.JK_GRU.keras
       hash: md5
-      md5: 5f8f4a9ec639ca724c58ff1f0f98f69d
+      md5: e3183458188b7f539394c7f1ac7e9de4
       size: 120200
     - path: web/backend/assets/BBCA.JK_LSTM.keras
       hash: md5
-      md5: 3239ba346d384e484f78a07035ae2aec
+      md5: 20b807ade171a1891e91d511c02b1f8a
       size: 105944
     - path: web/backend/assets/BBCA.JK_scaler.pkl
       hash: md5
@@ -203,11 +203,11 @@ stages:
     deps:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: ad23b3bf7b9e7b04e14443a3a83a610c
+      md5: 362466e7cdfe15ca291062f75392e6c1
       size: 86436
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: ef99f8dc488d61256d47f709455980fe
+      md5: 1ef7fd8c044363460cc99cb6c42cdd69
       size: 149700
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
@@ -224,11 +224,11 @@ stages:
     outs:
     - path: web/backend/assets/BBRI.JK_GRU.keras
       hash: md5
-      md5: b3f57596d0dfebc441e795875260f773
+      md5: 20bbaefd98962a4edc8aca646e65502d
       size: 86337
     - path: web/backend/assets/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 74bd2f4cbc25876ae182c9e97bf74ddb
+      md5: af820b12850844ae010a5c4155691d7e
       size: 149607
     - path: web/backend/assets/BBRI.JK_scaler.pkl
       hash: md5
