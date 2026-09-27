@@ -46,40 +46,7 @@ jobs:
       - name: Publish Notebook Reports to GitHub Summary
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          shopt -s nullglob
-          notebooks=(artifact/notebook/ml_pipeline_*.ipynb)
-
-          for nb in "${notebooks[@]}"; do
-            [ -f "$nb" ] || continue
-
-            stage=$(basename "$nb" .ipynb)
-            echo "## Processing: $stage" >> $GITHUB_STEP_SUMMARY
-            echo "Converting $nb to markdown..."
-
-            poetry run jupyter nbconvert \
-              --to markdown \
-              --no-input \
-              "$nb" \
-              --output-dir artifact/notebook
-
-            md="artifact/notebook/${stage}.md"
-            img_dir="artifact/notebook/${stage}_files"
-
-            if [ -d "$img_dir" ]; then
-              for img in "$img_dir"/*.png; do
-                [ -f "$img" ] || continue
-                img_url=$(cml publish "$img")
-                filename=$(basename "$img")
-                python3 -c "import pathlib, sys; p = pathlib.Path(sys.argv[1]); p.write_text(p.read_text().replace(sys.argv[2], sys.argv[3]))" "$md" "${stage}_files/${filename}" "$img_url"
-              done
-            fi
-
-            if [ -f "$md" ]; then
-              cat "$md" >> $GITHUB_STEP_SUMMARY
-              echo -e "\n\n---\n\n" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
+        run: bash scripts/publish_notebooks.sh
 
       - name: Upload Notebook Reports
         uses: actions/upload-artifact@v4
