@@ -1,87 +1,114 @@
-import type { ApexOptions } from 'apexcharts'
+import type { EChartsOption } from 'echarts'
 import { formatCurrency } from '@/utils'
+
+export const BODY_FONT_FAMILY =
+  'Figtree, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 
 export const MONO_FONT_FAMILY =
   'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
 
-export function getApexThemeOptions(isDark: boolean = true): ApexOptions {
+/**
+ * Menghasilkan konfigurasi dasar ECharts yang beradaptasi secara dinamis
+ * dengan token tema Astryx (Mode Dark / Light).
+ */
+export function getEChartsThemeOptions(isDark: boolean = true): Partial<EChartsOption> {
+  const textPrimary = isDark ? '#f3f4f6' : '#111827'
   const textMuted = isDark ? '#9ca3af' : '#6b7280'
-  const gridBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'
-  const axisBorder = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'
-  const crosshairBorder = isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)'
-  const bodyFont = 'Figtree, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+  const borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'
+  const splitLineColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+  const tooltipBg = isDark ? 'rgba(24, 24, 27, 0.95)' : 'rgba(255, 255, 255, 0.95)'
+  const tooltipBorder = isDark ? '#27272a' : '#e5e7eb'
 
   return {
-    theme: {
-      mode: isDark ? 'dark' : 'light',
-    },
-    chart: {
-      background: 'transparent',
-      foreColor: textMuted,
-      fontFamily: bodyFont,
-      toolbar: { show: false },
-      zoom: { enabled: false },
-    },
-    grid: {
-      borderColor: gridBorder,
-      strokeDashArray: 3,
-      xaxis: { lines: { show: false } },
-      yaxis: { lines: { show: true } },
+    textStyle: {
+      fontFamily: BODY_FONT_FAMILY,
+      color: textPrimary,
     },
     tooltip: {
-      theme: isDark ? 'dark' : 'light',
-      style: {
-        fontSize: '12px',
-        fontFamily: bodyFont,
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        crossStyle: {
+          color: textMuted,
+        },
       },
-      x: { format: 'dd MMM yyyy' },
-      y: {
-        formatter: (val) => formatCurrency(val),
+      backgroundColor: tooltipBg,
+      borderColor: tooltipBorder,
+      borderWidth: 1,
+      textStyle: {
+        color: textPrimary,
+        fontFamily: BODY_FONT_FAMILY,
+        fontSize: 12,
+      },
+      padding: [10, 14],
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      top: '12%',
+      bottom: '14%',
+      containLabel: true,
+      borderColor: borderColor,
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: true,
+      axisLine: {
+        onZero: false,
+        lineStyle: { color: borderColor },
+      },
+      axisTick: { lineStyle: { color: borderColor } },
+      splitLine: { show: false },
+      axisLabel: {
+        color: textMuted,
+        fontFamily: BODY_FONT_FAMILY,
+        fontSize: 11,
       },
     },
-    xaxis: {
-      type: 'datetime',
-      axisBorder: { color: axisBorder },
-      axisTicks: { color: axisBorder },
-      crosshairs: {
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: {
         show: true,
-        stroke: {
-          color: crosshairBorder,
-          width: 1,
-          dashArray: 3,
+        lineStyle: {
+          color: splitLineColor,
+          type: 'dashed',
         },
       },
-      labels: {
-        format: 'dd MMM yyyy',
-        style: {
-          colors: textMuted,
-          fontFamily: bodyFont,
-          fontSize: '11px',
-        },
+      axisLine: {
+        show: false,
+      },
+      axisTick: { show: false },
+      axisLabel: {
+        color: textMuted,
+        fontFamily: MONO_FONT_FAMILY,
+        fontSize: 11,
+        formatter: (val: number) => formatCurrency(val),
       },
     },
-    yaxis: {
-      crosshairs: {
+    dataZoom: [
+      {
+        type: 'inside',
+        start: 0,
+        end: 100,
+      },
+      {
+        type: 'slider',
         show: true,
-        stroke: {
-          color: crosshairBorder,
-          width: 1,
-          dashArray: 3,
+        bottom: '2%',
+        height: 20,
+        borderColor: 'transparent',
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+        fillerColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+        handleStyle: {
+          color: '#6366f1',
+          borderColor: isDark ? '#1e1e24' : '#ffffff',
+        },
+        textStyle: {
+          color: textMuted,
+          fontSize: 10,
         },
       },
-      labels: {
-        style: {
-          colors: textMuted,
-          fontFamily: MONO_FONT_FAMILY,
-          fontSize: '11px',
-        },
-        formatter: (val) => formatCurrency(val),
-      },
-    },
-    legend: {
-      labels: {
-        colors: textMuted,
-      },
-    },
+    ],
   }
 }

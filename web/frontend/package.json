@@ -19,10 +19,9 @@
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-devtools": "latest",
     "@tanstack/react-start": "latest",
-    "apexcharts": "^7.4.0",
+    "echarts": "^6.1.0",
     "nitro": "^3.0.260903-beta",
     "react": "^19.2.0",
-    "react-apexcharts": "^2.1.1",
     "react-dom": "^19.2.0",
     "zustand": "^5.0.15"
   },
