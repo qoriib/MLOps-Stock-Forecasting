@@ -1,20 +1,17 @@
 import datetime
-import math
 import pickle
-from typing import Any, List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
-import pandas as pd
 import keras
 
 from app.config import ASSETS_DIR
 from app.models.schemas import (
-    HistoricalItem,
     PredictRequest,
     PredictResponse,
     PredictionItem,
-    ScalerMeta,
 )
+from app.models.entities import StockPrice
 from app.services.stock_service import StockService
 
 model_cache_storage = {}
@@ -57,10 +54,10 @@ class ModelService:
             return pickle.load(scaler_file_object)
 
     @staticmethod
-    def get_forecast_model(ticker: str, model_type: str):
+    def get_forecast_model(ticker: str, model: str):
         clean_ticker = ticker.strip().upper()
-        clean_model_type = model_type.strip().upper()
-        cache_lookup_key = f"{clean_ticker}_{clean_model_type}"
+        clean_model = model.strip().upper()
+        cache_lookup_key = f"{clean_ticker}_{clean_model}"
 
         if cache_lookup_key in model_cache_storage:
             return model_cache_storage[cache_lookup_key]
@@ -74,112 +71,110 @@ class ModelService:
         return loaded_model
 
     @staticmethod
-    def generate_future_business_dates(last_date_string: str, steps_count: int) -> List[str]:
-        future_date_list = []
-        current_date = datetime.datetime.strptime(last_date_string, "%Y-%m-%d")
-
-        while len(future_date_list) < steps_count:
-            current_date += datetime.timedelta(days=1)
-            weekday_number = current_date.weekday()
-            if weekday_number < 5:
-                formatted_date = current_date.strftime("%Y-%m-%d")
-                future_date_list.append(formatted_date)
-
-        return future_date_list
+    def get_business_days(start_d: datetime.date, end_d: datetime.date) -> List[datetime.date]:
+        b_days = []
+        curr = start_d
+        while curr <= end_d:
+            if curr.weekday() < 5:
+                b_days.append(curr)
+            curr += datetime.timedelta(days=1)
+        return b_days
 
     @classmethod
     async def execute_forecast(cls, parameters: PredictRequest) -> PredictResponse:
         ticker = parameters.ticker.strip().upper()
-        model_type = parameters.model_type.strip().lower()
-        steps_count = parameters.steps
-        history_limit = parameters.history_limit
-        window_size = 30
+        model_name = parameters.model.strip().lower()
+        req_start = datetime.date.fromisoformat(parameters.start_date)
+        req_end = datetime.date.fromisoformat(parameters.end_date)
 
-        history_response = await StockService.get_stock_history(
-            ticker=ticker,
-            start_date=parameters.start_date,
-            end_date=parameters.end_date,
-        )
-        if not history_response or not history_response.data:
-            raise ValueError(f"Data historis pasar untuk {ticker} tidak ditemukan.")
-
-        historical_records = history_response.data
-        total_historical_records = len(historical_records)
-        if total_historical_records < window_size:
-            raise ValueError(
-                f"Jumlah data ({total_historical_records}) kurang dari window size minimal ({window_size})."
-            )
-
-        model = cls.get_forecast_model(ticker, model_type)
+        model = cls.get_forecast_model(ticker, model_name)
         scaler = cls.get_scaler(ticker)
 
-        close_prices = []
-        for record in historical_records:
-            close_prices.append(record.close)
+        window_size = int(model.input_shape[1])
+        feature_dim = int(model.input_shape[2]) if len(model.input_shape) > 2 else 1
 
-        close_prices_array = np.array(close_prices, dtype=np.float32)
-        recent_window = list(close_prices_array[-window_size:])
+        await StockService.ensure_stock_cached(ticker)
 
-        predicted_prices = []
-        for step_iteration in range(steps_count):
-            window_slice = np.array(recent_window[-window_size:], dtype=np.float32).reshape(-1, 1)
-            scaled_window = scaler.transform(window_slice)
-            model_input = scaled_window.reshape(1, window_size, 1)
-            scaled_output = model.predict(model_input, verbose=0)
-            inversed_output = scaler.inverse_transform(scaled_output)
-            predicted_price_value = float(inversed_output.flatten()[0])
+        all_records = await StockPrice.find(
+            StockPrice.metadata.ticker == ticker
+        ).sort("+timestamp").to_list()
 
-            predicted_prices.append(predicted_price_value)
-            recent_window.append(predicted_price_value)
+        if not all_records or len(all_records) < window_size:
+            raise ValueError(
+                f"Data historis untuk {ticker} tidak mencukupi (minimal {window_size} data)."
+            )
 
-        last_historical_prices = close_prices_array[-60:]
-        if len(last_historical_prices) > 1:
-            price_differences = np.diff(last_historical_prices)
-            standard_error = float(np.sqrt(np.mean(price_differences ** 2)))
+        last_hist_date = all_records[-1].timestamp.date()
+
+        if req_end > last_hist_date:
+            forecast_start = last_hist_date + datetime.timedelta(days=1)
+            all_forecast_days = cls.get_business_days(forecast_start, req_end)
+            if not all_forecast_days:
+                raise ValueError(f"Tidak ada hari bursa yang dapat diramal hingga {parameters.end_date}.")
+
+            close_prices = [record.close for record in all_records]
+            recent_window = list(np.array(close_prices[-window_size:], dtype=np.float32))
+
+            predicted_prices = []
+            for _ in range(len(all_forecast_days)):
+                window_slice = np.array(recent_window[-window_size:], dtype=np.float32).reshape(-1, 1)
+                scaled_window = scaler.transform(window_slice)
+                model_input = scaled_window.reshape(1, window_size, feature_dim)
+                scaled_output = model.predict(model_input, verbose=0)
+                inversed_output = scaler.inverse_transform(scaled_output)
+                predicted_price_value = float(inversed_output.flatten()[0])
+
+                predicted_prices.append(predicted_price_value)
+                recent_window.append(predicted_price_value)
+
+            prediction_items = [
+                PredictionItem(
+                    date=b_day.strftime("%Y-%m-%d"),
+                    predicted_price=round(price_val, 2),
+                )
+                for b_day, price_val in zip(all_forecast_days, predicted_prices)
+                if req_start <= b_day <= req_end
+            ]
+
+            if not prediction_items:
+                raise ValueError(
+                    f"Tidak ada hari bursa dalam rentang {parameters.start_date} hingga {parameters.end_date}."
+                )
         else:
-            standard_error = 50.0
+            records_before = [r for r in all_records if r.timestamp.date() < req_start]
+            if len(records_before) < window_size:
+                raise ValueError(
+                    f"Data historis sebelum {parameters.start_date} kurang dari {window_size} hari."
+                )
 
-        last_date = historical_records[-1].date
-        future_dates = cls.generate_future_business_dates(last_date, steps_count)
+            all_forecast_days = cls.get_business_days(req_start, req_end)
+            if not all_forecast_days:
+                raise ValueError(
+                    f"Tidak ada hari bursa dalam rentang {parameters.start_date} hingga {parameters.end_date}."
+                )
 
-        prediction_items = []
-        for step_index, future_date in enumerate(future_dates):
-            price_value = round(float(predicted_prices[step_index]), 2)
-            expansion_factor = math.sqrt(1.0 + 0.04 * step_index)
-            margin = 1.96 * standard_error * expansion_factor
-            lower_value = round(max(0.0, price_value - margin), 2)
-            upper_value = round(price_value + margin, 2)
+            close_prices = [r.close for r in records_before]
+            recent_window = list(np.array(close_prices[-window_size:], dtype=np.float32))
 
-            prediction_item = PredictionItem(
-                date=future_date,
-                predicted_price=price_value,
-                lower_bound=lower_value,
-                upper_bound=upper_value,
-            )
-            prediction_items.append(prediction_item)
+            prediction_items = []
+            for b_day in all_forecast_days:
+                window_slice = np.array(recent_window[-window_size:], dtype=np.float32).reshape(-1, 1)
+                scaled_window = scaler.transform(window_slice)
+                model_input = scaled_window.reshape(1, window_size, feature_dim)
+                scaled_output = model.predict(model_input, verbose=0)
+                inversed_output = scaler.inverse_transform(scaled_output)
+                predicted_price_value = float(inversed_output.flatten()[0])
 
-        scaler_meta = None
-        if hasattr(scaler, "data_min_"):
-            scaler_meta = ScalerMeta(
-                scaler_type="MinMaxScaler",
-                data_min=float(scaler.data_min_[0]),
-                data_max=float(scaler.data_max_[0]),
-                data_range=float(scaler.data_range_[0]),
-                scale=float(scaler.scale_[0]),
-                min=float(scaler.min_[0]),
-            )
-
-        engine_name = f"Keras {model_type.upper()} Model"
-        historical_slice = historical_records[-history_limit:]
+                recent_window.append(predicted_price_value)
+                prediction_items.append(
+                    PredictionItem(
+                        date=b_day.strftime("%Y-%m-%d"),
+                        predicted_price=round(predicted_price_value, 2),
+                    )
+                )
 
         return PredictResponse(
             ticker=ticker,
-            model_type=model_type,
-            model_name=engine_name,
-            forecast_steps=steps_count,
-            window_size=window_size,
-            last_historical_date=last_date,
-            scaler_info=scaler_meta,
+            model=model_name,
             predictions=prediction_items,
-            history=historical_slice,
         )
