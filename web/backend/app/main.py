@@ -1,10 +1,10 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import APP_NAME
-from app.services.database_service import DatabaseService
+from app.config import APP_NAME, APP_DESCRIPTION
 from app.routes.models import router as models_router
 from app.routes.stocks import router as stocks_router
+from app.services.database_service import DatabaseService
+from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=APP_NAME,
-    description="FastAPI Inference Backend for Stock Forecasting",
+    description=APP_DESCRIPTION,
     lifespan=lifespan,
 )
 
