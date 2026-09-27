@@ -1,29 +1,16 @@
 import type { ISODateString } from '@astryxdesign/core/Calendar'
 
 /**
- * Konversi objek Date ke format ISODateString (YYYY-MM-DD).
+ * Mengonversi objek Date JavaScript ke format standar ISO YYYY-MM-DD.
+ * Digunakan untuk integrasi dengan form input tanggal dan parameter query API.
  */
-export function toISODate(date: Date): ISODateString {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}` as ISODateString
-}
+export function toISODate(targetDate: Date): ISODateString {
+  const calendarYear = targetDate.getFullYear()
+  const rawMonth = targetDate.getMonth() + 1
+  const calendarMonth = String(rawMonth).padStart(2, '0')
+  const rawDay = targetDate.getDate()
+  const calendarDay = String(rawDay).padStart(2, '0')
 
-/**
- * Format tanggal YYYY-MM-DD menjadi DD/MM untuk tampilan sumbu grafik.
- */
-export function formatShortDate(val: string): string {
-  if (!val) return ''
-  const parts = val.split('-')
-  return parts.length === 3 ? `${parts[2]}/${parts[1]}` : val
-}
-
-/**
- * Menghasilkan objek Date mundur N hari dari hari ini.
- */
-export function getDaysAgoDate(days: number): Date {
-  const date = new Date()
-  date.setDate(date.getDate() - days)
-  return date
+  const formattedIsoDate = `${calendarYear}-${calendarMonth}-${calendarDay}`
+  return formattedIsoDate as ISODateString
 }

@@ -1,38 +1,38 @@
-export interface FormatCurrencyOptions {
-  prefix?: string
+export interface CurrencyFormattingOptions {
   minimumFractionDigits?: number
   maximumFractionDigits?: number
 }
 
 /**
- * Format angka ke mata uang Rupiah (IDR).
- * Menangani null/undefined/string kosong dengan fallback '—'.
+ * Memformat nilai angka menjadi format mata uang Rupiah (IDR) standar Indonesia.
+ * Menangani input null, undefined, string kosong, atau NaN dengan mengembalikan placeholder '—'.
  */
 export function formatCurrency(
-  value: number | string | null | undefined,
-  options: FormatCurrencyOptions = {},
+  rawPriceValue: number | string | null | undefined,
+  formattingOptions: CurrencyFormattingOptions = {},
 ): string {
-  if (value == null || value === '') return '—'
-  const num = typeof value === 'string' ? Number(value) : value
-  if (Number.isNaN(num)) return '—'
+  if (rawPriceValue === null || rawPriceValue === undefined || rawPriceValue === '') {
+    return '—'
+  }
 
-  const { minimumFractionDigits = 2, maximumFractionDigits = 2 } = options
+  let numericPriceValue: number
+  if (typeof rawPriceValue === 'string') {
+    numericPriceValue = Number(rawPriceValue)
+  } else {
+    numericPriceValue = rawPriceValue
+  }
 
-  return num.toLocaleString('id-ID', {
+  if (Number.isNaN(numericPriceValue)) {
+    return '—'
+  }
+
+  const minimumFractionDigits = formattingOptions.minimumFractionDigits ?? 2
+  const maximumFractionDigits = formattingOptions.maximumFractionDigits ?? 2
+
+  const formattedCurrencyString = numericPriceValue.toLocaleString('en-US', {
     minimumFractionDigits,
     maximumFractionDigits,
   })
-}
 
-/**
- * Format angka umum dengan pemisah ribuan standar id-ID.
- */
-export function formatNumber(
-  value: number | string | null | undefined,
-  options?: Intl.NumberFormatOptions,
-): string {
-  if (value == null || value === '') return '0'
-  const num = typeof value === 'string' ? Number(value) : value
-  if (Number.isNaN(num)) return '0'
-  return num.toLocaleString('id-ID', options)
+  return formattedCurrencyString
 }

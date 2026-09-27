@@ -1,31 +1,22 @@
 /**
- * Mengekstrak pesan error ramah pengguna dari unknown catch block error.
+ * Mengekstrak pesan error yang dapat dibaca manusia dari blok tangkapan (catch block) try-catch.
+ * Mendukung objek Error standar, string, maupun tipe error yang belum diketahui.
  */
 export function extractErrorMessage(
-  err: unknown,
-  fallbackMessage = 'Terjadi kesalahan sistem yang tidak terduga',
+  caughtError: unknown,
+  fallbackMessage: string = 'Terjadi kesalahan sistem yang tidak terduga',
 ): string {
-  if (err instanceof Error) {
-    return err.message
+  if (caughtError instanceof Error) {
+    if (caughtError.message && caughtError.message.trim().length > 0) {
+      return caughtError.message
+    }
   }
-  if (typeof err === 'string') {
-    return err
-  }
-  return fallbackMessage
-}
 
-/**
- * Memeriksa status respons fetch dan mem-parsing JSON data atau melempar Error terformat.
- */
-export async function parseApiResponse<T>(
-  response: Response,
-  defaultErrorMessage = 'Gagal memproses data dari server',
-): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: null }))
-    const message =
-      errorData?.detail || `HTTP ${response.status}: ${defaultErrorMessage}`
-    throw new Error(message)
+  if (typeof caughtError === 'string') {
+    if (caughtError.trim().length > 0) {
+      return caughtError
+    }
   }
-  return (await response.json()) as T
+
+  return fallbackMessage
 }
