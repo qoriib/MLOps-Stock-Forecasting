@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { fetchAvailableModels, fetchStockHistoryData, fetchForecastPrediction } from '@/services/apiForecast.service'
+import { fetchAvailableModels, fetchStockHistoryData, fetchForecastPrediction } from '@/services'
 import { extractErrorMessage } from '@/utils'
 import type { StockStoreState, ThemeMode } from './types'
 
