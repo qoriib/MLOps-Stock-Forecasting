@@ -63,45 +63,37 @@ stages:
       params.yaml:
         BATCH_SIZES:
         - 8
-        - 16
-        - 32
         EPOCHS: 50
         LEARNING_RATES:
         - 0.01
-        - 0.001
-        - 0.0001
         OPTIMIZERS:
-        - SGD
         - Adam
-        - RMSprop
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
         - 10
-        - 20
-        - 30
         TRAIN_SIZE: 0.9
     outs:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: 0fc682398ef2fc2c8928a4f887e053b7
+      md5: 63f80795d32e1bbdfe768e3dd19b3dec
       size: 120293
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: fa62f2a279c85ded41a8833277c654d3
-      size: 106043
+      md5: c25452bc8512b4cdc2f99a51906b2f58
+      size: 149700
     - path: artifact/model/BBCA.JK_hyperparameter.csv
       hash: md5
-      md5: 3c9e7dd820c1f1c24e0f40bf573591ce
-      size: 13124
+      md5: 53b5eff2b31adab9bf985cff74b9cb75
+      size: 238
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
       size: 522
     - path: artifact/notebook/ml_pipeline_BBCA.JK.ipynb
       hash: md5
-      md5: 8dba3662b96bda4669994249676c2d0f
-      size: 399913
+      md5: 04e106d4975d5ba989e87bb9cac21168
+      size: 318544
   ml_pipeline@BBRI.JK:
     cmd: papermill src/ml_pipeline.ipynb 
       artifact/notebook/ml_pipeline_BBRI.JK.ipynb -f params.yaml -p TICKER 
@@ -144,11 +136,11 @@ stages:
     outs:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: 362466e7cdfe15ca291062f75392e6c1
+      md5: ad23b3bf7b9e7b04e14443a3a83a610c
       size: 86436
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 1ef7fd8c044363460cc99cb6c42cdd69
+      md5: ef99f8dc488d61256d47f709455980fe
       size: 149700
     - path: artifact/model/BBRI.JK_hyperparameter.csv
       hash: md5
@@ -160,19 +152,19 @@ stages:
       size: 522
     - path: artifact/notebook/ml_pipeline_BBRI.JK.ipynb
       hash: md5
-      md5: 42cc2520d45a1ace1e6f8832e6832c5b
-      size: 411420
+      md5: b47a5739bde43ca9aeaaaf919f26d19d
+      size: 411418
   store@BBCA.JK:
     cmd: python -m src.store --ticker BBCA.JK
     deps:
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: 0fc682398ef2fc2c8928a4f887e053b7
+      md5: 63f80795d32e1bbdfe768e3dd19b3dec
       size: 120293
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: fa62f2a279c85ded41a8833277c654d3
-      size: 106043
+      md5: c25452bc8512b4cdc2f99a51906b2f58
+      size: 149700
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
@@ -188,12 +180,12 @@ stages:
     outs:
     - path: web/backend/assets/BBCA.JK_GRU.keras
       hash: md5
-      md5: e3183458188b7f539394c7f1ac7e9de4
-      size: 120200
+      md5: afea31450f9dc7dc01dfd68b4e94d606
+      size: 120197
     - path: web/backend/assets/BBCA.JK_LSTM.keras
       hash: md5
-      md5: 20b807ade171a1891e91d511c02b1f8a
-      size: 105944
+      md5: 9a1a963208c504e30ad802c7a3043acb
+      size: 149604
     - path: web/backend/assets/BBCA.JK_scaler.pkl
       hash: md5
       md5: ff023b65cd450cbd0ce903766d113b42
@@ -203,11 +195,11 @@ stages:
     deps:
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: 362466e7cdfe15ca291062f75392e6c1
+      md5: ad23b3bf7b9e7b04e14443a3a83a610c
       size: 86436
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: 1ef7fd8c044363460cc99cb6c42cdd69
+      md5: ef99f8dc488d61256d47f709455980fe
       size: 149700
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
@@ -224,11 +216,11 @@ stages:
     outs:
     - path: web/backend/assets/BBRI.JK_GRU.keras
       hash: md5
-      md5: 20bbaefd98962a4edc8aca646e65502d
+      md5: b3f57596d0dfebc441e795875260f773
       size: 86337
     - path: web/backend/assets/BBRI.JK_LSTM.keras
       hash: md5
-      md5: af820b12850844ae010a5c4155691d7e
+      md5: 74bd2f4cbc25876ae182c9e97bf74ddb
       size: 149607
     - path: web/backend/assets/BBRI.JK_scaler.pkl
       hash: md5
@@ -237,16 +229,21 @@ stages:
   report:
     cmd: python -m src.report --output artifact/report.md
     deps:
+    - path: artifact/model
+      hash: md5
+      md5: 5ead31e032981fe9aa2b6f9d1e5cc13f.dir
+      size: 520396
+      nfiles: 8
     - path: src/config.py
       hash: md5
       md5: 361f879910bb74eb0e9f7a1644475e1c
       size: 1641
     - path: src/report.py
       hash: md5
-      md5: 16c35f86355f582fb2186bde6110dff2
-      size: 4923
+      md5: a92f82e2cf5069179e65d1274effc97a
+      size: 3606
     outs:
     - path: artifact/report.md
       hash: md5
-      md5: df92403b608d44f35fad9e45d57c1fd8
-      size: 19118
+      md5: 9f40b3ba536084b759a6d45a819f01d4
+      size: 748

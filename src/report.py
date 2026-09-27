@@ -1,114 +1,117 @@
 import argparse
 import glob
-import os
-import sys
+import logging
 from pathlib import Path
 import pandas as pd
-from src.config import ARTIFACT_DIR, DATA_DIR, MODEL_DIR
+from src import config
 
-def format_currency(val):
-    try:
-        return f"Rp {float(val):,.2f}"
-    except (ValueError, TypeError):
-        return str(val)
+logger = logging.getLogger("report_stage")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-def generate_report(output_path: Path = None) -> str:
-    lines = []
-    lines.append("## 📊 Machine Learning Pipeline Summary\n")
 
-    # 1. Dataset Overview
-    data_files = sorted(glob.glob(str(DATA_DIR / "*.csv")))
-    if data_files:
-        lines.append("### 📁 Dataset Overview\n")
-        lines.append("| Ticker | Records | Date Range | Latest Close Price |")
-        lines.append("| :--- | :---: | :---: | :---: |")
+def build_dataset_section() -> str:
+    data_files = sorted(glob.glob(str(config.DATA_DIR / "*.csv")))
+    if not data_files:
+        return ""
 
-        for df_path in data_files:
-            ticker = Path(df_path).stem
-            try:
-                df = pd.read_csv(df_path)
-                df["date"] = pd.to_datetime(df["date"], utc=True)
-                min_date = df["date"].min().strftime("%Y-%m-%d")
-                max_date = df["date"].max().strftime("%Y-%m-%d")
-                latest_close = df.iloc[-1]["close"]
-                lines.append(f"| **`{ticker}`** | {len(df):,} | {min_date} to {max_date} | {format_currency(latest_close)} |")
-            except Exception as e:
-                lines.append(f"| **`{ticker}`** | Error loading data: {e} | - | - |")
-        lines.append("\n")
+    records = []
+    for file_path in data_files:
+        ticker = Path(file_path).stem
+        try:
+            df = pd.read_csv(file_path)
+            min_date = str(df["date"].min()).split()[0]
+            max_date = str(df["date"].max()).split()[0]
+            latest_close = df.iloc[-1]["close"]
 
-    # 2. Champion Models
-    hp_files = sorted(glob.glob(str(MODEL_DIR / "*_hyperparameter.csv")))
-    if hp_files:
-        lines.append("### 🏆 Champion Models (Best Performance)\n")
-        lines.append("| Ticker | Model | Time Steps | Optimizer | Batch | Learning Rate | RMSE | MAPE |")
-        lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
+            records.append({
+                "Ticker": ticker,
+                "Jumlah Data": len(df),
+                "Date Range": f"{min_date} to {max_date}",
+                "Latest Close": round(float(latest_close), 2),
+            })
+        except Exception as e:
+            logger.warning(f"Gagal memproses data {ticker}: {e}")
+            records.append({
+                "Ticker": ticker,
+                "Jumlah Data": 0,
+                "Date Range": str(e),
+                "Latest Close": 0,
+            })
 
-        for hp_path in hp_files:
-            ticker = Path(hp_path).stem.replace("_hyperparameter", "")
-            try:
-                hp_df = pd.read_csv(hp_path)
-                if not hp_df.empty and "MAPE" in hp_df.columns:
-                    best = hp_df.sort_values(by="MAPE").iloc[0]
-                    lines.append(
-                        f"| **`{ticker}`** | **{best['model']}** | {int(best['time_steps'])} | "
-                        f"{best['optimizer']} | {int(best['batch_size'])} | {best['learning_rate']} | "
-                        f"{float(best['RMSE']):.2f} | **{float(best['MAPE']):.2f}%** |"
-                    )
-            except Exception as e:
-                lines.append(f"| **`{ticker}`** | Error loading metrics: {e} | - | - | - | - | - | - |")
-        lines.append("\n")
+    if not records:
+        return ""
 
-        # 3. Detailed Hyperparameter Tuning Results
-        lines.append("<details>\n<summary>🔍 <b>View Detailed Hyperparameter Grid Results</b></summary>\n<br>\n")
-        for hp_path in hp_files:
-            ticker = Path(hp_path).stem.replace("_hyperparameter", "")
-            try:
-                hp_df = pd.read_csv(hp_path)
-                if not hp_df.empty:
-                    lines.append(f"#### `{ticker}` Hyperparameters\n")
-                    lines.append("| Model | Time Steps | Optimizer | Batch | LR | Epochs | RMSE | MAPE |")
-                    lines.append("| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
-                    sorted_df = hp_df.sort_values(by="MAPE")
-                    for _, row in sorted_df.iterrows():
-                        lines.append(
-                            f"| {row['model']} | {int(row['time_steps'])} | {row['optimizer']} | "
-                            f"{int(row['batch_size'])} | {row['learning_rate']} | {int(row['epochs_trained'])} | "
-                            f"{float(row['RMSE']):.2f} | {float(row['MAPE']):.2f}% |"
-                        )
-                    lines.append("\n")
-            except Exception as e:
-                lines.append(f"Could not load details for {ticker}: {e}\n")
-        lines.append("</details>\n")
+    content = ["## Dataset Overview\n"]
+    dataset_df = pd.DataFrame(records)
+    content.append(dataset_df.to_markdown(index=False))
+    content.append("\n")
+    return "\n".join(content)
 
-    report_content = "\n".join(lines)
 
-    # Save to report output path
-    if output_path:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(report_content)
-        print(f"Report successfully saved to {output_path}")
+def build_champion_section() -> str:
+    hp_files = sorted(glob.glob(str(config.MODEL_DIR / "*_hyperparameter.csv")))
+    if not hp_files:
+        return ""
 
-    # Append to GitHub Step Summary if running in GitHub Actions
-    summary_env = os.getenv("GITHUB_STEP_SUMMARY")
-    if summary_env:
-        with open(summary_env, "a") as summary_file:
-            summary_file.write(report_content + "\n")
-        print("Report appended to GITHUB_STEP_SUMMARY.")
+    records = []
+    for hp_path in hp_files:
+        ticker = Path(hp_path).stem.replace("_hyperparameter", "")
+        try:
+            hp_df = pd.read_csv(hp_path)
+            if not hp_df.empty and "MAPE" in hp_df.columns:
+                best = hp_df.sort_values(by="MAPE").iloc[0]
+                records.append({
+                    "Ticker": ticker,
+                    "Model": best["model"],
+                    "Time Steps": best["time_steps"],
+                    "Optimizer": best["optimizer"],
+                    "Batch Size": best["batch_size"],
+                    "Learning Rate": best["learning_rate"],
+                    "RMSE": round(float(best["RMSE"]), 2),
+                    "MAPE": round(float(best["MAPE"]), 2),
+                })
+        except Exception as e:
+            logger.warning(f"Gagal membaca hyperparameter {ticker}: {e}")
+
+    if not records:
+        return ""
+
+    content = ["## Champion Models\n"]
+    champion_df = pd.DataFrame(records)
+    content.append(champion_df.to_markdown(index=False))
+    content.append("\n")
+    return "\n".join(content)
+
+
+def generate_report(output_path: Path) -> str:
+    sections = [
+        build_dataset_section(),
+        build_champion_section(),
+    ]
+    report_content = "\n".join(filter(None, sections))
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(report_content)
+    logger.info(f"[Artifact] Laporan berhasil disimpan ke: {output_path}")
 
     return report_content
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Generate ML pipeline summary report")
+    parser = argparse.ArgumentParser(description="Generate ML pipeline report")
     parser.add_argument(
         "--output",
         type=str,
-        default=str(ARTIFACT_DIR / "report.md"),
-        help="Path to output markdown report file",
+        default=str(config.ARTIFACT_DIR / "report.md"),
+        help="Path ke file output markdown laporan",
     )
     args = parser.parse_args()
+    out_file = Path(args.output)
 
-    out_file = Path(args.output) if args.output else ARTIFACT_DIR / "report.md"
+    logger.info("=== Menjalankan Stage Report ===")
     generate_report(out_file)
+    logger.info("=== Selesai Stage Report ===")
+
 
 if __name__ == "__main__":
     main()

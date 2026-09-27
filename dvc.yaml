@@ -3,7 +3,7 @@ params:
 
 stages:
   ingestion:
-    desc: "Unduh data historis harga saham bank dari Yahoo Finance"
+    desc: "Ingest stock data from Yahoo Finance"
     matrix:
       TICKER: ${TICKERS}
     cmd: python -m src.ingestion --ticker ${item.TICKER} --range-days ${RANGE_DAYS} --end-date ${END_DATE}
@@ -17,7 +17,7 @@ stages:
       - artifact/data/${item.TICKER}.csv
 
   ml_pipeline:
-    desc: "Pelatihan model LSTM & GRU serta pencarian hyperparameter optimal per ticker"
+    desc: "Train models & hyperparameter tuning"
     matrix:
       TICKER: ${TICKERS}
     cmd: >-
@@ -51,7 +51,7 @@ stages:
       - artifact/model/${item.TICKER}_hyperparameter.csv
 
   store:
-    desc: "Penyalinan model champion dan artefak scaler dari MLflow ke backend assets"
+    desc: "Copy champion models to backend"
     matrix:
       TICKER: ${TICKERS}
     cmd: python -m src.store --ticker ${item.TICKER}
@@ -67,7 +67,7 @@ stages:
       - web/backend/assets/${item.TICKER}_GRU.keras
 
   report:
-    desc: "Pembuatan ringkasan laporan dataset dan performa hyperparameter model"
+    desc: "Generate pipeline summary report"
     cmd: python -m src.report --output artifact/report.md
     deps:
       - src/config.py

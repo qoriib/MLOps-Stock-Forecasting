@@ -1,6 +1,5 @@
 TICKERS:
   - BBCA.JK
-  - BBRI.JK
 RANGE_DAYS: 1825
 END_DATE: "auto"
 
@@ -12,17 +11,9 @@ EPOCHS: 50
 # Hyperparameter
 TIME_STEPS:
   - 10
-  - 20
-  - 30
 OPTIMIZERS:
-  - SGD
   - Adam
-  - RMSprop
 BATCH_SIZES:
   - 8
-  - 16
-  - 32
 LEARNING_RATES:
   - 0.01
-  - 0.001
-  - 0.0001
