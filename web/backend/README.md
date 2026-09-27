@@ -1,63 +1,63 @@
 # Stock Forecast Inference Backend (FastAPI on Azure Container Apps)
 
-Backend inferensi machine learning berbasis **Python FastAPI** yang dirancang untuk melayani peramalan harga saham menggunakan model **Keras LSTM/GRU**, scaler MinMaxScaler, MongoDB Time Series collection dengan **Beanie ODM**, dan caching data historis pasar saham.
+A machine learning inference backend powered by **Python FastAPI** designed to serve stock price forecasting using **Keras LSTM/GRU** models, MinMaxScaler, MongoDB Time Series collection with **Beanie ODM**, and historical stock market data caching.
 
 ---
 
-## 🚀 Fitur Utama
+## 🚀 Key Features
 
-- **FastAPI Native**: Kinerja tinggi dengan dokumentasi OpenAPI Swagger otomatis (`/docs`) dan root metadata check (`/`).
-- **Clean Architecture & Separation of Concerns**: Pemisahan jelas antara Routes, Controllers, Services, dan Models/Entities.
-- **MongoDB Time Series Collection & Beanie ODM**: Penyimpanan data deret waktu harga saham berkinerja tinggi menggunakan MongoDB Time Series native collection (`timeField="timestamp"`, `metaField="metadata"`, `granularity="hours"`) dan Beanie async ODM.
-- **Real ML Inference**: Memuat model `.keras` terlatih langsung menggunakan Keras/TensorFlow dengan fallback ke simulation engine.
-- **Validasi Terstruktur**: Validasi input Pydantic v2 dengan pesan error yang informatif.
+- **FastAPI Native**: High performance with automated OpenAPI Swagger documentation (`/docs`) and root metadata check (`/`).
+- **Clean Architecture & Separation of Concerns**: Clear separation across Routes, Controllers, Services, and Models/Entities.
+- **MongoDB Time Series Collection & Beanie ODM**: High-performance time series data storage utilizing MongoDB native Time Series collections (`timeField="timestamp"`, `metaField="metadata"`, `granularity="hours"`) and Beanie async ODM.
+- **Real ML Inference**: Loads trained `.keras` models directly using Keras/TensorFlow for multi-step autoregressive inference.
+- **Structured Validation**: Pydantic v2 input validation with clear, informative error messages.
 
 ---
 
-## 🛠️ Struktur Direktori
+## 🛠️ Directory Structure
 
 ```text
 web/backend/
 ├── app/
-│   ├── config.py                  # Konfigurasi paths, environment, & MongoDB settings
-│   ├── main.py                    # Inisialisasi FastAPI, CORS, lifespan, & route registry
+│   ├── config.py                  # Environment paths & MongoDB settings configuration
+│   ├── main.py                    # FastAPI initialization, CORS, lifespan, & route registry
 │   ├── controllers/               # Business logic controller layer
-│   │   ├── models_controller.py   # Overview model & eksekusi peramalan predict
-│   │   └── stocks_controller.py   # Query riwayat harga saham
+│   │   ├── models_controller.py   # Model overview & forecast execution
+│   │   └── stocks_controller.py   # Historical stock price queries
 │   ├── models/
 │   │   ├── entities.py            # Beanie TimeSeries Document entity (StockPrice)
 │   │   └── schemas.py             # Pydantic v2 request & response schemas
-│   ├── routes/                    # API route declarations & param validation
+│   ├── routes/                    # API route declarations & parameter validation
 │   │   ├── models.py              # GET /api/models & POST /api/models/predict
 │   │   └── stocks.py              # GET /api/stocks/{ticker}
-│   └── services/                  # Core services layer
-│       ├── database_service.py    # Motor client & Beanie ODM lifespan initialization
+│   └── services/                  # Core service layer
+│       ├── database_service.py    # PyMongo client & Beanie ODM lifespan initialization
 │       ├── stock_service.py       # Stock data queries & time series history operations
 │       └── model_service.py       # ML model inference & autoregressive forecast
-├── assets/                        # Model & data assets
-├── gunicorn.conf.py               # Konfigurasi ASGI production
-├── main.py                        # Entrypoint ASGI server
-└── requirements.txt               # Dependensi Python
+├── assets/                        # Model & scaler assets
+├── gunicorn.conf.py               # Production ASGI server configuration
+├── main.py                        # Entrypoint ASGI application runner
+└── requirements.txt               # Python package dependencies
 ```
 
 ---
 
-## 💻 Menjalankan di Lokal
+## 💻 Running Locally
 
-1. Masuk ke direktori backend:
+1. Navigate to the backend directory:
    ```bash
    cd web/backend
    ```
-2. Buat dan aktifkan virtual environment:
+2. Create and activate a virtual environment:
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
-3. Install dependensi:
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-4. Jalankan server FastAPI:
+4. Run the FastAPI development server:
    ```bash
    uvicorn main:app --port 8000 --reload
    ```
