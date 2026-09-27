@@ -135,7 +135,7 @@ jobs:
 
       - name: Build Frontend
         env:
-          VITE_API_URL: ${{ needs.deploy_backend.outputs.backend_url || secrets.VITE_API_URL }}
+          VITE_API_URL: ${{ needs.deploy_backend.outputs.backend_url }}
         run: |
           cd web/frontend
           npm run build
