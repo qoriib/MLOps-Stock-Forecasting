@@ -40,13 +40,8 @@ jobs:
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
 
-      - name: Setup CML
-        uses: iterative/setup-cml@v2
-
-      - name: Publish Notebook Reports to GitHub Summary
-        env:
-          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/publish_notebooks.sh
+      - name: Publish ML Pipeline Summary
+        run: poetry run python scripts/generate_ml_report.py
 
       - name: Upload Notebook Reports
         uses: actions/upload-artifact@v4
@@ -119,6 +114,17 @@ jobs:
             --output tsv)
           echo "backend_url=https://$FQDN" >> $GITHUB_OUTPUT
 
+      - name: Publish Backend Deployment Summary
+        run: |
+          echo "## 🚀 Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Container App** | \`${{ env.CONTAINER_APP_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Resource Group** | \`${{ env.AZURE_RESOURCE_GROUP }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend URL** | [${{ steps.get-backend-url.outputs.backend_url }}](${{ steps.get-backend-url.outputs.backend_url }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API Docs (Swagger)** | [${{ steps.get-backend-url.outputs.backend_url }}/docs](${{ steps.get-backend-url.outputs.backend_url }}/docs) |" >> $GITHUB_STEP_SUMMARY
+
   deploy_frontend:
     name: "Deploy Frontend"
     needs: deploy_backend
@@ -157,3 +163,13 @@ jobs:
             --env production \
             --deployment-token "$AZURE_STATIC_WEB_APPS_API_TOKEN" \
             --no-use-keychain
+
+      - name: Publish Frontend Deployment Summary
+        run: |
+          echo "## 🌐 Frontend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Platform** | Azure Static Web Apps |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | Production |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Connected Backend API** | \`${{ needs.deploy_backend.outputs.backend_url }}\` |" >> $GITHUB_STEP_SUMMARY
