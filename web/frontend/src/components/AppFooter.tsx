@@ -1,44 +1,15 @@
-import { Button, HStack, StatusDot, Text } from '@astryxdesign/core'
-import { useStockStore } from '@/stores'
+import { HStack, Text } from '@astryxdesign/core'
 import { APP_CONFIG } from '@/configs'
 
 export function AppFooter() {
-  const backendHealthy = useStockStore((state) => state.backendHealthy)
-  const checkHealth = useStockStore((state) => state.checkHealth)
-  const themeMode = useStockStore((state) => state.themeMode)
-  const toggleThemeMode = useStockStore((state) => state.toggleThemeMode)
-
-  const statusLabel =
-    backendHealthy === true
-      ? 'Cloudflare Worker (Edge AI API)'
-      : backendHealthy === false
-        ? 'Offline'
-        : 'Inisialisasi...'
-
   return (
-    <HStack justify="between" align="center">
-      <Text color="secondary">
-        {APP_CONFIG.title}
+    <HStack justify="between" align="center" wrap="wrap" gap={2}>
+      <Text color="secondary" size="sm">
+        {APP_CONFIG.title} — Arsitektur MLOps Terpadu (Single Unified Chart)
       </Text>
-      <HStack gap={2} align="center">
-        <Button
-          variant="ghost"
-          label={themeMode === 'light' ? 'Mode Gelap' : 'Mode Terang'}
-          onClick={toggleThemeMode}
-        />
-        <Button
-          variant="ghost"
-          icon={
-            <StatusDot
-              label={statusLabel}
-              variant={backendHealthy ? 'success' : backendHealthy === false ? 'error' : 'neutral'}
-              isPulsing={backendHealthy === true}
-            />
-          }
-          label={statusLabel}
-          onClick={checkHealth}
-        />
-      </HStack>
+      <Text color="secondary" size="xsm">
+        Powered by Beanie ODM, FastAPI, and Deep Learning (LSTM & GRU)
+      </Text>
     </HStack>
   )
 }

@@ -1,19 +1,23 @@
 import { defineConfig } from 'vite'
-import { devtools } from '@tanstack/devtools-vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import { nitro } from 'nitro/vite'
 import viteReact from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'node:url'
 
-const config = defineConfig({
+export default defineConfig({
   resolve: {
-    tsconfigPaths: true
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
   },
   plugins: [
-    devtools(),
-    nitro({ rollupConfig: { external: [/^@sentry\//] } }),
-    tanstackStart(),
     viteReact(),
   ],
 })
-
-export default config

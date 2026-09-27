@@ -1,4 +1,4 @@
-export interface HistoricalItem extends Record<string, unknown> {
+export interface StockDataPoint {
   date: string
   open: number
   high: number
@@ -7,9 +7,11 @@ export interface HistoricalItem extends Record<string, unknown> {
   volume: number
 }
 
-export type StockDataPoint = HistoricalItem
+export type HistoricalItem = StockDataPoint
 
-export interface HistoricalResponse {
+export interface StockHistoryResponse {
   ticker: string
-  data: HistoricalItem[]
+  data: StockDataPoint[]
 }
+
+export type HistoricalResponse = StockHistoryResponse

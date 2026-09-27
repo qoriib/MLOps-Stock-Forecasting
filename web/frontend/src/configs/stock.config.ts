@@ -1,63 +1,80 @@
 import type { DateRangePreset, DateRange } from '@astryxdesign/core/DateRangeInput'
-import { toISODate, getDaysAgoDate } from '@/utils/date.util'
+import { toISODate } from '@/utils/date.util'
 
-export const DEFAULT_MODEL_TYPE = 'lstm'
-export const DEFAULT_FORECAST_STEPS = '7'
-export const DEFAULT_HISTORY_LIMIT = 500
-export const DEFAULT_HISTORY_DISPLAY_COUNT = 30
+export const DEFAULT_MODEL = 'lstm'
+export const DEFAULT_TICKER = 'BBCA.JK'
 
-export const MODEL_OPTIONS = [
-  { value: 'lstm', label: 'Model: LSTM' },
-  { value: 'gru', label: 'Model: GRU' },
-]
-
-export const STEP_OPTIONS = [
-  { value: '7', label: '7 Hari' },
-  { value: '14', label: '14 Hari' },
-  { value: '30', label: '30 Hari' },
-  { value: '60', label: '60 Hari' },
-  { value: '90', label: '90 Hari' },
-]
-
-export const DATE_RANGE_PRESETS: DateRangePreset[] = [
+/**
+ * Presets rentang tanggal riwayat historis
+ */
+export const HISTORY_RANGE_PRESETS: DateRangePreset[] = [
   {
-    label: '7 Hari Terakhir',
+    label: '1 Bulan Terakhir',
     getRange: (): DateRange => {
-      const end = new Date()
-      const start = getDaysAgoDate(6)
+      const end = new Date(2026, 8, 25) // Sep 25, 2026
+      const start = new Date(2026, 7, 25) // Aug 25, 2026
       return { start: toISODate(start), end: toISODate(end) }
     },
   },
   {
-    label: '30 Hari Terakhir',
+    label: '3 Bulan Terakhir',
     getRange: (): DateRange => {
-      const end = new Date()
-      const start = getDaysAgoDate(29)
+      const end = new Date(2026, 8, 25)
+      const start = new Date(2026, 5, 25)
       return { start: toISODate(start), end: toISODate(end) }
     },
   },
   {
-    label: '90 Hari Terakhir',
+    label: '6 Bulan Terakhir',
     getRange: (): DateRange => {
-      const end = new Date()
-      const start = getDaysAgoDate(89)
+      const end = new Date(2026, 8, 25)
+      const start = new Date(2026, 2, 25)
       return { start: toISODate(start), end: toISODate(end) }
     },
   },
   {
     label: '1 Tahun',
     getRange: (): DateRange => {
-      const end = new Date()
-      const start = new Date()
-      start.setFullYear(end.getFullYear() - 1)
+      const end = new Date(2026, 8, 25)
+      const start = new Date(2025, 8, 25)
       return { start: toISODate(start), end: toISODate(end) }
     },
   },
   {
-    label: 'Maksimal',
+    label: 'Semua Riwayat',
     getRange: (): DateRange => {
-      const end = new Date()
-      const start = new Date(2021, 8, 3)
+      const end = new Date(2026, 8, 25)
+      const start = new Date(2024, 8, 27) // Earliest data in MongoDB
+      return { start: toISODate(start), end: toISODate(end) }
+    },
+  },
+]
+
+/**
+ * Presets rentang tanggal peramalan ke depan
+ */
+export const FORECAST_RANGE_PRESETS: DateRangePreset[] = [
+  {
+    label: '7 Hari ke Depan',
+    getRange: (): DateRange => {
+      const start = new Date(2026, 8, 26) // Sep 26, 2026
+      const end = new Date(2026, 9, 3) // Oct 3, 2026
+      return { start: toISODate(start), end: toISODate(end) }
+    },
+  },
+  {
+    label: '14 Hari ke Depan',
+    getRange: (): DateRange => {
+      const start = new Date(2026, 8, 26)
+      const end = new Date(2026, 9, 10)
+      return { start: toISODate(start), end: toISODate(end) }
+    },
+  },
+  {
+    label: '30 Hari ke Depan',
+    getRange: (): DateRange => {
+      const start = new Date(2026, 8, 26)
+      const end = new Date(2026, 9, 26)
       return { start: toISODate(start), end: toISODate(end) }
     },
   },

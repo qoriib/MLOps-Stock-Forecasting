@@ -1,58 +1,68 @@
 import { API_ENDPOINTS } from '@/configs'
-import type { PredictResponse, HistoricalResponse } from '@/types'
+import type { PredictResponse, StockHistoryResponse, ModelsResponse, PredictRequest } from '@/types'
 
 /**
- * Memanggil Backend API untuk peramalan harga saham.
- * Frontend bertindak murni sebagai konsumen data — tanpa inferensi lokal di browser.
+ * Mengambil daftar ticker dan model yang tersedia dari backend.
  */
-export async function fetchForecastPrediction(params: {
-  ticker: string
-  modelType?: string
-  steps?: number
-  startDate?: string
-  endDate?: string
-  historyLimit?: number
-}): Promise<PredictResponse> {
-  const response = await fetch(API_ENDPOINTS.predict, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ticker: params.ticker,
-      model_type: params.modelType || 'lstm',
-      steps: params.steps,
-      start_date: params.startDate,
-      end_date: params.endDate,
-      history_limit: params.historyLimit,
-    }),
-  })
-
+export async function fetchAvailableModels(): Promise<ModelsResponse> {
+  const response = await fetch(API_ENDPOINTS.models)
   if (!response.ok) {
     const errorData = await response.json().catch(() => null)
-    throw new Error(errorData?.message || errorData?.error || `HTTP ${response.status}: Gagal memproses peramalan`)
+    throw new Error(errorData?.detail || `HTTP ${response.status}: Gagal memuat daftar model`)
   }
-
-  return (await response.json()) as PredictResponse
+  return (await response.json()) as ModelsResponse
 }
 
 /**
- * Mengambil data historis pasar saham dari Backend API.
+ * Mengambil data historis pasar saham (candlestick OHLC) dari backend.
  */
 export async function fetchStockHistoryData(
   ticker: string,
-  startDate?: string,
-  endDate?: string,
-): Promise<HistoricalResponse> {
+  startDate: string,
+  endDate: string,
+): Promise<StockHistoryResponse> {
   const cleanTicker = ticker.trim().toUpperCase()
   const endpoint = API_ENDPOINTS.stockHistory(cleanTicker, startDate, endDate)
-
   const response = await fetch(endpoint)
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => null)
     throw new Error(
-      errorData?.message || `Data historis pasar untuk ticker '${cleanTicker}' tidak dapat dimuat.`,
+      errorData?.detail || `Data historis pasar untuk ticker '${cleanTicker}' tidak dapat dimuat.`,
     )
   }
 
-  return (await response.json()) as HistoricalResponse
+  return (await response.json()) as StockHistoryResponse
+}
+
+/**
+ * Mengirim permintaan inferensi peramalan harga saham ke backend.
+ */
+export async function fetchForecastPrediction(params: {
+  ticker: string
+  model: string
+  startDate: string
+  endDate: string
+}): Promise<PredictResponse> {
+  const payload: PredictRequest = {
+    ticker: params.ticker,
+    model: params.model,
+    start_date: params.startDate,
+    end_date: params.endDate,
+  }
+
+  const response = await fetch(API_ENDPOINTS.predict, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(
+      errorData?.detail || `HTTP ${response.status}: Gagal memproses peramalan`,
+    )
+  }
+
+  return (await response.json()) as PredictResponse
 }
