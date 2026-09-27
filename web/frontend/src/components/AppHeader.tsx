@@ -14,9 +14,9 @@ export function AppHeader() {
 
   const statusLabel =
     backendHealthy === true
-      ? 'Backend API Terhubung'
+      ? 'Terhubung'
       : backendHealthy === false
-        ? 'Backend Terputus'
+        ? 'Terputus'
         : 'Menghubungkan...'
 
   return (

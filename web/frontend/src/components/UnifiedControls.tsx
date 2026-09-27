@@ -8,6 +8,7 @@ import {
   VStack,
   Card,
   Badge,
+  Grid,
 } from '@astryxdesign/core'
 import type { DateRange } from '@astryxdesign/core/DateRangeInput'
 import { useStockStore, useShallow } from '@/stores'
@@ -92,102 +93,93 @@ export function UnifiedControls() {
   }
 
   return (
-    <Card variant="default">
-      <div style={{ padding: '20px 24px' }}>
-        <VStack gap={4}>
-          {/* Header Controls Bar */}
-          <HStack justify="between" align="center" wrap="wrap" gap={3}>
-            <HStack align="center" gap={2}>
-              <Text weight="semibold" size="lg">
-                Konfigurasi Parameter Analisis
-              </Text>
-              <Badge variant="neutral" label="Single Page Live Forecast" />
-            </HStack>
-
-            <Button
-              label={loading ? 'Memproses...' : 'Jalankan Analisis'}
-              variant="primary"
-              isLoading={loading}
-              isDisabled={loading || !draftTicker || !draftHistRange?.start || !draftForeRange?.start}
-              onClick={handleApply}
-            />
+    <Card variant="default" padding={4}>
+      <VStack gap={4}>
+        {/* Header Controls Bar */}
+        <HStack justify="between" align="center" wrap="wrap" gap={3}>
+          <HStack align="center" gap={2}>
+            <Text weight="semibold" size="lg">
+              Konfigurasi Parameter Analisis
+            </Text>
+            <Badge variant="neutral" label="Single Page Live Forecast" />
           </HStack>
 
-          {/* Controls Form Grid */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '16px',
-              alignItems: 'end',
-            }}
-          >
-            {/* Ticker Selector */}
-            <VStack gap={1}>
-              <Text size="sm" weight="medium" color="secondary">
-                Emiten Saham (Ticker)
-              </Text>
-              <Selector
-                isLabelHidden
-                label="Pilih Saham"
-                placeholder={loadingOptions ? 'Memuat ticker...' : 'Pilih Saham'}
-                options={tickerOptions}
-                value={draftTicker}
-                onChange={setDraftTicker}
-                isDisabled={loading || loadingOptions || tickerOptions.length === 0}
-              />
-            </VStack>
+          <Button
+            label={loading ? 'Memproses...' : 'Jalankan Analisis'}
+            variant="primary"
+            isLoading={loading}
+            isDisabled={loading || !draftTicker || !draftHistRange?.start || !draftForeRange?.start}
+            onClick={handleApply}
+          />
+        </HStack>
 
-            {/* Model Architecture Selector */}
-            <VStack gap={1}>
-              <Text size="sm" weight="medium" color="secondary">
-                Model Deep Learning
-              </Text>
-              <Selector
-                isLabelHidden
-                label="Pilih Arsitektur Model"
-                placeholder={loadingOptions ? 'Memuat model...' : 'Pilih Model'}
-                options={modelOptions}
-                value={draftModel}
-                onChange={setDraftModel}
-                isDisabled={loading || loadingOptions || modelOptions.length === 0}
-              />
-            </VStack>
+        {/* Controls Grid menggunakan Astryx Grid */}
+        <Grid columns={{ minWidth: 220 }} gap={3} align="end">
+          {/* Ticker Selector */}
+          <VStack gap={1}>
+            <Text size="sm" weight="medium" color="secondary">
+              Emiten Saham (Ticker)
+            </Text>
+            <Selector
+              isLabelHidden
+              label="Pilih Saham"
+              placeholder={loadingOptions ? 'Memuat ticker...' : 'Pilih Saham'}
+              options={tickerOptions}
+              value={draftTicker}
+              onChange={setDraftTicker}
+              isDisabled={loading || loadingOptions || tickerOptions.length === 0}
+            />
+          </VStack>
 
-            {/* Date Range: Riwayat Pasar */}
-            <VStack gap={1}>
-              <Text size="sm" weight="medium" color="secondary">
-                Rentang Riwayat Pasar (OHLC)
-              </Text>
-              <DateRangeInput
-                label="Rentang Riwayat"
-                isLabelHidden
-                placeholder="Pilih rentang riwayat"
-                value={draftHistRange}
-                onChange={setDraftHistRange}
-                presets={HISTORY_RANGE_PRESETS}
-                isDisabled={loading}
-              />
-            </VStack>
+          {/* Model Architecture Selector */}
+          <VStack gap={1}>
+            <Text size="sm" weight="medium" color="secondary">
+              Model Deep Learning
+            </Text>
+            <Selector
+              isLabelHidden
+              label="Pilih Arsitektur Model"
+              placeholder={loadingOptions ? 'Memuat model...' : 'Pilih Model'}
+              options={modelOptions}
+              value={draftModel}
+              onChange={setDraftModel}
+              isDisabled={loading || loadingOptions || modelOptions.length === 0}
+            />
+          </VStack>
 
-            {/* Date Range: Prediksi */}
-            <VStack gap={1}>
-              <Text size="sm" weight="medium" color="secondary">
-                Rentang Target Prediksi
-              </Text>
-              <DateRangeInput
-                label="Rentang Prediksi"
-                isLabelHidden
-                placeholder="Pilih rentang prediksi"
-                value={draftForeRange}
-                onChange={setDraftForeRange}
-                presets={FORECAST_RANGE_PRESETS}
-                isDisabled={loading}
-              />
-            </VStack>
-          </div>
-        </VStack>
-      </div>
+          {/* Date Range: Riwayat Pasar */}
+          <VStack gap={1}>
+            <Text size="sm" weight="medium" color="secondary">
+              Rentang Riwayat Pasar (OHLC)
+            </Text>
+            <DateRangeInput
+              label="Rentang Riwayat"
+              isLabelHidden
+              placeholder="Pilih rentang riwayat"
+              value={draftHistRange}
+              onChange={setDraftHistRange}
+              presets={HISTORY_RANGE_PRESETS}
+              isDisabled={loading}
+            />
+          </VStack>
+
+          {/* Date Range: Prediksi */}
+          <VStack gap={1}>
+            <Text size="sm" weight="medium" color="secondary">
+              Rentang Target Prediksi
+            </Text>
+            <DateRangeInput
+              label="Rentang Prediksi"
+              isLabelHidden
+              placeholder="Pilih rentang prediksi"
+              value={draftForeRange}
+              onChange={setDraftForeRange}
+              presets={FORECAST_RANGE_PRESETS}
+              isDisabled={loading}
+            />
+          </VStack>
+        </Grid>
+      </VStack>
     </Card>
   )
 }

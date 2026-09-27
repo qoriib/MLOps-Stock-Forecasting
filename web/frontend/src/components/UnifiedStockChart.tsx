@@ -30,7 +30,7 @@ export function UnifiedStockChart() {
   const hasForecast = forecastData && forecastData.length > 0
   const hasAnyData = hasHistory || hasForecast
 
-  // Sort history chronologically
+  // Urutkan riwayat secara kronologis
   const sortedHistory = hasHistory
     ? [...historyData].sort((a, b) => a.date.localeCompare(b.date))
     : []
@@ -90,7 +90,7 @@ export function UnifiedStockChart() {
     stroke: {
       width: [1, 3],
       curve: ['straight', 'smooth'],
-      dashArray: [0, 4], // Garis putus-putus elegan untuk proyeksi ke depan
+      dashArray: [0, 4], // Garis putus-putus untuk proyeksi
     },
     plotOptions: {
       candlestick: {
@@ -140,7 +140,6 @@ export function UnifiedStockChart() {
       ...baseOptions.tooltip,
       shared: true,
       custom: ({ seriesIndex, dataPointIndex, w }) => {
-        // Cek data point series
         const isCandle = seriesIndex === 0
         const isLine = seriesIndex === 1
 
@@ -202,45 +201,43 @@ export function UnifiedStockChart() {
   }
 
   return (
-    <Card variant="default">
-      <div style={{ padding: '16px 20px', minHeight: '440px' }}>
-        {loading && !hasAnyData && (
-          <Center height={400}>
-            <Spinner size="lg" label="Mengambil riwayat harga dan memproses prediksi..." />
-          </Center>
-        )}
+    <Card variant="default" padding={4} minHeight={440}>
+      {loading && !hasAnyData && (
+        <Center height={400}>
+          <Spinner size="lg" label="Mengambil riwayat harga dan memproses prediksi..." />
+        </Center>
+      )}
 
-        {!hasAnyData && !loading && (
-          <Center height={400}>
-            <EmptyState
-              title="Grafik Belum Dimuat"
-              description="Atur rentang tanggal riwayat dan prediksi di atas, lalu klik tombol 'Jalankan Analisis'."
-              headingLevel={4}
+      {!hasAnyData && !loading && (
+        <Center height={400}>
+          <EmptyState
+            title="Grafik Belum Dimuat"
+            description="Atur rentang tanggal riwayat dan prediksi di atas, lalu klik tombol 'Jalankan Analisis'."
+            headingLevel={4}
+          />
+        </Center>
+      )}
+
+      {hasAnyData && (
+        <Overlay
+          isOpen={loading}
+          position="fill"
+          align="center"
+          scrim={isDark ? 'dark' : 'light'}
+          content={<Spinner size="lg" label="Memperbarui data dan inferensi model..." />}
+        >
+          {mounted && (
+            <Chart
+              key={`${mode}-${ticker}-${model}-${sortedHistory.length}-${forecastData.length}`}
+              options={options}
+              series={series}
+              type="candlestick"
+              height={420}
+              width="100%"
             />
-          </Center>
-        )}
-
-        {hasAnyData && (
-          <Overlay
-            isOpen={loading}
-            position="fill"
-            align="center"
-            scrim={isDark ? 'dark' : 'light'}
-            content={<Spinner size="lg" label="Memperbarui data dan inferensi model..." />}
-          >
-            {mounted && (
-              <Chart
-                key={`${mode}-${ticker}-${model}-${sortedHistory.length}-${forecastData.length}`}
-                options={options}
-                series={series}
-                type="candlestick"
-                height={420}
-                width="100%"
-              />
-            )}
-          </Overlay>
-        )}
-      </div>
+          )}
+        </Overlay>
+      )}
     </Card>
   )
 }

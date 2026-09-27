@@ -23,6 +23,28 @@ RULES:
 - Tokens for every value (`astryx docs tokens`). Brand/accent belongs in the theme (`astryx theme list` / `theme add <slug>`, or `astryx theme template` for a custom one) — never override --color-* in :root.
 - SELF-CHECK before you finish: re-read the file and replace any style={{…}}, raw <div>/<span> layout, imported .css/@apply, or hardcoded/arbitrary value (e.g. bg-[#fff], p-[13px]) with the component or a token-backed utility. If unsure a component/prop exists, run `astryx component <Name>` / `astryx search "<thing>"`; don't hand-roll CSS.
 
+COMMON ASTRYX COMPONENT PROP SPECIFICATIONS (DO NOT GUESS):
+- `HStack` / `VStack`:
+  - `justify`: `'start' | 'center' | 'end' | 'between' | 'around' | 'evenly'` (WAJIB `'between'`, BUKAN `'space-between'`)
+  - `align`: `'start' | 'center' | 'end' | 'stretch'` (BUKAN `'baseline'`)
+  - `gap`: `0 | 0.5 | 1 | 1.5 | 2 | 3 | 4 | 5 | 6 | 8 | 10`
+  - `padding`: `0 | 0.5 | 1 | 1.5 | 2 | 3 | 4 | 5 | 6 | 8 | 10`
+  - `wrap`: `'nowrap' | 'wrap' | 'wrap-reverse'`
+- `Grid`:
+  - Gunakan `<Grid columns={{ minWidth: 200 }} gap={3}>` alih-alih CSS grid manual atau HStack wrap.
+  - `columns`: `number | { minWidth: number, max?: number, repeat?: 'fill' | 'fit' }`
+- `Text`:
+  - `size`: `'4xs' | '3xs' | '2xs' | 'xsm' | 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl'` (WAJIB `'xsm'` atau `'sm'`, BUKAN `'xs'`)
+  - `color`: `'primary' | 'secondary' | 'disabled' | 'placeholder' | 'accent' | 'inherit'` (BUKAN `'tertiary'` atau `'danger'`)
+  - `weight`: `'normal' | 'medium' | 'semibold' | 'bold'`
+- `Badge`:
+  - `label`: Isi teks badge (WAJIB menggunakan prop `label`)
+  - `variant`: `'neutral' | 'success' | 'warning' | 'error' | 'purple' | 'blue' | 'teal' | 'orange' | 'pink'` (BUKAN `'solid'` atau `'subtle'`)
+- `StatusDot` & `Token`:
+  - Untuk status indikator atau pill nilai kategori, gunakan `Token` (`color="green" | "red" | "default"`) atau `StatusDot` (`variant="success" | "error" | "warning"`), bukan `Badge`.
+- `Card`:
+  - Memiliki prop `padding` bawaan (misal `padding={4}`) dan `variant="default" | "muted" | "transparent"` serta `minHeight` / `width`. Jangan membungkus children dengan `<div style={{ padding: ... }}>`.
+
 MORE CLI:
   search "<query>"   find any component / hook / doc / template / block
   component --list   163 components by category
