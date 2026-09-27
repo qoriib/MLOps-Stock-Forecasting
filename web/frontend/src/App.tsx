@@ -4,34 +4,24 @@ import { neutralTheme } from '@astryxdesign/theme-neutral/built'
 import { Layout, LayoutHeader, LayoutContent, LayoutFooter } from '@astryxdesign/core/Layout'
 import { Banner, VStack } from '@astryxdesign/core'
 import { useStockStore, useShallow } from '@/stores'
-import { AppHeader } from '@/components/AppHeader'
-import { AppFooter } from '@/components/AppFooter'
-import { UnifiedControls } from '@/components/UnifiedControls'
-import { UnifiedMetrics } from '@/components/UnifiedMetrics'
-import { UnifiedStockChart } from '@/components/UnifiedStockChart'
+import { Header } from '@/components/Header'
+import { Footer } from '@/components/Footer'
+import { Controls } from '@/components/Controls'
+import { StockChart } from '@/components/StockChart'
+import { ForecastTable } from '@/components/ForecastTable'
 
 export function App() {
-  const { themeMode, error, initApp, setThemeMode } = useStockStore(
+  const { themeMode, error, initApp } = useStockStore(
     useShallow((state) => ({
       themeMode: state.themeMode,
       error: state.error,
       initApp: state.initApp,
-      setThemeMode: state.setThemeMode,
     })),
   )
 
   useEffect(() => {
-    // Muat preferensi tema
-    const saved = localStorage.getItem('theme-mode') as 'light' | 'dark' | null
-    if (saved === 'light' || saved === 'dark') {
-      setThemeMode(saved)
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setThemeMode('dark')
-    }
-
-    // Inisialisasi data dari backend
     initApp()
-  }, [initApp, setThemeMode])
+  }, [initApp])
 
   return (
     <Theme theme={neutralTheme} mode={themeMode}>
@@ -40,7 +30,7 @@ export function App() {
         defaultHasDividers
         header={
           <LayoutHeader>
-            <AppHeader />
+            <Header />
           </LayoutHeader>
         }
         content={
@@ -49,25 +39,19 @@ export function App() {
               {error && (
                 <Banner
                   status="error"
-                  title="Kendala Koneksi atau Data"
+                  title="Connection or Data Error"
                   description={error}
                 />
               )}
-
-              {/* Kontrol Input Parameter: Ticker, Model, History Range, Forecast Range */}
-              <UnifiedControls />
-
-              {/* Metrik Ringkasan Nilai & Performa */}
-              <UnifiedMetrics />
-
-              {/* Single Unified Chart: Candlestick (History) + Line (Forecast) */}
-              <UnifiedStockChart />
+              <Controls />
+              <StockChart />
+              <ForecastTable />
             </VStack>
           </LayoutContent>
         }
         footer={
           <LayoutFooter>
-            <AppFooter />
+            <Footer />
           </LayoutFooter>
         }
       />
