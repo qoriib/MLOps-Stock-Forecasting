@@ -1,12 +1,6 @@
 # Abaikan seluruh artefak model dan data yang di-generate untuk semua ticker
-*.csv
 *.keras
-*.h5
 *.pkl
-*_scaler.pkl
-*_scaler.json
-*_metrics.json
-*_hyperparameter.csv
 
 # Jangan abaikan file .gitignore ini
 !.gitignore
