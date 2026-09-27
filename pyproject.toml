@@ -28,6 +28,7 @@ dependencies = [
 [project.scripts]
 ingestion = "src.ingestion:main"
 store = "src.store:main"
+report = "src.report:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

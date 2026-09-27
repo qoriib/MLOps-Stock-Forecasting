@@ -234,3 +234,19 @@ stages:
       hash: md5
       md5: 573105d1564e6278c31ced55d133e8f3
       size: 522
+  report:
+    cmd: python -m src.report --output artifact/report.md
+    deps:
+    - path: src/config.py
+      hash: md5
+      md5: 361f879910bb74eb0e9f7a1644475e1c
+      size: 1641
+    - path: src/report.py
+      hash: md5
+      md5: 16c35f86355f582fb2186bde6110dff2
+      size: 4923
+    outs:
+    - path: artifact/report.md
+      hash: md5
+      md5: df92403b608d44f35fad9e45d57c1fd8
+      size: 19118

@@ -1,8 +1,10 @@
-#!/usr/bin/env python3
+import argparse
 import glob
 import os
 import sys
+from pathlib import Path
 import pandas as pd
+from src.config import ARTIFACT_DIR, DATA_DIR, MODEL_DIR
 
 def format_currency(val):
     try:
@@ -10,21 +12,19 @@ def format_currency(val):
     except (ValueError, TypeError):
         return str(val)
 
-def generate_report():
-    summary_path = os.getenv("GITHUB_STEP_SUMMARY")
+def generate_report(output_path: Path = None) -> str:
     lines = []
-
     lines.append("## 📊 Machine Learning Pipeline Summary\n")
 
-    # 1. Dataset Information
-    data_files = sorted(glob.glob("artifact/data/*.csv"))
+    # 1. Dataset Overview
+    data_files = sorted(glob.glob(str(DATA_DIR / "*.csv")))
     if data_files:
         lines.append("### 📁 Dataset Overview\n")
         lines.append("| Ticker | Records | Date Range | Latest Close Price |")
         lines.append("| :--- | :---: | :---: | :---: |")
 
         for df_path in data_files:
-            ticker = os.path.basename(df_path).replace(".csv", "")
+            ticker = Path(df_path).stem
             try:
                 df = pd.read_csv(df_path)
                 df["date"] = pd.to_datetime(df["date"], utc=True)
@@ -33,18 +33,18 @@ def generate_report():
                 latest_close = df.iloc[-1]["close"]
                 lines.append(f"| **`{ticker}`** | {len(df):,} | {min_date} to {max_date} | {format_currency(latest_close)} |")
             except Exception as e:
-                lines.append(f"| **`{ticker}`** | Error loading data | - | - |")
+                lines.append(f"| **`{ticker}`** | Error loading data: {e} | - | - |")
         lines.append("\n")
 
-    # 2. Champion Models (Best Performance)
-    hp_files = sorted(glob.glob("artifact/model/*_hyperparameter.csv"))
+    # 2. Champion Models
+    hp_files = sorted(glob.glob(str(MODEL_DIR / "*_hyperparameter.csv")))
     if hp_files:
         lines.append("### 🏆 Champion Models (Best Performance)\n")
         lines.append("| Ticker | Model | Time Steps | Optimizer | Batch | Learning Rate | RMSE | MAPE |")
         lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |")
 
         for hp_path in hp_files:
-            ticker = os.path.basename(hp_path).replace("_hyperparameter.csv", "")
+            ticker = Path(hp_path).stem.replace("_hyperparameter", "")
             try:
                 hp_df = pd.read_csv(hp_path)
                 if not hp_df.empty and "MAPE" in hp_df.columns:
@@ -55,13 +55,13 @@ def generate_report():
                         f"{float(best['RMSE']):.2f} | **{float(best['MAPE']):.2f}%** |"
                     )
             except Exception as e:
-                lines.append(f"| **`{ticker}`** | Error loading model metrics | - | - | - | - | - | - |")
+                lines.append(f"| **`{ticker}`** | Error loading metrics: {e} | - | - | - | - | - | - |")
         lines.append("\n")
 
-        # 3. Detailed Hyperparameter Comparison per Ticker
+        # 3. Detailed Hyperparameter Tuning Results
         lines.append("<details>\n<summary>🔍 <b>View Detailed Hyperparameter Grid Results</b></summary>\n<br>\n")
         for hp_path in hp_files:
-            ticker = os.path.basename(hp_path).replace("_hyperparameter.csv", "")
+            ticker = Path(hp_path).stem.replace("_hyperparameter", "")
             try:
                 hp_df = pd.read_csv(hp_path)
                 if not hp_df.empty:
@@ -82,12 +82,33 @@ def generate_report():
 
     report_content = "\n".join(lines)
 
-    if summary_path:
-        with open(summary_path, "a") as f:
-            f.write(report_content + "\n")
-        print("ML report successfully appended to GITHUB_STEP_SUMMARY.")
-    else:
-        print(report_content)
+    # Save to report output path
+    if output_path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(report_content)
+        print(f"Report successfully saved to {output_path}")
+
+    # Append to GitHub Step Summary if running in GitHub Actions
+    summary_env = os.getenv("GITHUB_STEP_SUMMARY")
+    if summary_env:
+        with open(summary_env, "a") as summary_file:
+            summary_file.write(report_content + "\n")
+        print("Report appended to GITHUB_STEP_SUMMARY.")
+
+    return report_content
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate ML pipeline summary report")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=str(ARTIFACT_DIR / "report.md"),
+        help="Path to output markdown report file",
+    )
+    args = parser.parse_args()
+
+    out_file = Path(args.output) if args.output else ARTIFACT_DIR / "report.md"
+    generate_report(out_file)
 
 if __name__ == "__main__":
-    generate_report()
+    main()

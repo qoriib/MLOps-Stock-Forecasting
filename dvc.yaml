@@ -65,3 +65,14 @@ stages:
       - web/backend/assets/${item.TICKER}_scaler.pkl
       - web/backend/assets/${item.TICKER}_LSTM.keras
       - web/backend/assets/${item.TICKER}_GRU.keras
+
+  report:
+    desc: "Pembuatan ringkasan laporan dataset dan performa hyperparameter model"
+    cmd: python -m src.report --output artifact/report.md
+    deps:
+      - src/config.py
+      - src/report.py
+      - artifact/model
+    outs:
+      - artifact/report.md:
+          cache: false
