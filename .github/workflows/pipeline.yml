@@ -41,7 +41,7 @@ jobs:
         uses: ./.github/actions/push-pipeline
 
       - name: Publish ML Pipeline Summary
-        run: poetry run python scripts/generate_ml_report.py
+        run: poetry run python -m src.report
 
       - name: Upload Notebook Reports
         uses: actions/upload-artifact@v4
