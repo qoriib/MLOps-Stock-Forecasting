@@ -34,7 +34,12 @@ class StockService:
                     end=tomorrow_date.strftime("%Y-%m-%d"),
                 )
             else:
-                dataframe = ticker_instance.history(period="2y")
+                two_years_ago = datetime.date.today() - datetime.timedelta(days=730)
+                tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
+                dataframe = ticker_instance.history(
+                    start=two_years_ago.strftime("%Y-%m-%d"),
+                    end=tomorrow_date.strftime("%Y-%m-%d"),
+                )
 
             if dataframe is None or dataframe.empty:
                 return
@@ -85,8 +90,12 @@ class StockService:
 
             metadata_instance = StockMetadata(ticker=ticker)
             new_documents = []
+            seen_dates = set()
+
             for item in prepared_records:
-                if item["date"] not in existing_timestamps:
+                record_date = item["date"]
+                if record_date not in existing_timestamps and record_date not in seen_dates:
+                    seen_dates.add(record_date)
                     new_doc = StockPrice(
                         timestamp=item["datetime"],
                         metadata=metadata_instance,
@@ -99,8 +108,9 @@ class StockService:
                     new_documents.append(new_doc)
 
             if new_documents:
+                new_documents.sort(key=lambda d: d.timestamp)
                 await StockPrice.insert_many(new_documents)
-                logger.info(f"Berhasil menyimpan {len(new_documents)} data harga time series untuk {ticker}.")
+                logger.info(f"Berhasil menyimpan {len(new_documents)} data harga time series unik untuk {ticker}.")
         except Exception as sync_error:
             logger.error(f"Gagal menyinkronkan data yfinance untuk {ticker}: {sync_error}")
 
@@ -123,35 +133,35 @@ class StockService:
     async def get_stock_history(
         cls,
         ticker: str,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        start_date: str,
+        end_date: str,
     ) -> Optional[HistoricalResponse]:
         clean_ticker = ticker.strip().upper()
         await cls.ensure_stock_cached(clean_ticker)
 
-        query_conditions = [StockPrice.metadata.ticker == clean_ticker]
+        parsed_start_date = datetime.date.fromisoformat(start_date)
+        parsed_end_date = datetime.date.fromisoformat(end_date)
 
-        if start_date is not None:
-            parsed_start_date = pd.to_datetime(start_date).date()
-            start_datetime = datetime.datetime(
-                parsed_start_date.year,
-                parsed_start_date.month,
-                parsed_start_date.day,
-                0, 0, 0,
-                tzinfo=datetime.timezone.utc,
-            )
-            query_conditions.append(StockPrice.timestamp >= start_datetime)
+        start_datetime = datetime.datetime(
+            parsed_start_date.year,
+            parsed_start_date.month,
+            parsed_start_date.day,
+            0, 0, 0,
+            tzinfo=datetime.timezone.utc,
+        )
+        end_datetime = datetime.datetime(
+            parsed_end_date.year,
+            parsed_end_date.month,
+            parsed_end_date.day,
+            23, 59, 59,
+            tzinfo=datetime.timezone.utc,
+        )
 
-        if end_date is not None:
-            parsed_end_date = pd.to_datetime(end_date).date()
-            end_datetime = datetime.datetime(
-                parsed_end_date.year,
-                parsed_end_date.month,
-                parsed_end_date.day,
-                23, 59, 59,
-                tzinfo=datetime.timezone.utc,
-            )
-            query_conditions.append(StockPrice.timestamp <= end_datetime)
+        query_conditions = [
+            StockPrice.metadata.ticker == clean_ticker,
+            StockPrice.timestamp >= start_datetime,
+            StockPrice.timestamp <= end_datetime,
+        ]
 
         records = await StockPrice.find(*query_conditions).sort("+timestamp").to_list()
 

@@ -1,4 +1,3 @@
-from typing import Optional
 from fastapi import HTTPException
 from app.models.schemas import HistoricalResponse
 from app.services.model_service import ModelService
@@ -8,8 +7,8 @@ class StocksController:
     @staticmethod
     async def get_stock_history(
         ticker: str,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        start_date: str,
+        end_date: str,
     ) -> HistoricalResponse:
         clean_ticker = ticker.strip().upper()
         available_tickers, _ = ModelService.get_available_assets()
@@ -18,6 +17,12 @@ class StocksController:
             raise HTTPException(
                 status_code=404,
                 detail=f"Ticker '{clean_ticker}' tidak tersedia dalam model.",
+            )
+
+        if start_date > end_date:
+            raise HTTPException(
+                status_code=400,
+                detail="start_date tidak boleh lebih besar dari end_date.",
             )
 
         history_response = await StockService.get_stock_history(

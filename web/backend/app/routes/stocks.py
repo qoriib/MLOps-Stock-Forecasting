@@ -20,15 +20,17 @@ async def get_stock_data(
         description="Ticker simbol saham (misal: BBCA.JK)",
         examples=["BBCA.JK"],
     ),
-    start_date: Optional[str] = Query(
-        default=None,
+    start_date: str = Query(
+        ...,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
-        description="Filter tanggal awal (YYYY-MM-DD)",
+        description="Filter tanggal awal (YYYY-MM-DD) - Wajib",
+        examples=["2026-01-01"],
     ),
-    end_date: Optional[str] = Query(
-        default=None,
+    end_date: str = Query(
+        ...,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
-        description="Filter tanggal akhir (YYYY-MM-DD)",
+        description="Filter tanggal akhir (YYYY-MM-DD) - Wajib",
+        examples=["2026-09-25"],
     ),
 ):
     return await StocksController.get_stock_history(
