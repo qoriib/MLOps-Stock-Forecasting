@@ -20,24 +20,24 @@ class PredictRequest(BaseModel):
         min_length=2,
         max_length=20,
         pattern=r"^[A-Za-z0-9.]+$",
-        description="Ticker simbol saham (contoh: BBCA.JK)",
+        description="Stock ticker symbol (e.g. BBCA.JK)",
         examples=["BBCA.JK"],
     )
     model: str = Field(
         default="lstm",
-        description="Nama arsitektur model ('lstm' atau 'gru')",
+        description="Model architecture name ('lstm' or 'gru')",
         examples=["lstm"],
     )
     start_date: str = Field(
         ...,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
-        description="Tanggal awal (YYYY-MM-DD) - Wajib",
+        description="Start date (YYYY-MM-DD) - Required",
         examples=["2026-09-28"],
     )
     end_date: str = Field(
         ...,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
-        description="Tanggal akhir (YYYY-MM-DD) - Wajib",
+        description="End date (YYYY-MM-DD) - Required",
         examples=["2026-10-02"],
     )
 
@@ -46,7 +46,7 @@ class PredictRequest(BaseModel):
     def validate_ticker(cls, ticker_value: str) -> str:
         clean_ticker = ticker_value.strip().upper()
         if not clean_ticker:
-            raise ValueError("Ticker tidak boleh kosong.")
+            raise ValueError("Ticker cannot be empty.")
         return clean_ticker
 
     @field_validator("model")
@@ -55,7 +55,7 @@ class PredictRequest(BaseModel):
         clean_model = model_value.strip().lower()
         valid_models = ["lstm", "gru"]
         if clean_model not in valid_models:
-            raise ValueError("model hanya mendukung 'lstm' atau 'gru'.")
+            raise ValueError("model only supports 'lstm' or 'gru'.")
         return clean_model
 
     @model_validator(mode="after")
@@ -63,7 +63,7 @@ class PredictRequest(BaseModel):
         parsed_start = datetime.date.fromisoformat(self.start_date)
         parsed_end = datetime.date.fromisoformat(self.end_date)
         if parsed_start > parsed_end:
-            raise ValueError("start_date tidak boleh lebih besar dari end_date.")
+            raise ValueError("start_date cannot be greater than end_date.")
         return self
 
 class PredictionItem(BaseModel):

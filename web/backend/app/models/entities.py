@@ -4,20 +4,20 @@ from beanie import Document, Granularity, TimeSeriesConfig
 from pydantic import BaseModel, Field
 
 class StockMetadata(BaseModel):
-    ticker: str = Field(description="Simbol ticker saham (misal: BBCA.JK)")
+    ticker: str = Field(description="Stock ticker symbol (e.g. BBCA.JK)")
 
 class StockPrice(Document):
     timestamp: datetime = Field(
-        description="Waktu/tanggal pencatatan harga saham (UTC)"
+        description="Stock price recording timestamp (UTC)"
     )
     metadata: StockMetadata = Field(
-        description="Metadata pengelompokan time series (ticker saham)"
+        description="Time series grouping metadata (stock ticker)"
     )
-    open: float = Field(default=0.0, description="Harga pembukaan")
-    high: float = Field(default=0.0, description="Harga tertinggi")
-    low: float = Field(default=0.0, description="Harga terendah")
-    close: float = Field(default=0.0, description="Harga penutupan")
-    volume: float = Field(default=0.0, description="Volume transaksi")
+    open: float = Field(default=0.0, description="Opening price")
+    high: float = Field(default=0.0, description="Highest price")
+    low: float = Field(default=0.0, description="Lowest price")
+    close: float = Field(default=0.0, description="Closing price")
+    volume: float = Field(default=0.0, description="Trading volume")
 
     class Settings:
         name = "stock_prices"
