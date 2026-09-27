@@ -7,12 +7,13 @@ from app.models.entities import StockMetadata, StockPrice
 from app.models.schemas import HistoricalItem, HistoricalResponse
 from app.services.database_service import DatabaseService
 
-logger = logging.getLogger("stock_service")
+logger = logging.getLogger(__name__)
 
 class StockService:
     @classmethod
     async def get_latest_cached_date(cls, ticker: str) -> Optional[datetime.date]:
         await DatabaseService.ensure_initialized()
+
         latest_record = await StockPrice.find(
             StockPrice.metadata.ticker == ticker
         ).sort("-timestamp").first_or_none()
@@ -110,9 +111,9 @@ class StockService:
             if new_documents:
                 new_documents.sort(key=lambda d: d.timestamp)
                 await StockPrice.insert_many(new_documents)
-                logger.info(f"Berhasil menyimpan {len(new_documents)} data harga time series unik untuk {ticker}.")
+                logger.info(f"Saved {len(new_documents)} records for {ticker}")
         except Exception as sync_error:
-            logger.error(f"Gagal menyinkronkan data yfinance untuk {ticker}: {sync_error}")
+            logger.error(f"Sync failed for {ticker}: {sync_error}")
 
     @classmethod
     async def ensure_stock_cached(cls, ticker: str) -> None:
@@ -139,23 +140,11 @@ class StockService:
         clean_ticker = ticker.strip().upper()
         await cls.ensure_stock_cached(clean_ticker)
 
-        parsed_start_date = datetime.date.fromisoformat(start_date)
-        parsed_end_date = datetime.date.fromisoformat(end_date)
+        parsed_start = datetime.date.fromisoformat(start_date)
+        parsed_end = datetime.date.fromisoformat(end_date)
 
-        start_datetime = datetime.datetime(
-            parsed_start_date.year,
-            parsed_start_date.month,
-            parsed_start_date.day,
-            0, 0, 0,
-            tzinfo=datetime.timezone.utc,
-        )
-        end_datetime = datetime.datetime(
-            parsed_end_date.year,
-            parsed_end_date.month,
-            parsed_end_date.day,
-            23, 59, 59,
-            tzinfo=datetime.timezone.utc,
-        )
+        start_datetime = datetime.datetime.combine(parsed_start, datetime.time.min, tzinfo=datetime.timezone.utc)
+        end_datetime = datetime.datetime.combine(parsed_end, datetime.time.max, tzinfo=datetime.timezone.utc)
 
         query_conditions = [
             StockPrice.metadata.ticker == clean_ticker,

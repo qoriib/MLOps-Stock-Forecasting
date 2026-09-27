@@ -6,7 +6,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 from app.config import MONGODB_DB_NAME, MONGODB_URL
 from app.models.entities import StockPrice
 
-logger = logging.getLogger("database_service")
+logger = logging.getLogger(__name__)
 
 global_mongo_client: Optional[AsyncMongoClient] = None
 global_mongo_db: Optional[AsyncDatabase] = None
@@ -15,9 +15,11 @@ class DatabaseService:
     @classmethod
     async def init_db(cls) -> None:
         global global_mongo_client, global_mongo_db
+
         if global_mongo_client is None:
             connection_url = MONGODB_URL
-            logger.info("Menghubungkan ke MongoDB...")
+            logger.info("Connecting to MongoDB")
+
             global_mongo_client = AsyncMongoClient(
                 connection_url,
                 serverSelectionTimeoutMS=5000,
@@ -30,16 +32,18 @@ class DatabaseService:
                 database=global_mongo_db,
                 document_models=[StockPrice],
             )
-            logger.info(f"Beanie ODM terhubung ke database MongoDB '{MONGODB_DB_NAME}'.")
+
+            logger.info(f"Connected to MongoDB '{MONGODB_DB_NAME}' via Beanie ODM")
 
     @classmethod
     async def close_db(cls) -> None:
         global global_mongo_client, global_mongo_db
+
         if global_mongo_client is not None:
             await global_mongo_client.close()
             global_mongo_client = None
             global_mongo_db = None
-            logger.info("Koneksi MongoDB berhasil ditutup.")
+            logger.info("MongoDB connection closed")
 
     @classmethod
     async def ensure_initialized(cls) -> None:
