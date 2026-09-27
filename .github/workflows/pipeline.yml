@@ -2,6 +2,12 @@ name: End-to-End Stock Forecasting Data & ML Pipeline
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_ml:
+        description: "Skip ML Pipeline"
+        type: boolean
+        default: false
+        required: false
   push:
     branches: [master]
   schedule:
@@ -20,6 +26,7 @@ env:
 jobs:
   pipeline:
     name: "ML Pipeline"
+    if: ${{ !inputs.skip_ml }}
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +61,7 @@ jobs:
   deploy_backend:
     name: "Deploy Backend"
     needs: pipeline
+    if: ${{ always() && !cancelled() && (needs.pipeline.result == 'success' || needs.pipeline.result == 'skipped') }}
     runs-on: ubuntu-latest
     env:
       AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
@@ -102,7 +110,7 @@ jobs:
 
   deploy_frontend:
     name: "Deploy Frontend"
-    needs: [pipeline, deploy_backend]
+    needs: deploy_backend
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
