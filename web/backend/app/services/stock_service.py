@@ -70,6 +70,8 @@ class StockService:
             if not prepared_records:
                 return
 
+            prepared_records.sort(key=lambda item: item["datetime"])
+
             min_dt = min(item["datetime"] for item in prepared_records)
             max_dt = max(item["datetime"] for item in prepared_records)
 
@@ -81,8 +83,8 @@ class StockService:
 
             existing_timestamps = {doc.timestamp.date() for doc in existing_docs}
 
-            new_documents = []
             metadata_instance = StockMetadata(ticker=ticker)
+            new_documents = []
             for item in prepared_records:
                 if item["date"] not in existing_timestamps:
                     new_doc = StockPrice(

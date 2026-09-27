@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from beanie import Document, Granularity, TimeSeriesConfig
 
 class StockMetadata(BaseModel):
-    ticker: str
+    ticker: str = Field(description="Simbol ticker saham (misal: BBCA.JK)")
 
 class StockPrice(Document):
     timestamp: datetime.datetime = Field(
@@ -13,11 +13,11 @@ class StockPrice(Document):
     metadata: StockMetadata = Field(
         description="Metadata pengelompokan time series (ticker saham)"
     )
-    open: float = Field(default=0.0)
-    high: float = Field(default=0.0)
-    low: float = Field(default=0.0)
-    close: float = Field(default=0.0)
-    volume: float = Field(default=0.0)
+    open: float = Field(default=0.0, description="Harga pembukaan")
+    high: float = Field(default=0.0, description="Harga tertinggi")
+    low: float = Field(default=0.0, description="Harga terendah")
+    close: float = Field(default=0.0, description="Harga penutupan")
+    volume: float = Field(default=0.0, description="Volume transaksi")
 
     class Settings:
         name = "stock_prices"
