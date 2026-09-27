@@ -6,7 +6,7 @@ from app.services.stock_service import StockService
 
 class StocksController:
     @staticmethod
-    def get_stock_history(
+    async def get_stock_history(
         ticker: str,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
@@ -20,7 +20,7 @@ class StocksController:
                 detail=f"Ticker '{clean_ticker}' tidak tersedia dalam model.",
             )
 
-        history_response = StockService.get_stock_history(
+        history_response = await StockService.get_stock_history(
             ticker=clean_ticker,
             start_date=start_date,
             end_date=end_date,

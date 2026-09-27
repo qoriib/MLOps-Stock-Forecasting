@@ -19,5 +19,5 @@ def get_models_overview():
     summary="Predict Stock Prices",
     description="Melakukan inferensi peramalan harga saham",
 )
-def predict_stock_price(payload: PredictRequest):
-    return ModelsController.predict_stock_price(payload)
+async def predict_stock_price(payload: PredictRequest):
+    return await ModelsController.predict_stock_price(payload)

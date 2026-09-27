@@ -1,73 +1,52 @@
 import logging
-from contextlib import contextmanager
-from typing import Generator
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from app.config import DATABASE_URL
-from app.models.entities import Base
+from typing import Optional
+from beanie import init_beanie
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from app.config import MONGODB_DB_NAME, MONGODB_URL
+from app.models.entities import StockPrice
 
 logger = logging.getLogger("database_service")
 
-global_database_engine = None
-global_session_factory = None
+global_motor_client: Optional[AsyncIOMotorClient] = None
+global_mongo_db: Optional[AsyncIOMotorDatabase] = None
 
 class DatabaseService:
-    @staticmethod
-    def get_connection_url() -> str:
-        database_url = DATABASE_URL
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-        elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+"):
-            database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-        return database_url
-
     @classmethod
-    def get_engine(cls):
-        global global_database_engine
-        if global_database_engine is None:
-            connection_url = cls.get_connection_url()
-            global_database_engine = create_engine(
+    async def init_db(cls) -> None:
+        global global_motor_client, global_mongo_db
+        if global_motor_client is None:
+            connection_url = MONGODB_URL
+            logger.info("Menghubungkan ke MongoDB...")
+            global_motor_client = AsyncIOMotorClient(
                 connection_url,
-                pool_pre_ping=True,
-                pool_recycle=1800,
-                pool_size=10,
-                max_overflow=20,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=10000,
             )
-        return global_database_engine
-
-    @classmethod
-    def get_session_factory(cls) -> sessionmaker:
-        global global_session_factory
-        if global_session_factory is None:
-            database_engine = cls.get_engine()
-            global_session_factory = sessionmaker(
-                autocommit=False,
-                autoflush=False,
-                bind=database_engine,
-                expire_on_commit=False,
+            global_mongo_db = global_motor_client[MONGODB_DB_NAME]
+            await init_beanie(
+                database=global_mongo_db,
+                document_models=[StockPrice],
             )
-        return global_session_factory
+            logger.info(f"Beanie ODM terhubung ke database MongoDB '{MONGODB_DB_NAME}'.")
 
     @classmethod
-    def get_session(cls) -> Session:
-        session_factory = cls.get_session_factory()
-        session_instance = session_factory()
-        return session_instance
+    async def close_db(cls) -> None:
+        global global_motor_client, global_mongo_db
+        if global_motor_client is not None:
+            global_motor_client.close()
+            global_motor_client = None
+            global_mongo_db = None
+            logger.info("Koneksi MongoDB berhasil ditutup.")
 
     @classmethod
-    @contextmanager
-    def session_scope(cls) -> Generator[Session, None, None]:
-        session_instance = cls.get_session()
-        try:
-            yield session_instance
-            session_instance.commit()
-        except Exception:
-            session_instance.rollback()
-            raise
-        finally:
-            session_instance.close()
+    async def ensure_initialized(cls) -> None:
+        if global_motor_client is None:
+            await cls.init_db()
 
     @classmethod
-    def init_db(cls) -> None:
-        database_engine = cls.get_engine()
-        Base.metadata.create_all(bind=database_engine)
+    def get_client(cls) -> Optional[AsyncIOMotorClient]:
+        return global_motor_client
+
+    @classmethod
+    def get_database(cls) -> Optional[AsyncIOMotorDatabase]:
+        return global_mongo_db

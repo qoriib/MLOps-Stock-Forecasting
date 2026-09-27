@@ -15,9 +15,9 @@ class ModelsController:
         )
 
     @staticmethod
-    def predict_stock_price(payload: PredictRequest) -> PredictResponse:
+    async def predict_stock_price(payload: PredictRequest) -> PredictResponse:
         try:
-            return ModelService.execute_forecast(payload)
+            return await ModelService.execute_forecast(payload)
         except ValueError as validation_error:
             logger.warning(f"Validation or model asset missing: {validation_error}")
             raise HTTPException(status_code=404, detail=str(validation_error))

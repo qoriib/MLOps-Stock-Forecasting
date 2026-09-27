@@ -88,14 +88,14 @@ class ModelService:
         return future_date_list
 
     @classmethod
-    def execute_forecast(cls, parameters: PredictRequest) -> PredictResponse:
+    async def execute_forecast(cls, parameters: PredictRequest) -> PredictResponse:
         ticker = parameters.ticker.strip().upper()
         model_type = parameters.model_type.strip().lower()
         steps_count = parameters.steps
         history_limit = parameters.history_limit
         window_size = 30
 
-        history_response = StockService.get_stock_history(
+        history_response = await StockService.get_stock_history(
             ticker=ticker,
             start_date=parameters.start_date,
             end_date=parameters.end_date,

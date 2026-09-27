@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api", tags=["stocks"])
     summary="Get Stock Prices",
     description="Mengambil data historis harga saham OHLCV untuk ticker tertentu"
 )
-def get_stock_data(
+async def get_stock_data(
     ticker: str = Path(
         ...,
         min_length=2,
@@ -31,7 +31,7 @@ def get_stock_data(
         description="Filter tanggal akhir (YYYY-MM-DD)",
     ),
 ):
-    return StocksController.get_stock_history(
+    return await StocksController.get_stock_history(
         ticker=ticker,
         start_date=start_date,
         end_date=end_date,

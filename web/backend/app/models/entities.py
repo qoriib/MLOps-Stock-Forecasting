@@ -1,41 +1,52 @@
 import datetime
 from typing import Any, Dict
-from sqlalchemy import Date, Float, Index, String
-from sqlalchemy.orm import Mapped, declarative_base, mapped_column
+from pydantic import BaseModel, Field
+from beanie import Document, Granularity, TimeSeriesConfig
 
-Base = declarative_base()
+class StockMetadata(BaseModel):
+    ticker: str
 
-class StockPrice(Base):
-    __tablename__ = "stock_prices"
-
-    ticker: Mapped[str] = mapped_column(String(20), primary_key=True)
-    date: Mapped[datetime.date] = mapped_column(Date, primary_key=True)
-    open: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    high: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    low: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    close: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    volume: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-
-    __table_args__ = (
-        Index("idx_stock_prices_ticker_date", "ticker", "date"),
+class StockPrice(Document):
+    timestamp: datetime.datetime = Field(
+        description="Waktu/tanggal pencatatan harga saham"
     )
+    metadata: StockMetadata = Field(
+        description="Metadata pengelompokan time series (ticker saham)"
+    )
+    open: float = Field(default=0.0)
+    high: float = Field(default=0.0)
+    low: float = Field(default=0.0)
+    close: float = Field(default=0.0)
+    volume: float = Field(default=0.0)
+
+    class Settings:
+        name = "stock_prices"
+        timeseries = TimeSeriesConfig(
+            time_field="timestamp",
+            meta_field="metadata",
+            granularity=Granularity.hours,
+        )
+
+    @property
+    def ticker(self) -> str:
+        return self.metadata.ticker
+
+    @property
+    def date(self) -> datetime.date:
+        return self.timestamp.date()
 
     def to_dict(self) -> Dict[str, Any]:
-        formatted_date = None
-        if self.date is not None:
-            formatted_date = self.date.strftime("%Y-%m-%d")
-
-        price_dictionary = {
-            "ticker": self.ticker,
-            "date": formatted_date,
+        return {
+            "ticker": self.metadata.ticker,
+            "date": self.timestamp.strftime("%Y-%m-%d"),
             "open": float(self.open),
             "high": float(self.high),
             "low": float(self.low),
             "close": float(self.close),
             "volume": float(self.volume),
         }
-        return price_dictionary
 
     def __repr__(self) -> str:
-        representation_string = f"<StockPrice(ticker='{self.ticker}', date='{self.date}', close={self.close})>"
-        return representation_string
+        return f"<StockPrice(ticker='{self.metadata.ticker}', date='{self.date}', close={self.close})>"
+
+Base = Document

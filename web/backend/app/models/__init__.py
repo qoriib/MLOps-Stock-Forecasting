@@ -1,4 +1,4 @@
-from app.models.entities import Base, StockPrice
+from app.models.entities import Base, StockPrice, StockMetadata
 from app.models.schemas import (
     HistoricalItem,
     HistoricalResponse,
@@ -15,6 +15,7 @@ from app.models.schemas import (
 __all__ = [
     "Base",
     "StockPrice",
+    "StockMetadata",
     "HistoricalItem",
     "HistoricalResponse",
     "PredictRequest",
