@@ -2,14 +2,6 @@ name: End-to-End Stock Forecasting Data & ML Pipeline
 
 on:
   workflow_dispatch:
-    inputs:
-      skip_ml:
-        description: "Skip ML Pipeline"
-        type: boolean
-        default: false
-        required: false
-  push:
-    branches: [master]
   schedule:
     - cron: "0 1 * * 1"
 
@@ -26,7 +18,6 @@ env:
 jobs:
   pipeline:
     name: "ML Pipeline"
-    if: ${{ !inputs.skip_ml }}
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
