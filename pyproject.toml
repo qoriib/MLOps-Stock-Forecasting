@@ -22,6 +22,7 @@ dependencies = [
   "tensorflow==2.19.1",
   "tqdm>=4.66.0",
   "yfinance>=0.2.30",
+  "nbconvert (>=7.17.1,<8.0.0)",
 ]
 
 [project.scripts]

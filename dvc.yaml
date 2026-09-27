@@ -26,16 +26,9 @@ stages:
       artifact/notebook/ml_pipeline_${item.TICKER}.ipynb
       -f params.yaml
       -p TICKER ${item.TICKER}
+      --report-mode
       --log-output
       --progress-bar
-      &&
-      python -c "
-      import json, pathlib;
-      p = pathlib.Path('artifact/notebook/ml_pipeline_${item.TICKER}.ipynb');
-      nb = json.loads(p.read_text());
-      [c.update({'source': []}) for c in nb['cells'] if c['cell_type'] == 'code'];
-      p.write_text(json.dumps(nb, indent=1))
-      "
     deps:
       - src/config.py
       - src/ml_pipeline.ipynb

@@ -40,6 +40,47 @@ jobs:
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
 
+      - name: Setup CML
+        uses: iterative/setup-cml@v2
+
+      - name: Publish Notebook Reports to GitHub Summary
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          notebooks=(artifact/notebook/ml_pipeline_*.ipynb)
+
+          for nb in "${notebooks[@]}"; do
+            [ -f "$nb" ] || continue
+
+            stage=$(basename "$nb" .ipynb)
+            echo "## Processing: $stage" >> $GITHUB_STEP_SUMMARY
+            echo "Converting $nb to markdown..."
+
+            poetry run jupyter nbconvert \
+              --to markdown \
+              --no-input \
+              "$nb" \
+              --output-dir artifact/notebook
+
+            md="artifact/notebook/${stage}.md"
+            img_dir="artifact/notebook/${stage}_files"
+
+            if [ -d "$img_dir" ]; then
+              for img in "$img_dir"/*.png; do
+                [ -f "$img" ] || continue
+                img_url=$(cml publish "$img")
+                filename=$(basename "$img")
+                sed -i "s|${stage}_files/${filename}|${img_url}|g" "$md"
+              done
+            fi
+
+            if [ -f "$md" ]; then
+              cat "$md" >> $GITHUB_STEP_SUMMARY
+              echo -e "\n\n---\n\n" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
       - name: Upload Notebook Reports
         uses: actions/upload-artifact@v4
         with:
@@ -145,7 +186,7 @@ jobs:
           AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
         run: |
           cd web/frontend
-          npx -y @azure/static-web-apps-cli deploy .output/public \
+          npx -y @azure/static-web-apps-cli deploy dist \
             --env production \
             --deployment-token "$AZURE_STATIC_WEB_APPS_API_TOKEN" \
             --no-use-keychain
