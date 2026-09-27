@@ -41,7 +41,7 @@ jobs:
         uses: ./.github/actions/push-pipeline
 
       - name: Publish ML Pipeline Summary
-        run: poetry run python -m src.report
+        run: cat artifact/report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Notebook Reports
         uses: actions/upload-artifact@v4
@@ -63,7 +63,7 @@ jobs:
     name: "Deploy Backend"
     needs: pipeline
     if: ${{ always() && !cancelled() && (needs.pipeline.result == 'success' || needs.pipeline.result == 'skipped') }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
       AZURE_ACR_NAME: acrstockforecast
@@ -78,6 +78,15 @@ jobs:
 
       - name: Setup Pipeline Environment
         uses: ./.github/actions/setup-pipeline
+
+      - name: Run Backend Tests
+        working-directory: web/backend
+        run: |
+          pip install -r requirements.txt
+          pytest tests/ -v --md-report --md-report-color never --md-report-output test_report.md
+          echo "## Backend Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat test_report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Azure Login
         uses: azure/login@v2
@@ -116,7 +125,7 @@ jobs:
 
       - name: Publish Backend Deployment Summary
         run: |
-          echo "## 🚀 Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
@@ -166,7 +175,7 @@ jobs:
 
       - name: Publish Frontend Deployment Summary
         run: |
-          echo "## 🌐 Frontend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Frontend Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- |" >> $GITHUB_STEP_SUMMARY
