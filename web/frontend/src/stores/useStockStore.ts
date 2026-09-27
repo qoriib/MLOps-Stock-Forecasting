@@ -1,20 +1,18 @@
 import { create } from 'zustand'
 import { fetchAvailableModels, fetchStockHistoryData, fetchForecastPrediction } from '@/services'
 import { extractErrorMessage } from '@/utils'
+import { DEFAULT_HISTORY_RANGE, DEFAULT_FORECAST_RANGE } from '@/configs'
 import type { StockStoreState, ThemeMode } from './types'
 
 export const useStockStore = create<StockStoreState>()((set, get) => ({
-  ticker: 'BBCA.JK',
-  model: 'lstm',
-  availableTickers: ['BBCA.JK', 'BBRI.JK'],
-  availableModels: ['lstm', 'gru'],
+  ticker: '',
+  model: '',
+  availableTickers: [],
+  availableModels: [],
   loadingOptions: true,
 
-  // Default range tanggal:
-  // History: 1 bulan sebelum akhir data di database (2026-08-25 s.d 2026-09-25)
-  // Forecast: rentang hari bursa berikutnya (2026-09-26 s.d 2026-10-10)
-  historyRange: { start: '2026-08-25', end: '2026-09-25' },
-  forecastRange: { start: '2026-09-26', end: '2026-10-10' },
+  historyRange: DEFAULT_HISTORY_RANGE,
+  forecastRange: DEFAULT_FORECAST_RANGE,
 
   historyData: [],
   forecastData: [],
@@ -41,49 +39,43 @@ export const useStockStore = create<StockStoreState>()((set, get) => ({
   },
 
   setThemeMode: (mode: ThemeMode) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme-mode', mode)
-    }
     set({ themeMode: mode })
   },
 
   toggleThemeMode: () => {
-    const nextMode = get().themeMode === 'light' ? 'dark' : 'light'
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme-mode', nextMode)
-    }
-    set({ themeMode: nextMode })
+    set((state) => ({
+      themeMode: state.themeMode === 'light' ? 'dark' : 'light',
+    }))
   },
 
   initApp: async () => {
     set({ loadingOptions: true })
     try {
       const modelsData = await fetchAvailableModels()
-      const tickers = modelsData.tickers?.length ? modelsData.tickers : ['BBCA.JK', 'BBRI.JK']
-      const models = modelsData.models?.length ? modelsData.models : ['lstm', 'gru']
+      const tickers = modelsData.tickers ?? []
+      const models = modelsData.models ?? []
 
-      const currentTicker = get().ticker
-      const finalTicker = tickers.includes(currentTicker) ? currentTicker : tickers[0]
-
-      const currentModel = get().model
-      const finalModel = models.includes(currentModel) ? currentModel : models[0]
+      const firstTicker = tickers[0] ?? ''
+      const firstModel = models[0] ?? ''
 
       set({
         availableTickers: tickers,
         availableModels: models,
-        ticker: finalTicker,
-        model: finalModel,
+        ticker: firstTicker,
+        model: firstModel,
         backendHealthy: true,
         loadingOptions: false,
       })
 
-      // Otomatis muat data pertama kali
-      await get().runAnalysis({ ticker: finalTicker, model: finalModel })
+      // Auto-run analysis with the first available ticker & model
+      if (firstTicker && firstModel) {
+        await get().runAnalysis({ ticker: firstTicker, model: firstModel })
+      }
     } catch (err: unknown) {
       set({
         backendHealthy: false,
         loadingOptions: false,
-        error: extractErrorMessage(err, 'Gagal terhubung ke backend server'),
+        error: extractErrorMessage(err, 'Failed to connect to backend server'),
       })
     }
   },
@@ -95,17 +87,17 @@ export const useStockStore = create<StockStoreState>()((set, get) => ({
     const targetForeRange = overrideParams?.forecastRange ?? get().forecastRange
 
     if (!targetTicker) {
-      set({ error: 'Ticker saham wajib dipilih' })
+      set({ error: 'Stock ticker is required' })
       return
     }
 
     if (!targetHistRange?.start || !targetHistRange?.end) {
-      set({ error: 'Rentang tanggal riwayat wajib diisi lengkap (start date & end date)' })
+      set({ error: 'Historical date range is required (both start and end dates)' })
       return
     }
 
     if (!targetForeRange?.start || !targetForeRange?.end) {
-      set({ error: 'Rentang tanggal prediksi wajib diisi lengkap (start date & end date)' })
+      set({ error: 'Forecast date range is required (both start and end dates)' })
       return
     }
 
@@ -129,7 +121,7 @@ export const useStockStore = create<StockStoreState>()((set, get) => ({
         backendHealthy: true,
       })
     } catch (err: unknown) {
-      const errorMsg = extractErrorMessage(err, 'Terjadi kesalahan saat memuat data dan peramalan')
+      const errorMsg = extractErrorMessage(err, 'An error occurred while loading market data and forecast')
       set({
         error: errorMsg,
         loading: false,
