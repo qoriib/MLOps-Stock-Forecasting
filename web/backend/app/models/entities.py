@@ -1,14 +1,14 @@
-import datetime
+from datetime import date, datetime
 from typing import Any, Dict
-from pydantic import BaseModel, Field
 from beanie import Document, Granularity, TimeSeriesConfig
+from pydantic import BaseModel, Field
 
 class StockMetadata(BaseModel):
     ticker: str = Field(description="Simbol ticker saham (misal: BBCA.JK)")
 
 class StockPrice(Document):
-    timestamp: datetime.datetime = Field(
-        description="Waktu/tanggal pencatatan harga saham"
+    timestamp: datetime = Field(
+        description="Waktu/tanggal pencatatan harga saham (UTC)"
     )
     metadata: StockMetadata = Field(
         description="Metadata pengelompokan time series (ticker saham)"
@@ -26,13 +26,19 @@ class StockPrice(Document):
             meta_field="metadata",
             granularity=Granularity.hours,
         )
+        indexes = [
+            [
+                ("metadata.ticker", 1),
+                ("timestamp", 1),
+            ],
+        ]
 
     @property
     def ticker(self) -> str:
         return self.metadata.ticker
 
     @property
-    def date(self) -> datetime.date:
+    def date(self) -> date:
         return self.timestamp.date()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -48,5 +54,3 @@ class StockPrice(Document):
 
     def __repr__(self) -> str:
         return f"<StockPrice(ticker='{self.metadata.ticker}', date='{self.date}', close={self.close})>"
-
-Base = Document

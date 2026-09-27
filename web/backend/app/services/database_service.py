@@ -23,7 +23,9 @@ class DatabaseService:
                 serverSelectionTimeoutMS=5000,
                 connectTimeoutMS=10000,
             )
+            
             global_mongo_db = global_mongo_client[MONGODB_DB_NAME]
+            
             await init_beanie(
                 database=global_mongo_db,
                 document_models=[StockPrice],
