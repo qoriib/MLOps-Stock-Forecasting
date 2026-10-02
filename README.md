@@ -119,7 +119,7 @@ flowchart TD
     end
 
     subgraph Serving_Sync ["Continuous Delivery (CD)"]
-        MLFLOW_REG -->|Promote @champion| SYNC_SCRIPT["scripts/sync_assets.py"]
+        MLFLOW_REG -->|Promote @champion| SYNC_SCRIPT[".github/scripts/sync_assets.py"]
         MODELS_KERAS -.->|Local Fallback| SYNC_SCRIPT
         SCALER -.->|Local Fallback| SYNC_SCRIPT
         SYNC_SCRIPT -->|Sync Assets| BACKEND_ASSETS["web/backend/assets/\n- {ticker}_*.keras\n- {ticker}_scaler.pkl"]
@@ -167,6 +167,8 @@ MLOps-Stock-Forecasting/
 │   ├── actions/
 │   │   ├── push-pipeline/            # Action komposit untuk dvc commit, push, & git push
 │   │   └── setup-pipeline/           # Action komposit setup Python, Poetry, & dvc pull
+│   ├── scripts/                      # Skrip otomasi CI/CD & operasional deployment
+│   │   └── sync_assets.py            # Sinkronisasi model @champion & scaler ke web/backend/assets
 │   └── workflows/
 │       └── pipeline.yml              # GitHub Actions CI/CD End-to-End Pipeline
 ├── artifact/                         # Direktori output pipeline yang dilacak DVC & Git
@@ -175,8 +177,8 @@ MLOps-Stock-Forecasting/
 │   ├── model/                        # Model terlatih (.keras) & scaler (.pkl)
 │   ├── plots/                        # Plot tren historis & visualisasi inferensi (.png)
 │   └── report.md                     # Laporan metrik & champion model yang digenerate otomatis
-├── scripts/                          # Skrip otomasi & operasional di luar core ML
-│   └── sync_assets.py                # Sinkronisasi model @champion & scaler ke web/backend/assets
+├── notebooks/                        # Eksperimen dan eksplorasi interaktif (Jupyter Notebook)
+│   └── ml_testbed.ipynb              # Notebook end-to-end CRISP-DM pipeline testing
 ├── src/                              # Sumber kode tahapan modular pipeline MLOps
 │   ├── __init__.py
 │   ├── config.py                     # Resolusi path artefak, konstanta, & variabel lingkungan
@@ -307,10 +309,10 @@ graph TD
 - **Dependensi**: `src/config.py`, `src/report.py`, `artifact/metrics`.
 - **Luaran**: `artifact/report.md`.
 
-### 🔄 Skrip Sinkronisasi Aset (`scripts/sync_assets.py`)
-- **Perintah**: `poetry run python scripts/sync_assets.py`
+### 🔄 Skrip Sinkronisasi Aset (`.github/scripts/sync_assets.py`)
+- **Perintah**: `poetry run python .github/scripts/sync_assets.py`
 - **Fungsi**:
-  - Berada di luar pipeline ML core (`src/`), difokuskan untuk kebutuhan Continuous Delivery (CD) dan serving backend.
+  - Berada di `.github/scripts/` khusus untuk kebutuhan Continuous Delivery (CD) dan serving backend pada alur GitHub Actions.
   - Mempromosikan model versi terbaru di MLflow Model Registry menjadi `@champion`.
   - Menyalin model `.keras` dan scaler `.pkl` ke direktori `web/backend/assets/` (dengan fallback otomatis ke artefak lokal jika MLflow server offline) agar backend inference siap menyajikan prediksi.
 

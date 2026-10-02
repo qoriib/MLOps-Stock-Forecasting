@@ -38,7 +38,7 @@ jobs:
         run: poetry run dvc repro
 
       - name: Sync Backend Assets & Promote Champion Model
-        run: poetry run python scripts/sync_assets.py
+        run: poetry run python .github/scripts/sync_assets.py
 
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
@@ -86,7 +86,7 @@ jobs:
         uses: ./.github/actions/setup-pipeline
 
       - name: Sync Backend Champion Models & Scalers
-        run: poetry run python scripts/sync_assets.py
+        run: poetry run python .github/scripts/sync_assets.py
 
       - name: Run Backend Tests
         working-directory: web/backend
