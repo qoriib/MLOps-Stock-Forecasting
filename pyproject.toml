@@ -14,7 +14,6 @@ dependencies = [
   "mlflow>=3.0.0",
   "numpy>=1.26.0",
   "pandas>=2.2.0",
-  "papermill>=2.5.0",
   "python-dotenv>=1.0.0",
   "pyyaml>=6.0.1",
   "scikit-learn>=1.4.0",
@@ -22,12 +21,14 @@ dependencies = [
   "tensorflow==2.19.1",
   "tqdm>=4.66.0",
   "yfinance>=0.2.30",
-  "nbconvert (>=7.17.1,<8.0.0)",
 ]
 
 [project.scripts]
-ingestion = "src.ingestion:main"
-store = "src.store:main"
+data_ingestion = "src.data_ingestion:main"
+data_understanding = "src.data_understanding:main"
+data_preparation = "src.data_preparation:main"
+modeling = "src.modeling:main"
+evaluation = "src.evaluation:main"
 report = "src.report:main"
 
 [build-system]

@@ -2,40 +2,64 @@ params:
   - params.yaml
 
 stages:
-  ingestion:
-    desc: "Ingest stock data from Yahoo Finance"
+  data_ingestion:
+    desc: "CRISP-DM Stage 1: Ingest stock data from Yahoo Finance"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.ingestion --ticker ${item.TICKER} --range-days ${RANGE_DAYS} --end-date ${END_DATE}
+    cmd: python -m src.data_ingestion --ticker ${item.TICKER} --range-days ${RANGE_DAYS} --end-date ${END_DATE}
     deps:
       - src/config.py
-      - src/ingestion.py
+      - src/data_ingestion.py
     params:
       - RANGE_DAYS
       - END_DATE
     outs:
       - artifact/data/${item.TICKER}.csv
 
-  ml_pipeline:
-    desc: "Train models & hyperparameter tuning"
+  data_understanding:
+    desc: "CRISP-DM Stage 2: Data quality check, gap analysis & historical statistics"
     matrix:
       TICKER: ${TICKERS}
-    cmd: >-
-      papermill
-      src/ml_pipeline.ipynb
-      artifact/notebook/ml_pipeline_${item.TICKER}.ipynb
-      -f params.yaml
-      -p TICKER ${item.TICKER}
-      --report-mode
-      --log-output
-      --progress-bar
+    cmd: python -m src.data_understanding --ticker ${item.TICKER} --target-col ${TARGET_COL}
     deps:
       - src/config.py
-      - src/ml_pipeline.ipynb
+      - src/data_understanding.py
       - artifact/data/${item.TICKER}.csv
     params:
       - TARGET_COL
+    plots:
+      - artifact/plots/${item.TICKER}_historical_price.png
+    metrics:
+      - artifact/metrics/${item.TICKER}_data_understanding.json
+
+  data_preparation:
+    desc: "CRISP-DM Stage 3: Chronological train/test split & MinMaxScaler scaling"
+    matrix:
+      TICKER: ${TICKERS}
+    cmd: python -m src.data_preparation --ticker ${item.TICKER} --train-size ${TRAIN_SIZE} --target-col ${TARGET_COL}
+    deps:
+      - src/config.py
+      - src/data_preparation.py
+      - artifact/data/${item.TICKER}.csv
+    params:
       - TRAIN_SIZE
+      - TARGET_COL
+    outs:
+      - artifact/model/${item.TICKER}_scaler.pkl
+      - artifact/data/${item.TICKER}_prepared.npz
+
+  modeling:
+    desc: "CRISP-DM Stage 4: LSTM & GRU grid search training with early stopping"
+    matrix:
+      TICKER: ${TICKERS}
+    cmd: python -m src.modeling --ticker ${item.TICKER} --epochs ${EPOCHS} --random-state ${RANDOM_STATE} --target-col ${TARGET_COL} --params-file params.yaml
+    deps:
+      - src/config.py
+      - src/modeling.py
+      - artifact/data/${item.TICKER}_prepared.npz
+      - artifact/model/${item.TICKER}_scaler.pkl
+    params:
+      - TARGET_COL
       - RANDOM_STATE
       - EPOCHS
       - TIME_STEPS
@@ -43,36 +67,39 @@ stages:
       - BATCH_SIZES
       - LEARNING_RATES
     outs:
-      - artifact/notebook/ml_pipeline_${item.TICKER}.ipynb:
-          cache: false
       - artifact/model/${item.TICKER}_LSTM.keras
       - artifact/model/${item.TICKER}_GRU.keras
-      - artifact/model/${item.TICKER}_scaler.pkl
-      - artifact/model/${item.TICKER}_hyperparameter.csv
+    metrics:
+      - artifact/metrics/${item.TICKER}_hyperparameter.csv
 
-  store:
-    desc: "Copy champion models to backend"
+  evaluation:
+    desc: "CRISP-DM Stage 5: Evaluation on test set, inference visualization & MLflow registration"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.store --ticker ${item.TICKER}
+    cmd: python -m src.evaluation --ticker ${item.TICKER} --target-col ${TARGET_COL}
     deps:
       - src/config.py
-      - src/store.py
+      - src/evaluation.py
+      - artifact/data/${item.TICKER}_prepared.npz
+      - artifact/model/${item.TICKER}_scaler.pkl
       - artifact/model/${item.TICKER}_LSTM.keras
       - artifact/model/${item.TICKER}_GRU.keras
-      - artifact/model/${item.TICKER}_scaler.pkl
-    outs:
-      - web/backend/assets/${item.TICKER}_scaler.pkl
-      - web/backend/assets/${item.TICKER}_LSTM.keras
-      - web/backend/assets/${item.TICKER}_GRU.keras
+      - artifact/metrics/${item.TICKER}_hyperparameter.csv
+    params:
+      - TARGET_COL
+    plots:
+      - artifact/plots/${item.TICKER}_LSTM_inference.png
+      - artifact/plots/${item.TICKER}_GRU_inference.png
+    metrics:
+      - artifact/metrics/${item.TICKER}_evaluation.json
 
   report:
-    desc: "Generate pipeline summary report"
+    desc: "CRISP-DM Stage 6: Generate pipeline summary report"
     cmd: python -m src.report --output artifact/report.md
     deps:
       - src/config.py
       - src/report.py
-      - artifact/model
+      - artifact/metrics
     outs:
       - artifact/report.md:
           cache: false
