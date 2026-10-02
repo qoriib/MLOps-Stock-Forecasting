@@ -1,15 +1,14 @@
+# Pipeline Report
+
 ## Dataset Overview
 
-| Ticker   |   Jumlah Data | Date Range               |   Latest Close |
-|:---------|--------------:|:-------------------------|---------------:|
-| BBCA.JK  |          1203 | 2021-09-27 to 2026-09-25 |           6250 |
-| BBRI.JK  |          1204 | 2021-09-27 to 2026-09-25 |           3150 |
+| Ticker   | Period                   |   Rows |   Gaps | Price (Mean ± Std)   | Price Range        |
+|:---------|:-------------------------|-------:|-------:|:---------------------|:-------------------|
+| BBCA.JK  | 2021-10-04 to 2026-10-02 |   1203 |    622 | 7671.62 ± 1028.69    | 4831.27 - 10021.74 |
 
+## Model Evaluation
 
-## Champion Models
-
-| Ticker   | Model   |   Time Steps | Optimizer   |   Batch Size |   Learning Rate |   RMSE |   MAPE |
-|:---------|:--------|-------------:|:------------|-------------:|----------------:|-------:|-------:|
-| BBCA.JK  | GRU     |           10 | Adam        |            8 |            0.01 | 145.82 |   1.73 |
-| BBRI.JK  | GRU     |           30 | RMSprop     |           16 |            0.01 |  65.35 |   1.66 |
-
+| Ticker   | Model   |   Time Steps |   Batch Size | Optimizer   |   Learning Rate |   RMSE | MAPE   | Status    |
+|:---------|:--------|-------------:|-------------:|:------------|----------------:|-------:|:-------|:----------|
+| BBCA.JK  | GRU     |           10 |            8 | Adam        |            0.01 | 148.77 | 1.85%  | Champion  |
+| BBCA.JK  | LSTM    |           10 |            8 | Adam        |            0.01 | 156.92 | 1.93%  | Candidate |

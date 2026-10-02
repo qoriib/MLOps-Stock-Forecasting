@@ -37,17 +37,23 @@ jobs:
       - name: Run DVC ML Pipeline
         run: poetry run dvc repro
 
+      - name: Sync Backend Assets & Promote Champion Model
+        run: poetry run python scripts/sync_assets.py
+
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
 
       - name: Publish ML Pipeline Summary
         run: cat artifact/report.md >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload Notebook Reports
+      - name: Upload Pipeline Visualizations & Metrics
         uses: actions/upload-artifact@v4
         with:
-          name: artifact-notebook
-          path: artifact/notebook/**
+          name: artifact-visualizations-and-metrics
+          path: |
+            artifact/plots/**
+            artifact/metrics/**
+          if-no-files-found: ignore
 
       - name: Upload Model Artifacts
         uses: actions/upload-artifact@v4
@@ -57,7 +63,7 @@ jobs:
             artifact/model/*_LSTM.keras
             artifact/model/*_GRU.keras
             artifact/model/*_scaler.pkl
-            artifact/model/*_hyperparameter.csv
+            artifact/metrics/*_hyperparameter.csv
 
   deploy_backend:
     name: "Deploy Backend"
@@ -78,6 +84,9 @@ jobs:
 
       - name: Setup Pipeline Environment
         uses: ./.github/actions/setup-pipeline
+
+      - name: Sync Backend Champion Models & Scalers
+        run: poetry run python scripts/sync_assets.py
 
       - name: Run Backend Tests
         working-directory: web/backend
