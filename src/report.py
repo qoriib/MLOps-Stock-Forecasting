@@ -1,115 +1,131 @@
 import argparse
-import glob
+import json
 import logging
-from pathlib import Path
 import pandas as pd
+from pathlib import Path
+from typing import List
 from src import config
 
 logger = logging.getLogger("report_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-def build_dataset_section() -> str:
-    data_files = sorted(glob.glob(str(config.DATA_DIR / "*.csv")))
-    if not data_files:
+def build_dataset_summary() -> str:
+    records_list = []
+
+    # Temukan seluruh file metrik data understanding yang tersedia
+    understanding_files = sorted(config.METRICS_DIR.glob("*_data_understanding.json"))
+
+    # Ekstrak informasi statistik untuk setiap ticker
+    for json_file_path in understanding_files:
+        with open(json_file_path, "r") as file_pointer:
+            data_dictionary = json.load(file_pointer)
+
+        ticker = data_dictionary.get("ticker", json_file_path.stem.replace("_data_understanding", ""))
+        target_column = data_dictionary.get("target_col", "close")
+        statistics_dictionary = data_dictionary.get("stats", {}).get(target_column, {})
+
+        mean_price = statistics_dictionary.get("mean", 0.0)
+        std_price = statistics_dictionary.get("std", 0.0)
+        min_price = statistics_dictionary.get("min", 0.0)
+        max_price = statistics_dictionary.get("max", 0.0)
+
+        # Catat baris ringkasan dataset
+        records_list.append({
+            "Ticker": ticker,
+            "Period": f"{data_dictionary.get('min_date')} to {data_dictionary.get('max_date')}",
+            "Rows": data_dictionary.get("total_rows", 0),
+            "Gaps": data_dictionary.get("gap_count", 0),
+            "Price (Mean ± Std)": f"{mean_price:.2f} ± {std_price:.2f}",
+            "Price Range": f"{min_price:.2f} - {max_price:.2f}",
+        })
+
+    if not records_list:
         return ""
 
-    records = []
-    for file_path in data_files:
-        ticker = Path(file_path).stem
-        try:
-            df = pd.read_csv(file_path)
-            min_date = str(df["date"].min()).split()[0]
-            max_date = str(df["date"].max()).split()[0]
-            latest_close = df.iloc[-1]["close"]
+    # Konversi data ke tabel markdown
+    summary_dataframe = pd.DataFrame(records_list)
+    return "## Dataset Overview\n\n" + summary_dataframe.to_markdown(index=False) + "\n\n"
 
-            records.append({
+
+def build_models_summary() -> str:
+    records_list = []
+
+    # Temukan seluruh file rekaman hasil hyperparameter
+    hyperparameter_files = sorted(config.METRICS_DIR.glob("*_hyperparameter.csv"))
+
+    # Proses perbandingan performa model per ticker
+    for csv_file_path in hyperparameter_files:
+        ticker = csv_file_path.stem.replace("_hyperparameter", "")
+        hyperparameter_dataframe = pd.read_csv(csv_file_path)
+
+        if hyperparameter_dataframe.empty or "MAPE" not in hyperparameter_dataframe.columns:
+            continue
+
+        # Identifikasi konfigurasi terbaik dengan nilai MAPE terendah
+        best_row_index = hyperparameter_dataframe["MAPE"].idxmin()
+        sorted_dataframe = hyperparameter_dataframe.sort_values(by="MAPE")
+
+        # Petakan status promosi model
+        for row_index, row_data in sorted_dataframe.iterrows():
+            if row_index == best_row_index:
+                promotion_status = "Champion"
+            else:
+                promotion_status = "Candidate"
+
+            records_list.append({
                 "Ticker": ticker,
-                "Jumlah Data": len(df),
-                "Date Range": f"{min_date} to {max_date}",
-                "Latest Close": round(float(latest_close), 2),
-            })
-        except Exception as e:
-            logger.warning(f"Gagal memproses data {ticker}: {e}")
-            records.append({
-                "Ticker": ticker,
-                "Jumlah Data": 0,
-                "Date Range": str(e),
-                "Latest Close": 0,
+                "Model": row_data["model"],
+                "Time Steps": int(row_data["time_steps"]),
+                "Batch Size": int(row_data["batch_size"]),
+                "Optimizer": row_data["optimizer"],
+                "Learning Rate": row_data["learning_rate"],
+                "RMSE": round(float(row_data["RMSE"]), 2),
+                "MAPE": f"{float(row_data['MAPE']):.2f}%",
+                "Status": promotion_status,
             })
 
-    if not records:
+    if not records_list:
         return ""
 
-    content = ["## Dataset Overview\n"]
-    dataset_df = pd.DataFrame(records)
-    content.append(dataset_df.to_markdown(index=False))
-    content.append("\n")
-    return "\n".join(content)
-
-
-def build_champion_section() -> str:
-    hp_files = sorted(glob.glob(str(config.MODEL_DIR / "*_hyperparameter.csv")))
-    if not hp_files:
-        return ""
-
-    records = []
-    for hp_path in hp_files:
-        ticker = Path(hp_path).stem.replace("_hyperparameter", "")
-        try:
-            hp_df = pd.read_csv(hp_path)
-            if not hp_df.empty and "MAPE" in hp_df.columns:
-                best = hp_df.sort_values(by="MAPE").iloc[0]
-                records.append({
-                    "Ticker": ticker,
-                    "Model": best["model"],
-                    "Time Steps": best["time_steps"],
-                    "Optimizer": best["optimizer"],
-                    "Batch Size": best["batch_size"],
-                    "Learning Rate": best["learning_rate"],
-                    "RMSE": round(float(best["RMSE"]), 2),
-                    "MAPE": round(float(best["MAPE"]), 2),
-                })
-        except Exception as e:
-            logger.warning(f"Gagal membaca hyperparameter {ticker}: {e}")
-
-    if not records:
-        return ""
-
-    content = ["## Champion Models\n"]
-    champion_df = pd.DataFrame(records)
-    content.append(champion_df.to_markdown(index=False))
-    content.append("\n")
-    return "\n".join(content)
+    # Konversi data evaluasi ke tabel markdown
+    models_dataframe = pd.DataFrame(records_list)
+    return "## Model Evaluation\n\n" + models_dataframe.to_markdown(index=False) + "\n\n"
 
 
 def generate_report(output_path: Path) -> str:
-    sections = [
-        build_dataset_section(),
-        build_champion_section(),
-    ]
-    report_content = "\n".join(filter(None, sections))
+    # Susun bagian overview dataset
+    dataset_section = build_dataset_summary()
 
+    # Susun bagian evaluasi performa model
+    models_section = build_models_summary()
+
+    # Gabungkan dan simpan laporan Markdown ke direktori artefak
+    report_content = "# Pipeline Report\n\n" + dataset_section + models_section
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(report_content)
+    output_path.write_text(report_content.strip() + "\n")
     logger.info(f"[Artifact] Laporan berhasil disimpan ke: {output_path}")
 
     return report_content
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate ML pipeline report")
+    # Inisialisasi argumen CLI
+    parser = argparse.ArgumentParser(description="CRISP-DM Stage 6: Generate Pipeline Report")
     parser.add_argument(
         "--output",
         type=str,
         default=str(config.ARTIFACT_DIR / "report.md"),
         help="Path ke file output markdown laporan",
     )
-    args = parser.parse_args()
-    out_file = Path(args.output)
 
+    # Parsing parameter input
+    arguments = parser.parse_args()
+    output_file_path = Path(arguments.output)
+
+    # Eksekusi pembuatan laporan
     logger.info("=== Menjalankan Stage Report ===")
-    generate_report(out_file)
+    generate_report(output_path=output_file_path)
     logger.info("=== Selesai Stage Report ===")
 
 
