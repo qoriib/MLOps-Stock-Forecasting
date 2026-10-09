@@ -3,13 +3,15 @@ import itertools
 import keras
 import logging
 import mlflow
+import os
 import pickle
 import yaml
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 from keras import layers, optimizers
 from pathlib import Path
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
 from typing import Any, Dict, List, Tuple
 from src import config
@@ -18,36 +20,12 @@ logger = logging.getLogger("modeling_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-def create_windowed_dataset(
-    train_array: np.ndarray,
-    test_array: np.ndarray,
-    time_steps: int,
-    batch_size: int,
-    random_state: int = 42,
-):
-    # Buat sequence dataset untuk data latih
-    dataset_train = keras.utils.timeseries_dataset_from_array(
-        data=train_array[:-1],
-        targets=train_array[time_steps:, 0],
-        sequence_length=time_steps,
-        batch_size=batch_size,
-        shuffle=True,
-        seed=random_state,
-    )
-
+def create_test_windows(train_array: np.ndarray, test_array: np.ndarray, time_steps: int) -> np.ndarray:
     # Gabungkan konteks akhir data latih untuk jendela uji pertama
     test_inputs = np.concatenate([train_array[-time_steps:], test_array], axis=0)
-
-    # Buat sequence dataset untuk data uji tanpa pengacakan urutan
-    dataset_test = keras.utils.timeseries_dataset_from_array(
-        data=test_inputs[:-1],
-        targets=test_inputs[time_steps:, 0],
-        sequence_length=time_steps,
-        batch_size=batch_size,
-        shuffle=False,
-    )
-
-    return dataset_train, dataset_test
+    n_samples = len(test_array)
+    windows = [test_inputs[i : i + time_steps] for i in range(n_samples)]
+    return np.array(windows, dtype=np.float32)
 
 
 def build_model(model_type: str, time_steps: int, optimizer_name: str, learning_rate: float) -> keras.Sequential:
@@ -83,17 +61,15 @@ def build_model(model_type: str, time_steps: int, optimizer_name: str, learning_
 
 
 def calculate_metrics(actual_values: np.ndarray, predicted_values: np.ndarray) -> Dict[str, float]:
-    # Hitung metrik evaluasi MSE, RMSE, MAPE, dan R2
+    # Hitung metrik evaluasi MSE, RMSE, dan MAPE
     mean_sq_error = float(mean_squared_error(actual_values, predicted_values))
     root_mean_sq_error = float(np.sqrt(mean_sq_error))
     mean_abs_percentage_error = float(np.mean(np.abs((actual_values - predicted_values) / actual_values)) * 100)
-    r2_value = float(r2_score(actual_values, predicted_values))
 
     return {
         "MSE": mean_sq_error,
         "RMSE": root_mean_sq_error,
         "MAPE": mean_abs_percentage_error,
-        "R2": r2_value,
     }
 
 
@@ -105,18 +81,22 @@ def execute_trial(
     scaler_instance: Any,
     epochs: int,
     random_state: int = 42,
-) -> Tuple[Dict[str, Any], keras.Sequential]:
+) -> Tuple[Dict[str, Any], List[np.ndarray]]:
     # Unpack parameter kombinasi eksperimen
     time_steps, optimizer_name, batch_size, learning_rate, model_type = trial_params
 
-    # Buat sliding window generator
-    dataset_train, dataset_test = create_windowed_dataset(
-        train_array=train_scaled,
-        test_array=test_scaled,
-        time_steps=time_steps,
+    # Buat sequence dataset untuk data latih
+    dataset_train = keras.utils.timeseries_dataset_from_array(
+        data=train_scaled[:-1],
+        targets=train_scaled[time_steps:, 0],
+        sequence_length=time_steps,
         batch_size=batch_size,
-        random_state=random_state,
+        shuffle=True,
+        seed=random_state,
     )
+
+    # Bentuk jendela data uji berukuran statis untuk mencegah retracing pada inferensi
+    X_test = create_test_windows(train_array=train_scaled, test_array=test_scaled, time_steps=time_steps)
 
     # Siapkan callback penghentian dini
     early_stopping_callback = [
@@ -142,8 +122,8 @@ def execute_trial(
         verbose=0,
     )
 
-    # Lakukan inferensi dan kembalikan ke skala harga asli
-    scaled_predictions = trained_network.predict(dataset_test, verbose=0)
+    # Lakukan inferensi langsung via forward pass model(x) tanpa memicu make_predict_function retracing
+    scaled_predictions = trained_network(X_test, training=False).numpy()
     inversed_predictions = scaler_instance.inverse_transform(scaled_predictions).flatten()
 
     # Hitung metrik performa pengujian
@@ -160,7 +140,10 @@ def execute_trial(
         **evaluation_metrics,
     }
 
-    return trial_record, trained_network
+    # Ambil bobot model untuk rekonstruksi efisien tanpa overhead pickling objek Keras
+    model_weights = trained_network.get_weights()
+
+    return trial_record, model_weights
 
 
 def run_modeling(
@@ -173,6 +156,7 @@ def run_modeling(
     epochs: int = 50,
     random_state: int = 42,
     target_col: str = "close",
+    n_jobs: int = -1,
 ):
     # Tahap 1: Inisialisasi seed dan MLflow tracking
     keras.utils.set_random_seed(random_state)
@@ -192,15 +176,22 @@ def run_modeling(
         scaler_instance = pickle.load(file_handler)
 
     raw_dataframe = pd.read_csv(config.get_data_path(ticker))
+    integer_columns = raw_dataframe.select_dtypes(include=["int", "integer"]).columns
+    if len(integer_columns) > 0:
+        raw_dataframe[integer_columns] = raw_dataframe[integer_columns].astype("float64")
 
     # Tahap 3: Susun kombinasi hyperparameter grid search
     parameter_combinations = list(
         itertools.product(time_steps, optimizers_list, batch_sizes, learning_rates, models_list)
     )
 
-    logger.info(f"Memulai Grid Search ({len(parameter_combinations)} kombinasi) untuk {ticker}...")
+    if n_jobs is None or n_jobs <= 0:
+        n_jobs = min(4, os.cpu_count() or 1)
+
+    logger.info(
+        f"Memulai Grid Search ({len(parameter_combinations)} kombinasi, n_jobs={n_jobs}) untuk {ticker}..."
+    )
     hyperparameter_records = []
-    progress_bar = tqdm(parameter_combinations, desc="Grid Search", unit="trial")
 
     # Inisialisasi tracking performa model terbaik per arsitektur
     best_models_data = {}
@@ -208,7 +199,7 @@ def run_modeling(
         best_models_data[model_name] = {
             "rmse": float("inf"),
             "record": None,
-            "model": None,
+            "weights": None,
         }
 
     # Tahap 4: Eksekusi grid search dalam sesi MLflow
@@ -217,15 +208,15 @@ def run_modeling(
         mlflow.set_tags({
             "target": target_col,
             "stage": "hyperparameter",
+            "n_jobs": str(n_jobs),
         })
 
         if not raw_dataframe.empty:
             dataset_source = mlflow.data.from_pandas(raw_dataframe, targets=target_col, name=f"{ticker}_data")
             mlflow.log_input(dataset_source, context="training_and_testing")
 
-        # Iterasi setiap kombinasi parameter
-        for trial_params in progress_bar:
-            single_record, trained_network = execute_trial(
+        parallel_generator = Parallel(n_jobs=n_jobs, return_as="generator")(
+            delayed(execute_trial)(
                 trial_params=trial_params,
                 train_scaled=train_scaled,
                 test_scaled=test_scaled,
@@ -234,19 +225,27 @@ def run_modeling(
                 epochs=epochs,
                 random_state=random_state,
             )
+            for trial_params in parameter_combinations
+        )
 
+        progress_bar = tqdm(
+            parallel_generator,
+            total=len(parameter_combinations),
+            desc=f"Grid Search ({n_jobs} jobs)",
+            unit="trial",
+        )
+
+        # Iterasi setiap hasil trial paralel
+        for single_record, model_weights in progress_bar:
             hyperparameter_records.append(single_record)
             current_rmse = single_record["RMSE"]
             current_model_type = single_record["model"]
 
-            # Simpan model jika performa RMSE lebih baik dari rekor sebelumnya
+            # Simpan rekam jejak dan bobot jika performa RMSE lebih baik dari rekor sebelumnya
             if current_rmse < best_models_data[current_model_type]["rmse"]:
                 best_models_data[current_model_type]["rmse"] = current_rmse
                 best_models_data[current_model_type]["record"] = single_record
-                best_models_data[current_model_type]["model"] = trained_network
-
-                model_save_path = config.get_model_path(ticker, current_model_type)
-                trained_network.save(model_save_path)
+                best_models_data[current_model_type]["weights"] = model_weights
 
             progress_bar.set_postfix({
                 "Model": current_model_type,
@@ -254,6 +253,24 @@ def run_modeling(
                 "LSTM_Best": f"{best_models_data.get('LSTM', {}).get('rmse', float('inf')):.2f}",
                 "GRU_Best": f"{best_models_data.get('GRU', {}).get('rmse', float('inf')):.2f}",
             })
+
+        # Rekonstruksi dan simpan model terbaik per arsitektur ke disk
+        for model_name in models_list:
+            model_info = best_models_data[model_name]
+            if model_info["weights"] is not None:
+                best_time_steps = model_info["record"]["time_steps"]
+                best_optimizer = model_info["record"]["optimizer"]
+                best_lr = model_info["record"]["learning_rate"]
+                best_network = build_model(
+                    model_type=model_name,
+                    time_steps=best_time_steps,
+                    optimizer_name=best_optimizer,
+                    learning_rate=best_lr,
+                )
+                best_network.set_weights(model_info["weights"])
+                model_save_path = config.get_model_path(ticker, model_name)
+                best_network.save(model_save_path)
+                logger.info(f"[Model Saved] Model {model_name} terbaik disimpan ke: {model_save_path.name}")
 
         # Tahap 5: Simpan hasil eksperimen ke CSV dan log ke MLflow
         hyperparameter_csv_path = config.get_hyperparameter_path(ticker)
@@ -284,6 +301,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=None, help="Epochs pelatihan")
     parser.add_argument("--random-state", type=int, default=None, help="Random seed")
     parser.add_argument("--target-col", type=str, default=None, help="Target column")
+    parser.add_argument("--n-jobs", type=int, default=None, help="Jumlah worker parallel (-1 untuk auto)")
 
     # Parsing parameter CLI dan file konfigurasi eksternal
     arguments = parser.parse_args()
@@ -303,6 +321,10 @@ def main():
     if arguments.target_col is not None:
         target_column = arguments.target_col
 
+    n_jobs = file_parameters.get("N_JOBS", None)
+    if arguments.n_jobs is not None:
+        n_jobs = arguments.n_jobs
+
     # Ambil parameter grid search langsung dari konfigurasi
     time_steps = file_parameters.get("TIME_STEPS", [10])
     optimizers_list = file_parameters.get("OPTIMIZERS", ["Adam"])
@@ -315,7 +337,7 @@ def main():
     logger.info(
         f"Hyperparameters: TIME_STEPS={time_steps}, OPTIMIZERS={optimizers_list}, "
         f"BATCH_SIZES={batch_sizes}, LEARNING_RATES={learning_rates}, "
-        f"MODELS={models_list}, EPOCHS={epochs}, RANDOM_STATE={random_state}"
+        f"MODELS={models_list}, EPOCHS={epochs}, RANDOM_STATE={random_state}, N_JOBS={n_jobs}"
     )
 
     run_modeling(
@@ -328,6 +350,7 @@ def main():
         epochs=epochs,
         random_state=random_state,
         target_col=target_column,
+        n_jobs=n_jobs,
     )
     logger.info(f"=== Selesai Stage Modeling untuk: {ticker} ===")
 
