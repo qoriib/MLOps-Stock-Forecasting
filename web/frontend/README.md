@@ -1,35 +1,39 @@
-# Stock Forecasting Web Frontend (React 19 + TanStack + Astryx Design)
+# Stock Forecasting Web Frontend
 
-Aplikasi web dashboard interaktif untuk visualisasi peramalan harga saham temporal perbankan menggunakan **React 19**, **TanStack Router**, **Astryx Design System**, dan charting interaktif **ApexCharts**.
-
----
-
-## ⚡ Fitur Utama
-
-- **Interactive Forecast Visualization:** Chart multi-step peramalan harga saham dengan interval keyakinan 95%.
-- **Optimal Model Insights:** Menampilkan parameter hyperparameter terbaik (sequence window, optimizer, batch size, learning rate) dan metrik evaluasi data uji (RMSE, MAPE, R²).
-- **Astryx Design System:** Antarmuka responsif dan aksesibel dengan dukungan tema gelap (*dark mode*) dan terang (*light mode*).
-- **State Management:** Terkoordinasi via **Zustand** store.
-- **Serverless Edge Ready:** Di-build menggunakan **Nitro** untuk deployment ke Cloudflare Pages.
+Aplikasi dashboard web interaktif untuk visualisasi peramalan harga saham temporal perbankan menggunakan React 19, TanStack Router, Zustand, dan charting interaktif Apache ECharts.
 
 ---
 
-## 🛠️ Panduan Menjalankan Lokal
+## Fitur Utama
 
-```bash
-cd web/frontend
-npm install
-npm run dev
-```
-
-Buka `http://localhost:3000` di browser Anda.
+- **Visualisasi Peramalan Interaktif**: Menampilkan data historis pasar saham dan proyeksi peramalan multi-langkah ke masa depan.
+- **Wawasan Model Terbaik**: Menyajikan metrik evaluasi (RMSE, MAPE, R²) dan hyperparameter model aktif.
+- **Antarmuka Responsif**: Mendukung tema gelap (*dark mode*) dan terang (*light mode*).
+- **Manajemen State**: Terpusat menggunakan Zustand store.
 
 ---
 
-## 🏗️ Kompilasi Produksi
+## Panduan Menjalankan Lokal
+
+1. Masuk ke direktori frontend:
+   ```bash
+   cd web/frontend
+   ```
+2. Pasang dependensi:
+   ```bash
+   npm install
+   ```
+3. Jalankan development server:
+   ```bash
+   npm run dev
+   ```
+   Buka peramban di `http://localhost:3000`.
+
+---
+
+## Kompilasi Produksi
 
 ```bash
 npm run build
 ```
-
-Hasil build statis dan worker adapter akan disimpan di direktori `dist/` dan `.output/`.
+Hasil build statis akan disimpan di direktori `dist/`.

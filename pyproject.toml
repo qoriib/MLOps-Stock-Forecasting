@@ -29,6 +29,7 @@ data_understanding = "src.data_understanding:main"
 data_preparation = "src.data_preparation:main"
 modeling = "src.modeling:main"
 evaluation = "src.evaluation:main"
+model_packaging = "src.model_packaging:main"
 report = "src.report:main"
 
 [build-system]

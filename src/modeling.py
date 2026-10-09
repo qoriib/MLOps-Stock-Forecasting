@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from keras import layers, optimizers
 from pathlib import Path
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 from tqdm import tqdm
 from typing import Any, Dict, List, Tuple
 from src import config
@@ -83,15 +83,17 @@ def build_model(model_type: str, time_steps: int, optimizer_name: str, learning_
 
 
 def calculate_metrics(actual_values: np.ndarray, predicted_values: np.ndarray) -> Dict[str, float]:
-    # Hitung metrik evaluasi MSE, RMSE, dan MAPE
+    # Hitung metrik evaluasi MSE, RMSE, MAPE, dan R2
     mean_sq_error = float(mean_squared_error(actual_values, predicted_values))
     root_mean_sq_error = float(np.sqrt(mean_sq_error))
     mean_abs_percentage_error = float(np.mean(np.abs((actual_values - predicted_values) / actual_values)) * 100)
+    r2_value = float(r2_score(actual_values, predicted_values))
 
     return {
         "MSE": mean_sq_error,
         "RMSE": root_mean_sq_error,
         "MAPE": mean_abs_percentage_error,
+        "R2": r2_value,
     }
 
 

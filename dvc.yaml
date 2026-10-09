@@ -101,5 +101,4 @@ stages:
       - src/report.py
       - artifact/metrics
     outs:
-      - artifact/report.md:
-          cache: false
+      - artifact/report.md

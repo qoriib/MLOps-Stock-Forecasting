@@ -51,6 +51,11 @@ def build_dataset_summary() -> str:
 def build_models_summary() -> str:
     records_list = []
 
+    # Ambil ambang batas dari params.yaml
+    params_dict = config.load_params()
+    threshold_mape = float(params_dict.get("THRESHOLD_MAPE", 10.0))
+    threshold_r2 = float(params_dict.get("THRESHOLD_R2", 0.80))
+
     # Temukan seluruh file rekaman hasil hyperparameter
     hyperparameter_files = sorted(config.METRICS_DIR.glob("*_hyperparameter.csv"))
 
@@ -59,21 +64,28 @@ def build_models_summary() -> str:
         ticker = csv_file_path.stem.replace("_hyperparameter", "")
         hyperparameter_dataframe = pd.read_csv(csv_file_path)
 
-        if hyperparameter_dataframe.empty or "MAPE" not in hyperparameter_dataframe.columns:
+        if hyperparameter_dataframe.empty or "RMSE" not in hyperparameter_dataframe.columns:
             continue
 
-        # Identifikasi konfigurasi terbaik dengan nilai MAPE terendah
-        best_row_index = hyperparameter_dataframe["MAPE"].idxmin()
-        sorted_dataframe = hyperparameter_dataframe.sort_values(by="MAPE")
+        # Urutkan berdasarkan RMSE terkecil
+        sorted_dataframe = hyperparameter_dataframe.sort_values(by="RMSE").reset_index(drop=True)
+        champion_assigned = False
 
         # Petakan status promosi model
         for row_index, row_data in sorted_dataframe.iterrows():
-            if row_index == best_row_index:
-                promotion_status = "Champion"
-            else:
-                promotion_status = "Candidate"
+            mape_val = float(row_data["MAPE"])
+            r2_val = float(row_data["R2"]) if "R2" in row_data and pd.notna(row_data["R2"]) else None
+            meets_threshold = mape_val < threshold_mape and (r2_val is None or r2_val > threshold_r2)
 
-            records_list.append({
+            if not champion_assigned and meets_threshold:
+                promotion_status = "Champion"
+                champion_assigned = True
+            elif not meets_threshold:
+                promotion_status = "Challenger (Below Threshold)"
+            else:
+                promotion_status = "Challenger"
+
+            record_dict = {
                 "Ticker": ticker,
                 "Model": row_data["model"],
                 "Time Steps": int(row_data["time_steps"]),
@@ -81,9 +93,13 @@ def build_models_summary() -> str:
                 "Optimizer": row_data["optimizer"],
                 "Learning Rate": row_data["learning_rate"],
                 "RMSE": round(float(row_data["RMSE"]), 2),
-                "MAPE": f"{float(row_data['MAPE']):.2f}%",
-                "Status": promotion_status,
-            })
+                "MAPE": f"{mape_val:.2f}%",
+            }
+            if r2_val is not None:
+                record_dict["R²"] = round(r2_val, 4)
+            record_dict["Status"] = promotion_status
+
+            records_list.append(record_dict)
 
     if not records_list:
         return ""

@@ -12,6 +12,7 @@ from mlflow import MlflowClient
 from mlflow.models.signature import infer_signature
 from pathlib import Path
 from typing import Any, Dict, List
+from sklearn.metrics import r2_score
 from src import config
 
 logger = logging.getLogger("evaluation_stage")
@@ -64,6 +65,11 @@ def evaluate_and_plot(
     scaled_predictions = loaded_model.predict(dataset_test, verbose=0)
     inversed_predictions = scaler_instance.inverse_transform(scaled_predictions).flatten()
 
+    # Hitung metrik evaluasi pengujian
+    current_rmse = float(config_row["RMSE"])
+    current_mape = float(config_row["MAPE"])
+    current_r2 = float(r2_score(actual_test_values, inversed_predictions))
+
     # Visualisasikan perbandingan harga aktual dan hasil prediksi
     plot_file_path = config.get_plot_path(ticker, f"{model_name}_inference")
     figure, axes = plt.subplots(figsize=(13, 5))
@@ -87,9 +93,9 @@ def evaluate_and_plot(
     )
 
     # Atur label dan simpan plot inferensi
-    current_rmse = float(config_row["RMSE"])
-    current_mape = float(config_row["MAPE"])
-    axes.set_title(f"Inferensi {model_name} - {ticker} (RMSE: {current_rmse:.2f}, MAPE: {current_mape:.2f}%)")
+    axes.set_title(
+        f"Inferensi {model_name} - {ticker} (RMSE: {current_rmse:.2f}, MAPE: {current_mape:.2f}%, R2: {current_r2:.2f})"
+    )
     axes.set_xlabel("Tanggal")
     axes.set_ylabel(f"Harga ({target_column.capitalize()})")
     axes.legend()
@@ -102,7 +108,7 @@ def evaluate_and_plot(
     sample_output = loaded_model.predict(sample_input, verbose=0)
     tensor_signature = infer_signature(sample_input, sample_output)
 
-    # Catat run registrasi dan berikan alias challenger
+    # Status awal model pada registrasi awal: PASTI challenger
     registered_model_name = f"{ticker}_{model_name}"
     run_name = f"{ticker}_{model_name}_Registration"
     scaler_file_path = config.get_scaler_path(ticker)
@@ -112,6 +118,7 @@ def evaluate_and_plot(
             mlflow.set_tags({
                 "target": target_column,
                 "stage": "registration",
+                "status": "challenger",
             })
 
             mlflow.log_params(config_row)
@@ -119,6 +126,7 @@ def evaluate_and_plot(
                 "RMSE": current_rmse,
                 "MAPE": current_mape,
                 "MSE": float(config_row["MSE"]),
+                "R2": current_r2,
             })
 
             mlflow.log_artifact(str(scaler_file_path), artifact_path="scaler")
@@ -131,15 +139,20 @@ def evaluate_and_plot(
                 signature=tensor_signature,
             )
 
-            latest_model_entry = mlflow_client.get_registered_model(registered_model_name)
-            latest_version_number = latest_model_entry.latest_versions[0].version
+            available_versions = mlflow_client.search_model_versions(f"name = '{registered_model_name}'")
+            sorted_versions = sorted(available_versions, key=lambda v: int(v.version))
+            latest_version_number = sorted_versions[-1].version
 
+            # Status awal pasti challenger
             mlflow_client.set_registered_model_alias(
                 name=registered_model_name,
                 alias="challenger",
                 version=latest_version_number,
             )
-            logger.info(f"[MLflow] Model {registered_model_name} (v{latest_version_number}) teregistrasi sebagai @challenger")
+            logger.info(
+                f"[MLflow] Model {registered_model_name} (v{latest_version_number}) "
+                f"teregistrasi sebagai @challenger (RMSE={current_rmse:.2f}, MAPE={current_mape:.2f}%, R2={current_r2:.4f})"
+            )
     except Exception as error_exception:
         logger.warning(f"[MLflow] Registrasi model {registered_model_name} dilewati: {error_exception}")
 
@@ -150,6 +163,8 @@ def evaluate_and_plot(
         "RMSE": current_rmse,
         "MAPE": current_mape,
         "MSE": float(config_row["MSE"]),
+        "R2": current_r2,
+        "status": "challenger",
         "time_steps": time_steps,
         "batch_size": batch_size,
         "optimizer": config_row.get("optimizer"),

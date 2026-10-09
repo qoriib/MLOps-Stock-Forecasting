@@ -1,5 +1,7 @@
 TICKERS:
   - BBCA.JK
+  - BBRI.JK
+  - BMRI.JK
 RANGE_DAYS: 1825
 END_DATE: "auto"
 
@@ -17,3 +19,7 @@ BATCH_SIZES:
   - 8
 LEARNING_RATES:
   - 0.01
+
+# Ambang Batas Kelayakan Model (Evaluation & Promotion Thresholds)
+THRESHOLD_MAPE: 10.0 # Maksimum MAPE (%) < 10%
+THRESHOLD_R2: 0.80 # Minimum R² > 0.80

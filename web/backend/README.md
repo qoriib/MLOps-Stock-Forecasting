@@ -1,63 +1,76 @@
-# Stock Forecast Inference Backend (FastAPI on Azure Container Apps)
+# Stock Forecast Inference Backend
 
-A machine learning inference backend powered by **Python FastAPI** designed to serve stock price forecasting using **Keras LSTM/GRU** models, MinMaxScaler, MongoDB Time Series collection with **Beanie ODM**, and historical stock market data caching.
-
----
-
-## 🚀 Key Features
-
-- **FastAPI Native**: High performance with automated OpenAPI Swagger documentation (`/docs`) and root metadata check (`/`).
-- **Clean Architecture & Separation of Concerns**: Clear separation across Routes, Controllers, Services, and Models/Entities.
-- **MongoDB Time Series Collection & Beanie ODM**: High-performance time series data storage utilizing MongoDB native Time Series collections (`timeField="timestamp"`, `metaField="metadata"`, `granularity="hours"`) and Beanie async ODM.
-- **Real ML Inference**: Loads trained `.keras` models directly using Keras/TensorFlow for multi-step autoregressive inference.
-- **Structured Validation**: Pydantic v2 input validation with clear, informative error messages.
+Backend inferensi machine learning berbasis FastAPI untuk melayani peramalan harga saham menggunakan model Keras LSTM/GRU, normalisasi MinMaxScaler, penyimpanan MongoDB Time Series dengan Beanie ODM, dan pengujian beban performa Locust.
 
 ---
 
-## 🛠️ Directory Structure
+## Fitur Utama
+
+- **FastAPI Native**: Dokumentasi interaktif otomatis OpenAPI Swagger (`/docs`) dan health check (`/`).
+- **Clean Architecture**: Pemisahan tanggung jawab yang jelas antara Routes, Controllers, Services, dan Models/Entities.
+- **MongoDB Native Time Series**: Menggunakan koleksi deret waktu native (`timestamp`, `metadata.ticker`, granularity `hours`) via Beanie ODM.
+- **Autoregressive Forecast**: Inferensi sekuensial multi-langkah berbasis jendela waktu (`time_steps`) dengan memperhitungkan hari bursa aktif.
+- **Load Testing (CCU 10-150)**: Pengujian beban bertahap menggunakan Locust untuk menguji kestabilan throughput dan latensi.
+
+---
+
+## Struktur Direktori
 
 ```text
 web/backend/
 ├── app/
-│   ├── config.py                  # Environment paths & MongoDB settings configuration
-│   ├── main.py                    # FastAPI initialization, CORS, lifespan, & route registry
-│   ├── controllers/               # Business logic controller layer
-│   │   ├── models_controller.py   # Model overview & forecast execution
-│   │   └── stocks_controller.py   # Historical stock price queries
-│   ├── models/
-│   │   ├── entities.py            # Beanie TimeSeries Document entity (StockPrice)
-│   │   └── schemas.py             # Pydantic v2 request & response schemas
-│   ├── routes/                    # API route declarations & parameter validation
-│   │   ├── models.py              # GET /api/models & POST /api/models/predict
-│   │   └── stocks.py              # GET /api/stocks/{ticker}
-│   └── services/                  # Core service layer
-│       ├── database_service.py    # PyMongo client & Beanie ODM lifespan initialization
-│       ├── stock_service.py       # Stock data queries & time series history operations
-│       └── model_service.py       # ML model inference & autoregressive forecast
-├── assets/                        # Model & scaler assets
-├── gunicorn.conf.py               # Production ASGI server configuration
-├── main.py                        # Entrypoint ASGI application runner
-└── requirements.txt               # Python package dependencies
+│   ├── config.py              # Konfigurasi path dan environment MongoDB
+│   ├── main.py                # Inisialisasi FastAPI, CORS, lifespan, dan routing
+│   ├── controllers/           # Handler controller endpoint
+│   ├── models/                # Pydantic schemas dan entity Beanie TimeSeries
+│   ├── routes/                # Deklarasi route (/api/models, /api/stocks)
+│   └── services/              # Logika database, caching saham, dan inferensi ML
+├── assets/                    # Model .keras dan scaler .pkl aktif
+├── tests/                     # Suite pengujian beban Locust
+│   ├── locustfile.py          # Definisi user tasks dan StepLoadShape (CCU 10-150)
+│   └── run_load_test.py       # Script runner headless dan generator report Markdown
+├── gunicorn.conf.py           # Konfigurasi server produksi ASGI
+├── main.py                    # Entrypoint aplikasi ASGI
+└── requirements.txt           # Dependensi paket Python
 ```
 
 ---
 
-## 💻 Running Locally
+## Menjalankan Secara Lokal
 
-1. Navigate to the backend directory:
+1. Masuk ke direktori backend:
    ```bash
    cd web/backend
    ```
-2. Create and activate a virtual environment:
+2. Buat dan aktifkan virtual environment:
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
-3. Install dependencies:
+3. Pasang dependensi:
    ```bash
    pip install -r requirements.txt
    ```
-4. Run the FastAPI development server:
+4. Jalankan server FastAPI:
    ```bash
    uvicorn main:app --port 8000 --reload
    ```
+   Akses dokumentasi Swagger di `http://localhost:8000/docs`.
+
+---
+
+## Load Testing (CCU 10-150)
+
+Pengujian beban backend dilakukan menggunakan Locust dengan skenario bertahap 10 hingga 150 Concurrent Users (CCU):
+
+### 1. Mode Otomatis (Headless)
+```bash
+python tests/run_load_test.py --host http://localhost:8000 --users 150 --spawn-rate 20 --run-time 1m
+```
+Hasil pengujian disimpan di direktori `tests/result/` dalam format file CSV.
+
+### 2. Mode Web Dashboard Interaktif
+```bash
+locust -f tests/locustfile.py --host http://localhost:8000
+```
+Buka peramban di `http://localhost:8089` untuk memantau grafik CCU dan response time secara real-time.

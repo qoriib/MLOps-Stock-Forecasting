@@ -11,3 +11,5 @@ htmlcov/
 .env.*
 !.env.example
 *.log
+tests/result/
+test/result/
