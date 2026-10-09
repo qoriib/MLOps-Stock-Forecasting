@@ -2,6 +2,14 @@ TICKERS:
   - BBCA.JK
   - BBRI.JK
   - BMRI.JK
+  - BBNI.JK
+  - BRIS.JK
+  - BNLI.JK
+  - BDMN.JK
+  - BNGA.JK
+  - MEGA.JK
+  - BBTN.JK
+
 RANGE_DAYS: 1825
 END_DATE: "auto"
 
@@ -9,17 +17,21 @@ TARGET_COL: "close"
 RANDOM_STATE: 42
 TRAIN_SIZE: 0.9
 EPOCHS: 50
+N_JOBS: 4
 
 # Hyperparameter
 TIME_STEPS:
-  - 10
+  - 20
+  - 30
 OPTIMIZERS:
+  - RMSprop
   - Adam
 BATCH_SIZES:
-  - 8
+  - 16
+  - 32
 LEARNING_RATES:
-  - 0.01
+  - 0.001
+  - 0.0001
 
-# Ambang Batas Kelayakan Model (Evaluation & Promotion Thresholds)
-THRESHOLD_MAPE: 10.0 # Maksimum MAPE (%) < 10%
-THRESHOLD_R2: 0.80 # Minimum R² > 0.80
+# Ambang Batas Kelayakan Model
+THRESHOLD_MAPE: 10.0
