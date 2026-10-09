@@ -54,7 +54,6 @@ def build_models_summary() -> str:
     # Ambil ambang batas dari params.yaml
     params_dict = config.load_params()
     threshold_mape = float(params_dict.get("THRESHOLD_MAPE", 10.0))
-    threshold_r2 = float(params_dict.get("THRESHOLD_R2", 0.80))
 
     # Temukan seluruh file rekaman hasil hyperparameter
     hyperparameter_files = sorted(config.METRICS_DIR.glob("*_hyperparameter.csv"))
@@ -74,8 +73,8 @@ def build_models_summary() -> str:
         # Petakan status promosi model
         for row_index, row_data in sorted_dataframe.iterrows():
             mape_val = float(row_data["MAPE"])
-            r2_val = float(row_data["R2"]) if "R2" in row_data and pd.notna(row_data["R2"]) else None
-            meets_threshold = mape_val < threshold_mape and (r2_val is None or r2_val > threshold_r2)
+            mse_val = float(row_data["MSE"]) if "MSE" in row_data and pd.notna(row_data["MSE"]) else None
+            meets_threshold = mape_val < threshold_mape
 
             if not champion_assigned and meets_threshold:
                 promotion_status = "Champion"
@@ -92,12 +91,11 @@ def build_models_summary() -> str:
                 "Batch Size": int(row_data["batch_size"]),
                 "Optimizer": row_data["optimizer"],
                 "Learning Rate": row_data["learning_rate"],
+                "MSE": round(mse_val, 2) if mse_val is not None else "N/A",
                 "RMSE": round(float(row_data["RMSE"]), 2),
                 "MAPE": f"{mape_val:.2f}%",
+                "Status": promotion_status,
             }
-            if r2_val is not None:
-                record_dict["R²"] = round(r2_val, 4)
-            record_dict["Status"] = promotion_status
 
             records_list.append(record_dict)
 

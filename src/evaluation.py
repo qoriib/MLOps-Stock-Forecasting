@@ -12,7 +12,6 @@ from mlflow import MlflowClient
 from mlflow.models.signature import infer_signature
 from pathlib import Path
 from typing import Any, Dict, List
-from sklearn.metrics import r2_score
 from src import config
 
 logger = logging.getLogger("evaluation_stage")
@@ -68,7 +67,7 @@ def evaluate_and_plot(
     # Hitung metrik evaluasi pengujian
     current_rmse = float(config_row["RMSE"])
     current_mape = float(config_row["MAPE"])
-    current_r2 = float(r2_score(actual_test_values, inversed_predictions))
+    current_mse = float(config_row["MSE"])
 
     # Visualisasikan perbandingan harga aktual dan hasil prediksi
     plot_file_path = config.get_plot_path(ticker, f"{model_name}_inference")
@@ -94,7 +93,7 @@ def evaluate_and_plot(
 
     # Atur label dan simpan plot inferensi
     axes.set_title(
-        f"Inferensi {model_name} - {ticker} (RMSE: {current_rmse:.2f}, MAPE: {current_mape:.2f}%, R2: {current_r2:.2f})"
+        f"Inferensi {model_name} - {ticker} (RMSE: {current_rmse:.2f}, MAPE: {current_mape:.2f}%, MSE: {current_mse:.2f})"
     )
     axes.set_xlabel("Tanggal")
     axes.set_ylabel(f"Harga ({target_column.capitalize()})")
@@ -105,7 +104,7 @@ def evaluate_and_plot(
 
     # Buat signature model untuk registrasi MLflow
     sample_input = np.zeros((1, time_steps, 1), dtype=np.float32)
-    sample_output = loaded_model.predict(sample_input, verbose=0)
+    sample_output = loaded_model(sample_input, training=False).numpy()
     tensor_signature = infer_signature(sample_input, sample_output)
 
     # Status awal model pada registrasi awal: PASTI challenger
@@ -125,8 +124,7 @@ def evaluate_and_plot(
             mlflow.log_metrics({
                 "RMSE": current_rmse,
                 "MAPE": current_mape,
-                "MSE": float(config_row["MSE"]),
-                "R2": current_r2,
+                "MSE": current_mse,
             })
 
             mlflow.log_artifact(str(scaler_file_path), artifact_path="scaler")
@@ -151,7 +149,7 @@ def evaluate_and_plot(
             )
             logger.info(
                 f"[MLflow] Model {registered_model_name} (v{latest_version_number}) "
-                f"teregistrasi sebagai @challenger (RMSE={current_rmse:.2f}, MAPE={current_mape:.2f}%, R2={current_r2:.4f})"
+                f"teregistrasi sebagai @challenger (RMSE={current_rmse:.2f}, MAPE={current_mape:.2f}%, MSE={current_mse:.2f})"
             )
     except Exception as error_exception:
         logger.warning(f"[MLflow] Registrasi model {registered_model_name} dilewati: {error_exception}")
@@ -162,8 +160,7 @@ def evaluate_and_plot(
         "model": model_name,
         "RMSE": current_rmse,
         "MAPE": current_mape,
-        "MSE": float(config_row["MSE"]),
-        "R2": current_r2,
+        "MSE": current_mse,
         "status": "challenger",
         "time_steps": time_steps,
         "batch_size": batch_size,

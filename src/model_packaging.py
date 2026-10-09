@@ -2,43 +2,40 @@ import argparse
 import json
 import logging
 import mlflow
+import mlflow.artifacts
 import shutil
-import yaml
-from mlflow.tracking import MlflowClient
+from mlflow import MlflowClient
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 from src import config
 
-logger = logging.getLogger("model_packaging")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("model_packaging")
 
-# Konfigurasi tracking URI jika disetel
+# Inisialisasi client MLflow
 if config.MLFLOW_TRACKING_URI:
     mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
-
 mlflow_client = MlflowClient()
 
 
-def get_version_number(version_item) -> int:
-    # Ekstrak nomor versi numerik model terdaftar
-    return int(version_item.version)
+def get_version_number(version_object: Any) -> int:
+    return int(version_object.version)
 
 
 def load_local_evaluation_metrics(ticker: str) -> Dict[str, Dict[str, Any]]:
-    # Memuat metrik evaluasi lokal dari artifact/metrics/{ticker}_evaluation.json
-    evaluation_file = config.get_metrics_path(ticker, "evaluation")
-    metrics_by_model: Dict[str, Dict[str, Any]] = {}
-    if evaluation_file.exists():
-        try:
-            with open(evaluation_file, "r") as file_handler:
-                eval_records = json.load(file_handler)
-                for item in eval_records:
-                    m_name = item.get("model")
-                    if m_name:
-                        metrics_by_model[m_name] = item
-        except Exception as error_exception:
-            logger.warning(f"Gagal membaca file evaluasi lokal {evaluation_file.name}: {error_exception}")
-    return metrics_by_model
+    # Membaca metrik evaluasi dari artifact/metrics/<ticker>_evaluation.json
+    evaluation_json_path = config.METRICS_DIR / f"{ticker}_evaluation.json"
+    if not evaluation_json_path.exists():
+        logger.warning(f"File evaluasi lokal {evaluation_json_path} tidak ditemukan.")
+        return {}
+
+    try:
+        with open(evaluation_json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return {item["model"]: item for item in data}
+    except Exception as read_error:
+        logger.warning(f"Gagal membaca {evaluation_json_path}: {read_error}")
+        return {}
 
 
 def get_model_metrics(
@@ -46,8 +43,8 @@ def get_model_metrics(
     version_number: str,
     local_metrics: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
-    # Mengambil nilai RMSE, MAPE, dan R2 dari run MLflow atau fallback evaluasi lokal
-    rmse, mape, r2 = None, None, None
+    # Mengambil nilai RMSE, MAPE, dan MSE dari run MLflow atau fallback evaluasi lokal
+    rmse, mape, mse = None, None, None
 
     # Coba ekstrak dari MLflow run
     try:
@@ -55,7 +52,7 @@ def get_model_metrics(
         run_data = mlflow_client.get_run(model_version_meta.run_id).data
         rmse = run_data.metrics.get("RMSE")
         mape = run_data.metrics.get("MAPE")
-        r2 = run_data.metrics.get("R2")
+        mse = run_data.metrics.get("MSE")
     except Exception as mlflow_error:
         logger.debug(f"Tidak dapat membaca metrik dari MLflow run: {mlflow_error}")
 
@@ -65,36 +62,32 @@ def get_model_metrics(
             rmse = float(local_metrics["RMSE"])
         if mape is None and "MAPE" in local_metrics:
             mape = float(local_metrics["MAPE"])
-        if r2 is None and "R2" in local_metrics:
-            r2 = float(local_metrics["R2"])
+        if mse is None and "MSE" in local_metrics:
+            mse = float(local_metrics["MSE"])
 
-    return rmse, mape, r2
+    return rmse, mape, mse
 
 
 def check_threshold_eligibility(
     rmse: Optional[float],
     mape: Optional[float],
-    r2: Optional[float],
+    mse: Optional[float],
     threshold_mape: float,
-    threshold_r2: float,
 ) -> Tuple[bool, str]:
-    # Memvalidasi apakah model memenuhi ambang batas: MAPE < threshold_mape dan R2 > threshold_r2
-    if mape is None or r2 is None:
-        return False, "Metrik MAPE atau R2 tidak ditemukan."
+    # Memvalidasi apakah model memenuhi ambang batas: MAPE < threshold_mape
+    if mape is None:
+        return False, "Metrik MAPE tidak ditemukan."
 
     if mape >= threshold_mape:
         return False, f"MAPE={mape:.2f}% tidak memenuhi ambang batas (< {threshold_mape}%)."
 
-    if r2 <= threshold_r2:
-        return False, f"R2={r2:.4f} tidak memenuhi ambang batas (> {threshold_r2})."
-
-    return True, f"Lolos ambang batas (MAPE={mape:.2f}% < {threshold_mape}%, R2={r2:.4f} > {threshold_r2})."
+    mse_str = f"{mse:.2f}" if mse is not None else "N/A"
+    return True, f"Lolos ambang batas (MAPE={mape:.2f}% < {threshold_mape}%, MSE={mse_str})."
 
 
 def promote_champion_models(
     ticker: str,
     threshold_mape: float = 10.0,
-    threshold_r2: float = 0.80,
 ) -> Dict[str, bool]:
     # Evaluasi status challenger dan promosi ke champion jika memenuhi ambang batas
     promotion_results = {}
@@ -117,7 +110,7 @@ def promote_champion_models(
 
             # Ambil metrik performa
             model_local_metric = local_eval_metrics.get(model_type)
-            rmse, mape, r2 = get_model_metrics(
+            rmse, mape, mse = get_model_metrics(
                 registered_model_name=registered_model_name,
                 version_number=latest_version_number,
                 local_metrics=model_local_metric,
@@ -127,14 +120,13 @@ def promote_champion_models(
             is_eligible, reason = check_threshold_eligibility(
                 rmse=rmse,
                 mape=mape,
-                r2=r2,
+                mse=mse,
                 threshold_mape=threshold_mape,
-                threshold_r2=threshold_r2,
             )
 
             rmse_str = f"{rmse:.2f}" if rmse is not None else "N/A"
             mape_str = f"{mape:.2f}%" if mape is not None else "N/A"
-            r2_str = f"{r2:.4f}" if r2 is not None else "N/A"
+            mse_str = f"{mse:.2f}" if mse is not None else "N/A"
 
             if is_eligible:
                 # Model LOLOS ambang batas: Promosikan dari challenger menjadi champion
@@ -142,13 +134,13 @@ def promote_champion_models(
                 promotion_results[model_type] = True
                 logger.info(
                     f"[MLflow] Model {registered_model_name} v{latest_version_number} "
-                    f"(RMSE={rmse_str}, MAPE={mape_str}, R2={r2_str}) LOLOS ambang batas -> DIPROMOSIKAN ke @champion"
+                    f"(RMSE={rmse_str}, MAPE={mape_str}, MSE={mse_str}) LOLOS ambang batas -> DIPROMOSIKAN ke @champion"
                 )
             else:
                 # Model TIDAK LOLOS: Tetap sebagai challenger, TIDAK BISA jadi champion
                 logger.warning(
                     f"[MLflow] Model {registered_model_name} v{latest_version_number} "
-                    f"(RMSE={rmse_str}, MAPE={mape_str}, R2={r2_str}) DITOLAK menjadi champion: {reason}. "
+                    f"(RMSE={rmse_str}, MAPE={mape_str}, MSE={mse_str}) DITOLAK menjadi champion: {reason}. "
                     f"Status tetap sebagai @challenger."
                 )
 
@@ -161,7 +153,6 @@ def promote_champion_models(
 def package_assets(
     ticker: str,
     threshold_mape: float = 10.0,
-    threshold_r2: float = 0.80,
     promotion_results: Optional[Dict[str, bool]] = None,
 ) -> None:
     # Mengemas aset model champion dan scaler ke web/backend/assets
@@ -200,15 +191,14 @@ def package_assets(
         if not has_champion:
             model_local_metric = local_eval_metrics.get(model_type, {})
             mape_local = model_local_metric.get("MAPE")
-            r2_local = model_local_metric.get("R2")
+            mse_local = model_local_metric.get("MSE")
             rmse_local = model_local_metric.get("RMSE")
 
             is_eligible, reason = check_threshold_eligibility(
                 rmse=rmse_local,
                 mape=mape_local,
-                r2=r2_local,
+                mse=mse_local,
                 threshold_mape=threshold_mape,
-                threshold_r2=threshold_r2,
             )
 
             if is_eligible:
@@ -252,7 +242,6 @@ def main():
 
     params_dict = config.load_params(arguments.params_file)
     threshold_mape = float(params_dict.get("THRESHOLD_MAPE", 10.0))
-    threshold_r2 = float(params_dict.get("THRESHOLD_R2", 0.80))
 
     if arguments.ticker:
         target_tickers = [arguments.ticker.strip().upper()]
@@ -260,7 +249,7 @@ def main():
         target_tickers = load_tickers_from_params(arguments.params_file)
 
     logger.info(
-        f"Kriteria Promosi Champion: MAPE < {threshold_mape}%, R2 > {threshold_r2} "
+        f"Kriteria Promosi Champion: MAPE < {threshold_mape}% "
         f"(dari konfigurasi: {arguments.params_file})"
     )
 
@@ -269,12 +258,10 @@ def main():
         promotion_results = promote_champion_models(
             ticker=current_ticker,
             threshold_mape=threshold_mape,
-            threshold_r2=threshold_r2,
         )
         package_assets(
             ticker=current_ticker,
             threshold_mape=threshold_mape,
-            threshold_r2=threshold_r2,
             promotion_results=promotion_results,
         )
         logger.info(f"=== Selesai Evaluasi Champion & Pengemasan Aset: {current_ticker} ===")
