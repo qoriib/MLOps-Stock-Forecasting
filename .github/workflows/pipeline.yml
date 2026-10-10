@@ -147,15 +147,7 @@ jobs:
           echo "| **Backend URL** | [${{ steps.get-backend-url.outputs.backend_url }}](${{ steps.get-backend-url.outputs.backend_url }}) |" >> $GITHUB_STEP_SUMMARY
           echo "| **API Docs (Swagger)** | [${{ steps.get-backend-url.outputs.backend_url }}/docs](${{ steps.get-backend-url.outputs.backend_url }}/docs) |" >> $GITHUB_STEP_SUMMARY
 
-      - name: Ensure Azure Load Testing Resource Exists
-        run: |
-          az extension add --name load --yes || true
-          az load create \
-            --name ${{ env.AZURE_LOAD_TEST_RESOURCE }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --location eastasia || true
-
-      - name: Run Azure Load Testing (Cloud Locust Engine)
+      - name: Run Azure Load Testing
         uses: azure/load-testing@v1
         continue-on-error: true
         with:
