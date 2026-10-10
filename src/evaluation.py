@@ -69,11 +69,34 @@ def evaluate_and_plot(
     current_mape = float(config_row["MAPE"])
     current_mse = float(config_row["MSE"])
 
-    # Visualisasikan perbandingan harga aktual dan hasil prediksi
-    plot_file_path = config.get_plot_path(ticker, f"{model_name}_inference")
-    figure, axes = plt.subplots(figsize=(13, 5))
     parsed_dates_train = pd.to_datetime(dates_train)
     parsed_dates_test = pd.to_datetime(dates_test)
+
+    # Hitung proyeksi masa depan 20 langkah ke depan (20 hari bursa)
+    future_steps = 20
+    last_test_date = parsed_dates_test[-1]
+    future_dates = []
+    current_date = last_test_date
+    while len(future_dates) < future_steps:
+        current_date += pd.Timedelta(days=1)
+        if current_date.weekday() < 5:
+            future_dates.append(current_date)
+
+    curr_window = list(test_scaled[-time_steps:].flatten())
+    future_scaled_predictions = []
+    for _ in range(future_steps):
+        input_window = np.array(curr_window[-time_steps:], dtype=np.float32).reshape(1, time_steps, 1)
+        next_scaled_price = float(loaded_model(input_window, training=False).numpy().flatten()[0])
+        future_scaled_predictions.append(next_scaled_price)
+        curr_window.append(next_scaled_price)
+
+    future_inversed_predictions = scaler_instance.inverse_transform(
+        np.array(future_scaled_predictions).reshape(-1, 1)
+    ).flatten()
+
+    # Visualisasikan perbandingan harga aktual, data uji, dan proyeksi masa depan
+    plot_file_path = config.get_plot_path(ticker, f"{model_name}_inference")
+    figure, axes = plt.subplots(figsize=(14, 5))
 
     train_plot_length = min(len(dates_train), len(dates_test) * 2)
     axes.plot(
@@ -86,14 +109,27 @@ def evaluate_and_plot(
     axes.plot(
         parsed_dates_test,
         inversed_predictions,
-        label=f"{model_name} Prediction",
+        label=f"{model_name} Test Prediction",
         color="tab:red",
         linestyle="--",
     )
 
+    # Plot sambungan proyeksi 20 langkah ke depan
+    connect_dates = [parsed_dates_test[-1]] + future_dates
+    connect_predictions = [inversed_predictions[-1]] + list(future_inversed_predictions)
+    axes.plot(
+        connect_dates,
+        connect_predictions,
+        label=f"{model_name} Future Forecast (+20 Steps)",
+        color="tab:orange",
+        linestyle=":",
+        linewidth=2,
+    )
+    axes.axvline(x=parsed_dates_test[-1], color="gray", linestyle="-.", alpha=0.5, label="Test / Future Cutoff")
+
     # Atur label dan simpan plot inferensi
     axes.set_title(
-        f"Inferensi {model_name} - {ticker} (RMSE: {current_rmse:.2f}, MAPE: {current_mape:.2f}%, MSE: {current_mse:.2f})"
+        f"Inferensi & Proyeksi 20-Step {model_name} - {ticker} (RMSE: {current_rmse:.2f}, MAPE: {current_mape:.2f}%, MSE: {current_mse:.2f})"
     )
     axes.set_xlabel("Tanggal")
     axes.set_ylabel(f"Harga ({target_column.capitalize()})")
