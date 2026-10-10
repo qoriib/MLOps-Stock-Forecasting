@@ -82,7 +82,7 @@ def build_models_summary() -> str:
             elif meets_threshold:
                 promotion_status = "Challenger"
             else:
-                promotion_status = "Below Threshold"
+                promotion_status = "Disqualified"
 
             record_dict = {
                 "Ticker": ticker,
