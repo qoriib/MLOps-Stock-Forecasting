@@ -240,13 +240,13 @@ stages:
       size: 3488
     - path: src/report.py
       hash: md5
-      md5: 9a2cdcbf004433f6a92f73a5b1687cc4
-      size: 5468
+      md5: be0375ffc932b31212064525b521c1d5
+      size: 5448
     outs:
     - path: artifact/report.md
       hash: md5
-      md5: 59a31bbd8d98f32fa264097dd04f9f55
-      size: 48927
+      md5: 6657e08e70c679a7c22106241f1cfc5d
+      size: 43775
   data_ingestion@BBCA.JK:
     cmd: python -m src.data_ingestion --ticker BBCA.JK --range-days 1825 
       --end-date auto
