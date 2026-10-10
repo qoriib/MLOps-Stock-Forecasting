@@ -1,3 +1,4 @@
+import os
 import datetime
 from locust import HttpUser, task, between, LoadTestShape
 
@@ -5,6 +6,12 @@ from locust import HttpUser, task, between, LoadTestShape
 class StockForecastUser(HttpUser):
     # Jeda acak antar request per user simulasi (0.5 hingga 2 detik)
     wait_time = between(0.5, 2.0)
+
+    def on_start(self):
+        # Ambil host dari environment variable TARGET_URL jika belum didefinisikan
+        target_url = os.getenv("TARGET_URL")
+        if target_url and not self.host:
+            self.host = target_url
 
     @task(1)
     def check_root(self):

@@ -85,6 +85,7 @@ jobs:
     env:
       AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
       AZURE_ACR_NAME: acrstockforecast
+      AZURE_LOAD_TEST_RESOURCE: alt-stock-forecast
       CONTAINER_APP_NAME: ca-stock-backend
       CONTAINER_APP_ENVIRONMENT: ca-stock-backend-env
     outputs:
@@ -146,16 +147,28 @@ jobs:
           echo "| **Backend URL** | [${{ steps.get-backend-url.outputs.backend_url }}](${{ steps.get-backend-url.outputs.backend_url }}) |" >> $GITHUB_STEP_SUMMARY
           echo "| **API Docs (Swagger)** | [${{ steps.get-backend-url.outputs.backend_url }}/docs](${{ steps.get-backend-url.outputs.backend_url }}/docs) |" >> $GITHUB_STEP_SUMMARY
 
-      - name: Run Backend Load Testing on Live Deployment (CCU 10-150)
-        working-directory: web/backend
+      - name: Ensure Azure Load Testing Resource Exists
         run: |
-          pip install -r requirements.txt
-          LIVE_URL="${{ steps.get-backend-url.outputs.backend_url }}"
-          echo "Menjalankan load test ke live backend: $LIVE_URL"
-          python tests/run_load_test.py --host "$LIVE_URL" --users 150 --spawn-rate 25 --run-time 30s || true
-          if [ -f tests/result/report.md ]; then
-            cat tests/result/report.md >> $GITHUB_STEP_SUMMARY
-          fi
+          az extension add --name load --yes || true
+          az load create \
+            --name ${{ env.AZURE_LOAD_TEST_RESOURCE }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --location eastasia || true
+
+      - name: Run Azure Load Testing (Cloud Locust Engine)
+        uses: azure/load-testing@v1
+        continue-on-error: true
+        with:
+          loadTestConfigFile: web/backend/tests/alt-config.yaml
+          loadTestResource: ${{ env.AZURE_LOAD_TEST_RESOURCE }}
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          env: |
+            [
+              {
+                "name": "TARGET_URL",
+                "value": "${{ steps.get-backend-url.outputs.backend_url }}"
+              }
+            ]
 
   deploy_frontend:
     name: "Deploy Frontend"
