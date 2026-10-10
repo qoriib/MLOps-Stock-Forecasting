@@ -197,9 +197,6 @@ class StockService:
         parsed_start = datetime.date.fromisoformat(start_date)
         parsed_end = datetime.date.fromisoformat(end_date)
 
-        start_datetime = datetime.datetime.combine(parsed_start, datetime.time.min, tzinfo=datetime.timezone.utc)
-        end_datetime = datetime.datetime.combine(parsed_end, datetime.time.max, tzinfo=datetime.timezone.utc)
-
         all_records = await cls.get_all_cached_prices(clean_ticker)
         if not all_records:
             return None
@@ -207,8 +204,9 @@ class StockService:
         seen_dates = set()
         items = []
         for record in all_records:
-            if start_datetime <= record.timestamp <= end_datetime:
-                date_string = record.timestamp.strftime("%Y-%m-%d")
+            record_date = record.timestamp.date()
+            if parsed_start <= record_date <= parsed_end:
+                date_string = record_date.strftime("%Y-%m-%d")
                 if date_string in seen_dates:
                     continue
                 seen_dates.add(date_string)
