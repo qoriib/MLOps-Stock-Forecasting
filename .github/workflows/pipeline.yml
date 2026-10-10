@@ -105,27 +105,25 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build Image in Azure ACR (Cloud Build)
+      - name: Get ACR Credentials
+        id: acr-creds
         run: |
-          az acr build \
-            --registry ${{ env.AZURE_ACR_NAME }} \
-            --image "${{ env.CONTAINER_APP_NAME }}:${{ github.sha }}" \
-            web/backend
+          echo "username=$(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query username -o tsv)" >> $GITHUB_OUTPUT
+          echo "password=$(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query 'passwords[0].value' -o tsv)" >> $GITHUB_OUTPUT
 
-      - name: Deploy Image to Azure Container App
-        run: |
-          ACR_SERVER="${{ env.AZURE_ACR_NAME }}.azurecr.io"
-          IMAGE_TAG="$ACR_SERVER/${{ env.CONTAINER_APP_NAME }}:${{ github.sha }}"
-          ACR_USER=$(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query username -o tsv)
-          ACR_PASS=$(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query 'passwords[0].value' -o tsv)
-
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image "$IMAGE_TAG" \
-            --registry-server "$ACR_SERVER" \
-            --registry-username "$ACR_USER" \
-            --registry-password "$ACR_PASS"
+      - name: Build and Deploy Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          targetPort: 8000
+          ingress: external
+          location: eastasia
+          appSourcePath: ${{ github.workspace }}/web/backend
+          acrName: ${{ env.AZURE_ACR_NAME }}
+          acrUsername: ${{ steps.acr-creds.outputs.username }}
+          acrPassword: ${{ steps.acr-creds.outputs.password }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
 
       - name: Get Container App URL
         id: get-backend-url
