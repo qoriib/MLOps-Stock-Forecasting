@@ -8,12 +8,17 @@ testPlan: locustfile.py
 # Jumlah engine instance runner pengujian di Azure Cloud
 engineInstances: 1
 
-# Environment variable default (akan di-override secara dinamis di GitHub Actions)
+# Environment variable untuk test runner
 env:
   - name: TARGET_URL
     value: https://ca-stock-backend.eastasia.azurecontainerapps.io
 
-# Ambang batas kriteria kegagalan pengujian beban
+# Ambang batas kriteria kegagalan pengujian beban (Quality Gate)
 failureCriteria:
   - p90(response_time_ms) > 3000
   - percentage(error) > 10
+
+# Proteksi otomatis untuk menghentikan pengujian jika error melebihi batas toleransi
+autoStop:
+  errorPercentage: 80
+  timeWindow: 60
