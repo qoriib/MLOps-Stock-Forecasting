@@ -27,8 +27,6 @@ stages:
       - artifact/data/${item.TICKER}.csv
     params:
       - TARGET_COL
-    plots:
-      - artifact/plots/${item.TICKER}_historical_price.png
     metrics:
       - artifact/metrics/${item.TICKER}_data_understanding.json
 
@@ -100,5 +98,6 @@ stages:
       - src/config.py
       - src/report.py
       - artifact/metrics
+      - artifact/plots
     outs:
       - artifact/report.md
