@@ -81,7 +81,7 @@ jobs:
     name: "Deploy Backend"
     needs: pipeline
     if: ${{ always() && !cancelled() && (needs.pipeline.result == 'success' || needs.pipeline.result == 'skipped') }}
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
       AZURE_ACR_NAME: acrstockforecast
@@ -160,7 +160,7 @@ jobs:
   deploy_frontend:
     name: "Deploy Frontend"
     needs: deploy_backend
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
