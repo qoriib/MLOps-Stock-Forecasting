@@ -51,10 +51,6 @@ def build_dataset_summary() -> str:
 def build_models_summary() -> str:
     records_list = []
 
-    # Ambil ambang batas dari params.yaml
-    params_dict = config.load_params()
-    threshold_mape = float(params_dict.get("THRESHOLD_MAPE", 10.0))
-
     # Temukan seluruh file rekaman hasil hyperparameter
     hyperparameter_files = sorted(config.METRICS_DIR.glob("*_hyperparameter.csv"))
 
@@ -68,21 +64,10 @@ def build_models_summary() -> str:
 
         # Urutkan berdasarkan RMSE terkecil
         sorted_dataframe = hyperparameter_dataframe.sort_values(by="RMSE").reset_index(drop=True)
-        champion_assigned = False
 
-        # Petakan status promosi model
         for row_index, row_data in sorted_dataframe.iterrows():
             mape_val = float(row_data["MAPE"])
             mse_val = float(row_data["MSE"]) if "MSE" in row_data and pd.notna(row_data["MSE"]) else None
-            meets_threshold = mape_val < threshold_mape
-
-            if not champion_assigned and meets_threshold:
-                promotion_status = "Champion"
-                champion_assigned = True
-            elif meets_threshold:
-                promotion_status = "Challenger"
-            else:
-                promotion_status = "Disqualified"
 
             record_dict = {
                 "Ticker": ticker,
@@ -94,7 +79,6 @@ def build_models_summary() -> str:
                 "MSE": round(mse_val, 2) if mse_val is not None else "N/A",
                 "RMSE": round(float(row_data["RMSE"]), 2),
                 "MAPE": f"{mape_val:.2f}%",
-                "Status": promotion_status,
             }
 
             records_list.append(record_dict)
