@@ -1,21 +1,97 @@
+import asyncio
 import datetime
 import logging
 import pickle
+from typing import Dict, List, Tuple
 import keras
 import numpy as np
-from typing import List, Tuple
 from app.config import ASSETS_DIR
-from app.services.stock_service import StockService
 from app.models.entities import StockPrice
 from app.models.schemas import (
     PredictRequest,
     PredictResponse,
     PredictionItem,
 )
+from app.services.stock_service import StockService
 
 logger = logging.getLogger(__name__)
 
-model_cache_storage = {}
+model_cache_storage: Dict[str, keras.Model] = {}
+scaler_cache_storage: Dict[str, object] = {}
+
+
+def _run_universal_inference(
+    model: keras.Model,
+    scaler: object,
+    hist_records: List[Tuple[datetime.date, float]],
+    target_dates: List[datetime.date],
+    window_size: int,
+    feature_dim: int,
+) -> List[Tuple[datetime.date, float]]:
+    if not hist_records:
+        base_price = 1000.0
+        hist_records = [
+            (datetime.date.today() - datetime.timedelta(days=window_size - i), base_price)
+            for i in range(window_size)
+        ]
+
+    # Padding otomatis jika data historis kurang dari window_size
+    if len(hist_records) < window_size:
+        first_date, first_price = hist_records[0]
+        pad_needed = window_size - len(hist_records)
+        padded_records = [
+            (first_date - datetime.timedelta(days=pad_needed - i), first_price)
+            for i in range(pad_needed)
+        ] + hist_records
+        hist_records = padded_records
+
+    last_hist_date = hist_records[-1][0]
+    all_closes = [rec[1] for rec in hist_records]
+
+    test_dates = [d for d in target_dates if d <= last_hist_date]
+    future_dates = [d for d in target_dates if d > last_hist_date]
+
+    results_map: Dict[datetime.date, float] = {}
+
+    # 1. Inferensi Data Uji (Ground-truth historical sliding windows layaknya create_test_windows)
+    if test_dates:
+        all_test_windows: List[List[float]] = []
+        for d in test_dates:
+            closes_before = [price for rec_d, price in hist_records if rec_d < d]
+            if len(closes_before) >= window_size:
+                win = closes_before[-window_size:]
+            elif len(closes_before) > 0:
+                pad_len = window_size - len(closes_before)
+                win = [closes_before[0]] * pad_len + closes_before
+            else:
+                win = all_closes[:window_size]
+            all_test_windows.append(win)
+
+        windows_array = np.array(all_test_windows, dtype=np.float32)
+        scaled_inputs = scaler.transform(windows_array.reshape(-1, 1)).reshape(-1, window_size, feature_dim)
+        scaled_outputs = model(scaled_inputs, training=False).numpy()
+        inversed_outputs = scaler.inverse_transform(scaled_outputs).flatten()
+
+        for d, price in zip(test_dates, inversed_outputs):
+            results_map[d] = float(price)
+
+    # 2. Inferensi Masa Depan (Autoregressive recursive forecasting)
+    if future_dates:
+        curr_window = list(all_closes[-window_size:])
+        for d in future_dates:
+            win_slice = np.array(curr_window[-window_size:], dtype=np.float32).reshape(-1, 1)
+            scaled_window = scaler.transform(win_slice)
+            model_input = scaled_window.reshape(1, window_size, feature_dim)
+
+            scaled_output = model(model_input, training=False).numpy()
+            inversed_output = scaler.inverse_transform(scaled_output)
+
+            pred_val = float(inversed_output.flatten()[0])
+            results_map[d] = pred_val
+            curr_window.append(pred_val)
+
+    return [(d, results_map[d]) for d in target_dates if d in results_map]
+
 
 class ModelService:
     @staticmethod
@@ -46,13 +122,18 @@ class ModelService:
     @staticmethod
     def get_scaler(ticker: str):
         clean_ticker = ticker.strip().upper()
+        if clean_ticker in scaler_cache_storage:
+            return scaler_cache_storage[clean_ticker]
+
         scaler_file_path = ASSETS_DIR / f"{clean_ticker}_scaler.pkl"
-        
         if not scaler_file_path.exists():
             raise FileNotFoundError(f"Scaler {clean_ticker}_scaler.pkl was not found.")
 
         with open(scaler_file_path, "rb") as scaler_file_object:
-            return pickle.load(scaler_file_object)
+            scaler = pickle.load(scaler_file_object)
+
+        scaler_cache_storage[clean_ticker] = scaler
+        return scaler
 
     @staticmethod
     def get_model(ticker: str, model: str):
@@ -64,7 +145,6 @@ class ModelService:
             return model_cache_storage[cache_lookup_key]
 
         model_path = ASSETS_DIR / f"{cache_lookup_key}.keras"
-
         if not model_path.exists():
             raise FileNotFoundError(f"Model file {cache_lookup_key}.keras was not found.")
 
@@ -88,8 +168,18 @@ class ModelService:
     async def execute_forecast(cls, parameters: PredictRequest) -> PredictResponse:
         ticker = parameters.ticker.strip().upper()
         model_name = parameters.model.strip().lower()
-        req_start = datetime.date.fromisoformat(parameters.start_date)
-        req_end = datetime.date.fromisoformat(parameters.end_date)
+
+        # Parse tanggal tanpa membatasi urutan (otomatis swap jika terbalik)
+        try:
+            req_start = datetime.date.fromisoformat(parameters.start_date.strip())
+            req_end = datetime.date.fromisoformat(parameters.end_date.strip())
+        except Exception:
+            today = datetime.date.today()
+            req_start = today - datetime.timedelta(days=7)
+            req_end = today
+
+        if req_start > req_end:
+            req_start, req_end = req_end, req_start
 
         model = cls.get_model(ticker, model_name)
         scaler = cls.get_scaler(ticker)
@@ -101,111 +191,42 @@ class ModelService:
 
         await StockService.ensure_stock_cached(ticker)
 
-        all_records = await StockPrice.find(
+        # Kumpulkan target tanggal kalender / trading
+        target_dates = cls.get_business_days(req_start, req_end)
+        if not target_dates:
+            curr = req_start
+            while curr <= req_end:
+                target_dates.append(curr)
+                curr += datetime.timedelta(days=1)
+
+        # Ambil data historis dari database
+        docs = await StockPrice.find(
             StockPrice.metadata.ticker == ticker
         ).sort("+timestamp").to_list()
 
-        if not all_records or len(all_records) < window_size:
-            raise ValueError(
-                f"Insufficient historical data for {ticker} (minimum {window_size} records required)."
+        hist_records: List[Tuple[datetime.date, float]] = [
+            (doc.timestamp.date(), float(doc.close)) for doc in docs
+        ]
+
+        predictions_raw = await asyncio.to_thread(
+            _run_universal_inference,
+            model,
+            scaler,
+            hist_records,
+            target_dates,
+            window_size,
+            feature_dim,
+        )
+
+        prediction_items = [
+            PredictionItem(
+                date=d.strftime("%Y-%m-%d"),
+                predicted_price=round(price, 2),
             )
+            for d, price in predictions_raw
+        ]
 
-        last_hist_date = all_records[-1].timestamp.date()
-
-        if req_end > last_hist_date:
-            forecast_start = last_hist_date + datetime.timedelta(days=1)
-            all_forecast_days = cls.get_business_days(forecast_start, req_end)
-            
-            if not all_forecast_days:
-                raise ValueError(f"No trading days available for forecasting up to {parameters.end_date}.")
-
-            close_prices = []
-            for record in all_records:
-                close_prices.append(record.close)
-
-            recent_window_slice = close_prices[-window_size:]
-            recent_window = [float(price) for price in recent_window_slice]
-
-            predicted_prices = []
-            for _ in range(len(all_forecast_days)):
-                current_window = recent_window[-window_size:]
-                window_slice = np.array(current_window, dtype=np.float32).reshape(-1, 1)
-                
-                scaled_window = scaler.transform(window_slice)
-                model_input = scaled_window.reshape(1, window_size, feature_dim)
-                
-                scaled_output = model.predict(model_input, verbose=0)
-                inversed_output = scaler.inverse_transform(scaled_output)
-                
-                predicted_price_value = float(inversed_output.flatten()[0])
-
-                predicted_prices.append(predicted_price_value)
-                recent_window.append(predicted_price_value)
-
-            prediction_items = []
-            for b_day, price_val in zip(all_forecast_days, predicted_prices):
-                if req_start <= b_day <= req_end:
-                    date_string = b_day.strftime("%Y-%m-%d")
-                    rounded_price = round(price_val, 2)
-                    item = PredictionItem(
-                        date=date_string,
-                        predicted_price=rounded_price,
-                    )
-                    prediction_items.append(item)
-
-            if not prediction_items:
-                raise ValueError(
-                    f"No trading days found in the range {parameters.start_date} to {parameters.end_date}."
-                )
-        else:
-            records_before = []
-            for record in all_records:
-                record_date = record.timestamp.date()
-                if record_date < req_start:
-                    records_before.append(record)
-
-            if len(records_before) < window_size:
-                raise ValueError(
-                    f"Historical data before {parameters.start_date} is less than {window_size} trading days."
-                )
-
-            all_forecast_days = cls.get_business_days(req_start, req_end)
-            if not all_forecast_days:
-                raise ValueError(
-                    f"No trading days found in the range {parameters.start_date} to {parameters.end_date}."
-                )
-
-            close_prices = []
-            for record in records_before:
-                close_prices.append(record.close)
-
-            recent_window_slice = close_prices[-window_size:]
-            recent_window = [float(price) for price in recent_window_slice]
-
-            prediction_items = []
-            for b_day in all_forecast_days:
-                current_window = recent_window[-window_size:]
-                window_slice = np.array(current_window, dtype=np.float32).reshape(-1, 1)
-                
-                scaled_window = scaler.transform(window_slice)
-                model_input = scaled_window.reshape(1, window_size, feature_dim)
-                
-                scaled_output = model.predict(model_input, verbose=0)
-                inversed_output = scaler.inverse_transform(scaled_output)
-                
-                predicted_price_value = float(inversed_output.flatten()[0])
-
-                recent_window.append(predicted_price_value)
-                
-                date_string = b_day.strftime("%Y-%m-%d")
-                rounded_price = round(predicted_price_value, 2)
-                item = PredictionItem(
-                    date=date_string,
-                    predicted_price=rounded_price,
-                )
-                prediction_items.append(item)
-
-        logger.info(f"Forecast {ticker} ({model_name}): {len(prediction_items)} points")
+        logger.info(f"Universal Forecast {ticker} ({model_name}): {len(prediction_items)} points")
         return PredictResponse(
             ticker=ticker,
             model=model_name,

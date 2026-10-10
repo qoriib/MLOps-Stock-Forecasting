@@ -60,10 +60,14 @@ class PredictRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "PredictRequest":
-        parsed_start = datetime.date.fromisoformat(self.start_date)
-        parsed_end = datetime.date.fromisoformat(self.end_date)
-        if parsed_start > parsed_end:
-            raise ValueError("start_date cannot be greater than end_date.")
+        try:
+            parsed_start = datetime.date.fromisoformat(self.start_date.strip())
+            parsed_end = datetime.date.fromisoformat(self.end_date.strip())
+            
+            if parsed_start > parsed_end:
+                self.start_date, self.end_date = self.end_date, self.start_date
+        except Exception:
+            pass
         return self
 
 class PredictionItem(BaseModel):
