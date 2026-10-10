@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 model_cache_storage: Dict[str, keras.Model] = {}
 scaler_cache_storage: Dict[str, object] = {}
+_cached_available_assets = None
 
 
 def _run_universal_inference(
@@ -75,20 +76,40 @@ def _run_universal_inference(
         for d, price in zip(test_dates, inversed_outputs):
             results_map[d] = float(price)
 
-    # 2. Inferensi Masa Depan (Autoregressive recursive forecasting)
+    # 2. Inferensi Masa Depan (Mendukung Direct Multi-Horizon maupun Rolling Sliding Window 20-30 step)
     if future_dates:
         curr_window = list(all_closes[-window_size:])
-        for d in future_dates:
+        model_output_dim = 1
+        if hasattr(model, "output_shape") and len(model.output_shape) > 1 and model.output_shape[-1] is not None:
+            model_output_dim = int(model.output_shape[-1])
+
+        if model_output_dim > 1:
+            # Arsitektur Direct Multi-Step Horizon (misal model Dense(20) atau Dense(30))
             win_slice = np.array(curr_window[-window_size:], dtype=np.float32).reshape(-1, 1)
             scaled_window = scaler.transform(win_slice)
             model_input = scaled_window.reshape(1, window_size, feature_dim)
 
             scaled_output = model(model_input, training=False).numpy()
-            inversed_output = scaler.inverse_transform(scaled_output)
+            inversed_output = scaler.inverse_transform(scaled_output).flatten()
 
-            pred_val = float(inversed_output.flatten()[0])
-            results_map[d] = pred_val
-            curr_window.append(pred_val)
+            for idx, d in enumerate(future_dates):
+                if idx < len(inversed_output):
+                    results_map[d] = float(inversed_output[idx])
+                else:
+                    results_map[d] = float(inversed_output[-1])
+        else:
+            # Arsitektur Stacked Recurrent dengan Rolling Sliding Window
+            for d in future_dates:
+                win_slice = np.array(curr_window[-window_size:], dtype=np.float32).reshape(-1, 1)
+                scaled_window = scaler.transform(win_slice)
+                model_input = scaled_window.reshape(1, window_size, feature_dim)
+
+                scaled_output = model(model_input, training=False).numpy()
+                inversed_output = scaler.inverse_transform(scaled_output)
+
+                pred_val = float(inversed_output.flatten()[0])
+                results_map[d] = pred_val
+                curr_window.append(pred_val)
 
     return [(d, results_map[d]) for d in target_dates if d in results_map]
 
@@ -96,6 +117,10 @@ def _run_universal_inference(
 class ModelService:
     @staticmethod
     def get_available_assets() -> Tuple[List[str], List[str]]:
+        global _cached_available_assets
+        if _cached_available_assets is not None:
+            return _cached_available_assets
+
         tickers_set = set()
         models_set = set()
 
@@ -117,7 +142,8 @@ class ModelService:
         if models_set:
             sorted_models = sorted(list(models_set))
 
-        return sorted_tickers, sorted_models
+        _cached_available_assets = (sorted_tickers, sorted_models)
+        return _cached_available_assets
 
     @staticmethod
     def get_scaler(ticker: str):
@@ -199,10 +225,8 @@ class ModelService:
                 target_dates.append(curr)
                 curr += datetime.timedelta(days=1)
 
-        # Ambil data historis dari database
-        docs = await StockPrice.find(
-            StockPrice.metadata.ticker == ticker
-        ).sort("+timestamp").to_list()
+        # Ambil data historis (menggunakan in-memory cache untuk meminimalkan koneksi MongoDB)
+        docs = await StockService.get_all_cached_prices(ticker)
 
         hist_records: List[Tuple[datetime.date, float]] = [
             (doc.timestamp.date(), float(doc.close)) for doc in docs
@@ -225,6 +249,16 @@ class ModelService:
             )
             for d, price in predictions_raw
         ]
+
+        if not prediction_items:
+            fallback_date = req_end.strftime("%Y-%m-%d")
+            fallback_price = float(hist_records[-1][1]) if hist_records else 1000.0
+            prediction_items = [
+                PredictionItem(
+                    date=fallback_date,
+                    predicted_price=round(fallback_price, 2),
+                )
+            ]
 
         logger.info(f"Universal Forecast {ticker} ({model_name}): {len(prediction_items)} points")
         return PredictResponse(

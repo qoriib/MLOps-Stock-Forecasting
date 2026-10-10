@@ -57,7 +57,6 @@ jobs:
             cat artifact/report.md >> $GITHUB_STEP_SUMMARY
           fi
 
-
       - name: Upload Pipeline Visualizations & Metrics
         uses: actions/upload-artifact@v4
         with:
@@ -125,6 +124,16 @@ jobs:
           containerAppName: ${{ env.CONTAINER_APP_NAME }}
           containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
           resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+
+      - name: Optimize Container App Resources & Scale Limits
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --cpu 4.0 \
+            --memory 8.0Gi \
+            --min-replicas 1 \
+            --max-replicas 3
 
       - name: Get Container App URL
         id: get-backend-url

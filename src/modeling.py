@@ -34,7 +34,7 @@ def build_model(model_type: str, time_steps: int, optimizer_name: str, learning_
 
     # Inisialisasi objek optimizer
     if optimizer_name == "SGD":
-        optimizer_instance = optimizers.SGD(learning_rate=learning_rate)
+        optimizer_instance = optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
     elif optimizer_name == "Adam":
         optimizer_instance = optimizers.Adam(learning_rate=learning_rate)
     elif optimizer_name == "RMSprop":
@@ -42,20 +42,34 @@ def build_model(model_type: str, time_steps: int, optimizer_name: str, learning_
     else:
         raise ValueError(f"Optimizer {optimizer_name} tidak didukung.")
 
-    # Susun arsitektur jaringan saraf berulang
+    # Susun arsitektur jaringan saraf berulang bertingkat (Stacked Architecture)
+    # Dirancang khusus untuk menjaga stabilitas sekuensial pada proyeksi 20 step / 30 hari ke depan
     neural_network = keras.Sequential()
     neural_network.add(layers.Input(shape=(time_steps, 1)))
 
     if model_type == "LSTM":
-        neural_network.add(layers.LSTM(units=50, return_sequences=False))
+        neural_network.add(layers.LSTM(units=64, return_sequences=True))
+        neural_network.add(layers.Dropout(0.2))
+        neural_network.add(layers.LSTM(units=32, return_sequences=False))
+        neural_network.add(layers.Dropout(0.2))
     elif model_type == "GRU":
-        neural_network.add(layers.GRU(units=50, return_sequences=False))
+        neural_network.add(layers.GRU(units=64, return_sequences=True))
+        neural_network.add(layers.Dropout(0.2))
+        neural_network.add(layers.GRU(units=32, return_sequences=False))
+        neural_network.add(layers.Dropout(0.2))
     else:
         raise ValueError(f"Tipe model {model_type} tidak valid.")
 
-    # Tambahkan lapisan output regresi dan kompilasi
+    # Lapisan proyeksi representasi laten non-linear sebelum regresi akhir
+    neural_network.add(layers.Dense(units=32, activation="relu"))
     neural_network.add(layers.Dense(units=1))
-    neural_network.compile(optimizer=optimizer_instance, loss="mean_squared_error")
+
+    # Kompilasi dengan Huber Loss untuk ketahanan terhadap outlier dan gradien stabil pada multi-step rolling
+    neural_network.compile(
+        optimizer=optimizer_instance,
+        loss=keras.losses.Huber(delta=1.0),
+        metrics=["mae"],
+    )
 
     return neural_network
 

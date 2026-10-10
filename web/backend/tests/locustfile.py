@@ -59,17 +59,19 @@ class StockForecastUser(HttpUser):
 
 class StepLoadShapeCCU(LoadTestShape):
     """
-    Skenario Step-Load Bertahap Berbasis Metrik Sekuritas Menengah:
-    - Stage 1:  10 CCU (Warm-up & Baseline)      -> Durasi: 0 - 60 detik (1 mnt)
-    - Stage 2:  30 CCU (Beban Reguler Rata-rata) -> Durasi: 60 - 180 detik (2 mnt)
-    - Stage 3:  50 CCU (Beban Puncak Jam Sibuk)  -> Durasi: 180 - 300 detik (2 mnt)
-    - Stage 5: Cool-down (Pemulihan Sistem)      -> Durasi: 420 - 450 detik (30 dtk)
+    Skenario Extreme Stress Testing Bertahap Hingga 200 CCU:
+    - Stage 1:  10 CCU (Baseline & Warm-up)       -> Durasi: 0 - 60 detik (1 mnt)
+    - Stage 2:  50 CCU (Beban Reguler)            -> Durasi: 60 - 150 detik (1.5 mnt)
+    - Stage 3: 100 CCU (Beban Tinggi / High Load) -> Durasi: 150 - 270 detik (2 mnt)
+    - Stage 4: 200 CCU (Peak Stress / Batas Maks) -> Durasi: 270 - 390 detik (2 mnt)
+    - Stage 5:  20 CCU (Cool-down / Pemulihan)    -> Durasi: 390 - 450 detik (1 mnt)
     """
     stages = [
-        {"duration": 60,  "users": 10,  "spawn_rate": 2},
-        {"duration": 180, "users": 30,  "spawn_rate": 5},
-        {"duration": 300, "users": 50,  "spawn_rate": 5},
-        {"duration": 450, "users": 10,  "spawn_rate": 10},
+        {"duration": 60,  "users": 10,  "spawn_rate": 5},
+        {"duration": 150, "users": 50,  "spawn_rate": 10},
+        {"duration": 270, "users": 100, "spawn_rate": 15},
+        {"duration": 390, "users": 200, "spawn_rate": 20},
+        {"duration": 450, "users": 30,  "spawn_rate": 25},
     ]
 
     def tick(self):

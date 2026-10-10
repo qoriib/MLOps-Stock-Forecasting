@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import logging
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 import pandas as pd
 import yfinance as yf
 from app.models.entities import StockMetadata, StockPrice
@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 _sync_locks: Dict[str, asyncio.Lock] = {}
 _last_sync_time: Dict[str, datetime.datetime] = {}
+_stock_data_cache: Dict[str, Tuple[datetime.datetime, list]] = {}
 SYNC_INTERVAL_SECONDS = 900  # 15 minutes cache debounce
+STOCK_CACHE_TTL_SECONDS = 600  # 10 minutes cache TTL
 
 def _fetch_yfinance_history(ticker: str, start_date: Optional[str]) -> Optional[pd.DataFrame]:
     ticker_instance = yf.Ticker(ticker)
@@ -33,7 +35,31 @@ def _fetch_yfinance_history(ticker: str, start_date: Optional[str]) -> Optional[
 
 class StockService:
     @classmethod
+    async def get_all_cached_prices(cls, ticker: str) -> list:
+        clean_ticker = ticker.strip().upper()
+        now_time = datetime.datetime.now(datetime.timezone.utc)
+        cached = _stock_data_cache.get(clean_ticker)
+        if cached is not None:
+            cached_time, records = cached
+            if (now_time - cached_time).total_seconds() < STOCK_CACHE_TTL_SECONDS:
+                return records
+
+        await DatabaseService.ensure_initialized()
+        records = await StockPrice.find(
+            StockPrice.metadata.ticker == clean_ticker
+        ).sort("+timestamp").to_list()
+
+        _stock_data_cache[clean_ticker] = (now_time, records)
+        return records
+
+    @classmethod
     async def get_latest_cached_date(cls, ticker: str) -> Optional[datetime.date]:
+        cached = _stock_data_cache.get(ticker)
+        if cached is not None:
+            cached_time, records = cached
+            if records and (datetime.datetime.now(datetime.timezone.utc) - cached_time).total_seconds() < STOCK_CACHE_TTL_SECONDS:
+                return records[-1].timestamp.date()
+
         await DatabaseService.ensure_initialized()
 
         latest_record = await StockPrice.find(
@@ -119,6 +145,7 @@ class StockService:
             if new_documents:
                 new_documents.sort(key=lambda d: d.timestamp)
                 await StockPrice.insert_many(new_documents)
+                _stock_data_cache.pop(ticker.upper(), None)
                 logger.info(f"Saved {len(new_documents)} records for {ticker}")
         except Exception as sync_error:
             logger.error(f"Sync failed for {ticker}: {sync_error}")
@@ -173,33 +200,30 @@ class StockService:
         start_datetime = datetime.datetime.combine(parsed_start, datetime.time.min, tzinfo=datetime.timezone.utc)
         end_datetime = datetime.datetime.combine(parsed_end, datetime.time.max, tzinfo=datetime.timezone.utc)
 
-        query_conditions = [
-            StockPrice.metadata.ticker == clean_ticker,
-            StockPrice.timestamp >= start_datetime,
-            StockPrice.timestamp <= end_datetime,
-        ]
-
-        records = await StockPrice.find(*query_conditions).sort("+timestamp").to_list()
-
-        if not records:
+        all_records = await cls.get_all_cached_prices(clean_ticker)
+        if not all_records:
             return None
 
         seen_dates = set()
         items = []
-        for record in records:
-            date_string = record.timestamp.strftime("%Y-%m-%d")
-            if date_string in seen_dates:
-                continue
-            seen_dates.add(date_string)
-            item = HistoricalItem(
-                date=date_string,
-                open=float(record.open),
-                high=float(record.high),
-                low=float(record.low),
-                close=float(record.close),
-                volume=float(record.volume),
-            )
-            items.append(item)
+        for record in all_records:
+            if start_datetime <= record.timestamp <= end_datetime:
+                date_string = record.timestamp.strftime("%Y-%m-%d")
+                if date_string in seen_dates:
+                    continue
+                seen_dates.add(date_string)
+                item = HistoricalItem(
+                    date=date_string,
+                    open=float(record.open),
+                    high=float(record.high),
+                    low=float(record.low),
+                    close=float(record.close),
+                    volume=float(record.volume),
+                )
+                items.append(item)
+
+        if not items:
+            return None
 
         return HistoricalResponse(
             ticker=clean_ticker,
