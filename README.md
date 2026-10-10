@@ -112,16 +112,23 @@ EPOCHS: 50
 # Hyperparameter Grid
 TIME_STEPS:
   - 10
+  - 20
+  - 30
 OPTIMIZERS:
+  - SGD
   - Adam
+  - RMSprop
 BATCH_SIZES:
   - 8
+  - 16
+  - 32
 LEARNING_RATES:
   - 0.01
+  - 0.001
+  - 0.0001
 
 # Ambang Batas Kelayakan Champion
 THRESHOLD_MAPE: 10.0 # Maksimum MAPE < 10%
-THRESHOLD_R2: 0.80 # Minimum R² > 0.80
 ```
 
 ---
