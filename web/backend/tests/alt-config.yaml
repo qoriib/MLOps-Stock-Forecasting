@@ -1,24 +1,22 @@
 version: v0.1
 testId: stock-forecast-backend-load-test
 displayName: Stock Forecast Backend Load Test (Locust)
-description: Automated Locust load testing for Stock Forecast Backend API on Azure
+description: Automated Locust load testing for Stock Forecast Backend API on Azure (Upgraded CPU)
 testType: Locust
 testPlan: locustfile.py
 
-# Jumlah engine instance runner pengujian di Azure Cloud
 engineInstances: 1
 
-# Environment variable untuk test runner
 env:
   - name: LOCUST_HOST
     value: https://ca-stock-backend.eastasia.azurecontainerapps.io
 
-# Ambang batas kriteria kegagalan pengujian beban (Quality Gate)
 failureCriteria:
-  - p90(response_time_ms) > 3000
-  - percentage(error) > 10
+  - avg(response_time_ms) > 1000
+  - p90(response_time_ms) > 1500
+  - p95(response_time_ms) > 2500
+  - percentage(error) > 0.5
 
-# Proteksi otomatis untuk menghentikan pengujian jika error melebihi batas toleransi
 autoStop:
-  errorPercentage: 80
-  timeWindow: 60
+  errorPercentage: 10
+  timeWindow: 15
