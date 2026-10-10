@@ -10,7 +10,7 @@ engineInstances: 1
 
 # Environment variable untuk test runner
 env:
-  - name: TARGET_URL
+  - name: LOCUST_HOST
     value: https://ca-stock-backend.eastasia.azurecontainerapps.io
 
 # Ambang batas kriteria kegagalan pengujian beban (Quality Gate)

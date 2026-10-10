@@ -4,14 +4,16 @@ from locust import HttpUser, task, between, LoadTestShape
 
 
 class StockForecastUser(HttpUser):
+    # Host target bawaan untuk inisialisasi test engine Azure Load Testing
+    host = os.getenv("LOCUST_HOST") or "https://ca-stock-backend.eastasia.azurecontainerapps.io"
+
     # Jeda acak antar request per user simulasi (0.5 hingga 2 detik)
     wait_time = between(0.5, 2.0)
 
     def on_start(self):
-        # Ambil host dari environment variable TARGET_URL jika belum didefinisikan
-        target_url = os.getenv("TARGET_URL")
-        if target_url and not self.host:
-            self.host = target_url
+        # Pastikan host aktif terpasang saat user instance dimulai
+        if not self.host:
+            self.host = os.getenv("LOCUST_HOST") or "https://ca-stock-backend.eastasia.azurecontainerapps.io"
 
     @task(1)
     def check_root(self):

@@ -154,7 +154,7 @@ jobs:
           env: |
             [
               {
-                "name": "TARGET_URL",
+                "name": "LOCUST_HOST",
                 "value": "${{ steps.get-backend-url.outputs.backend_url }}"
               }
             ]
@@ -162,6 +162,7 @@ jobs:
   deploy_frontend:
     name: "Deploy Frontend"
     needs: deploy_backend
+    if: ${{ always() && !cancelled() && needs.deploy_backend.outputs.backend_url != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
