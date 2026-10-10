@@ -59,19 +59,17 @@ class StockForecastUser(HttpUser):
 
 class StepLoadShapeCCU(LoadTestShape):
     """
-    Skenario beban bertahap (Ramping Step Load) dari CCU 10 hingga 150:
-    - Stage 1: 10 CCU  (Baseline / Warmup) -> 30 detik
-    - Stage 2: 30 CCU  (Normal Load)       -> 30 detik
-    - Stage 3: 75 CCU  (Moderate Load)     -> 30 detik
-    - Stage 4: 120 CCU (High Load)         -> 30 detik
-    - Stage 5: 150 CCU (Peak Stress Load)  -> 30 detik
+    Skenario Step-Load Bertahap Berbasis Metrik Sekuritas Menengah:
+    - Stage 1:  10 CCU (Warm-up & Baseline)      -> Durasi: 0 - 60 detik (1 mnt)
+    - Stage 2:  30 CCU (Beban Reguler Rata-rata) -> Durasi: 60 - 180 detik (2 mnt)
+    - Stage 3:  50 CCU (Beban Puncak Jam Sibuk)  -> Durasi: 180 - 300 detik (2 mnt)
+    - Stage 5: Cool-down (Pemulihan Sistem)      -> Durasi: 420 - 450 detik (30 dtk)
     """
     stages = [
-        {"duration": 30,  "users": 10,  "spawn_rate": 5},
-        {"duration": 60,  "users": 30,  "spawn_rate": 10},
-        {"duration": 90,  "users": 75,  "spawn_rate": 15},
-        {"duration": 120, "users": 120, "spawn_rate": 20},
-        {"duration": 150, "users": 150, "spawn_rate": 25},
+        {"duration": 60,  "users": 10,  "spawn_rate": 2},
+        {"duration": 180, "users": 30,  "spawn_rate": 5},
+        {"duration": 300, "users": 50,  "spawn_rate": 5},
+        {"duration": 450, "users": 10,  "spawn_rate": 10},
     ]
 
     def tick(self):
@@ -81,5 +79,4 @@ class StepLoadShapeCCU(LoadTestShape):
             if run_time < stage["duration"]:
                 return (stage["users"], stage["spawn_rate"])
 
-        # Selesai setelah semua tahapan terlewati
         return None

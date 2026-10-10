@@ -16,7 +16,3 @@ failureCriteria:
   - p90(response_time_ms) > 1500
   - p95(response_time_ms) > 2500
   - percentage(error) > 0.5
-
-autoStop:
-  errorPercentage: 10
-  timeWindow: 15
