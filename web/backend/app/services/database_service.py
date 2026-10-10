@@ -24,6 +24,9 @@ class DatabaseService:
                 connection_url,
                 serverSelectionTimeoutMS=5000,
                 connectTimeoutMS=10000,
+                maxPoolSize=100,
+                minPoolSize=5,
+                maxIdleTimeMS=45000,
             )
             
             global_mongo_db = global_mongo_client[MONGODB_DB_NAME]

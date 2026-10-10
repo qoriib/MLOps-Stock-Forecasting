@@ -1,6 +1,7 @@
+import asyncio
 import datetime
 import logging
-from typing import Optional
+from typing import Dict, Optional
 import pandas as pd
 import yfinance as yf
 from app.models.entities import StockMetadata, StockPrice
@@ -8,6 +9,27 @@ from app.models.schemas import HistoricalItem, HistoricalResponse
 from app.services.database_service import DatabaseService
 
 logger = logging.getLogger(__name__)
+
+_sync_locks: Dict[str, asyncio.Lock] = {}
+_last_sync_time: Dict[str, datetime.datetime] = {}
+SYNC_INTERVAL_SECONDS = 900  # 15 minutes cache debounce
+
+def _fetch_yfinance_history(ticker: str, start_date: Optional[str]) -> Optional[pd.DataFrame]:
+    ticker_instance = yf.Ticker(ticker)
+    if start_date is not None:
+        tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
+        dataframe = ticker_instance.history(
+            start=start_date,
+            end=tomorrow_date.strftime("%Y-%m-%d"),
+        )
+    else:
+        two_years_ago = datetime.date.today() - datetime.timedelta(days=730)
+        tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
+        dataframe = ticker_instance.history(
+            start=two_years_ago.strftime("%Y-%m-%d"),
+            end=tomorrow_date.strftime("%Y-%m-%d"),
+        )
+    return dataframe
 
 class StockService:
     @classmethod
@@ -26,21 +48,7 @@ class StockService:
     async def sync_yfinance_records(cls, ticker: str, start_date: Optional[str] = None) -> None:
         try:
             await DatabaseService.ensure_initialized()
-            ticker_instance = yf.Ticker(ticker)
-
-            if start_date is not None:
-                tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
-                dataframe = ticker_instance.history(
-                    start=start_date,
-                    end=tomorrow_date.strftime("%Y-%m-%d"),
-                )
-            else:
-                two_years_ago = datetime.date.today() - datetime.timedelta(days=730)
-                tomorrow_date = datetime.date.today() + datetime.timedelta(days=1)
-                dataframe = ticker_instance.history(
-                    start=two_years_ago.strftime("%Y-%m-%d"),
-                    end=tomorrow_date.strftime("%Y-%m-%d"),
-                )
+            dataframe = await asyncio.to_thread(_fetch_yfinance_history, ticker, start_date)
 
             if dataframe is None or dataframe.empty:
                 return
@@ -117,18 +125,37 @@ class StockService:
 
     @classmethod
     async def ensure_stock_cached(cls, ticker: str) -> None:
-        latest_date = await cls.get_latest_cached_date(ticker)
-        current_today = datetime.date.today()
+        now_time = datetime.datetime.now(datetime.timezone.utc)
+        last_attempt = _last_sync_time.get(ticker)
+        if last_attempt is not None:
+            elapsed = (now_time - last_attempt).total_seconds()
+            if elapsed < SYNC_INTERVAL_SECONDS:
+                return
 
-        if latest_date is None:
-            await cls.sync_yfinance_records(ticker=ticker)
-        elif latest_date < current_today:
-            next_start_date = latest_date + datetime.timedelta(days=1)
-            if next_start_date <= current_today:
-                await cls.sync_yfinance_records(
-                    ticker=ticker,
-                    start_date=next_start_date.strftime("%Y-%m-%d"),
-                )
+        if ticker not in _sync_locks:
+            _sync_locks[ticker] = asyncio.Lock()
+
+        async with _sync_locks[ticker]:
+            last_attempt = _last_sync_time.get(ticker)
+            if last_attempt is not None:
+                elapsed = (now_time - last_attempt).total_seconds()
+                if elapsed < SYNC_INTERVAL_SECONDS:
+                    return
+
+            _last_sync_time[ticker] = now_time
+
+            latest_date = await cls.get_latest_cached_date(ticker)
+            current_today = datetime.date.today()
+
+            if latest_date is None:
+                await cls.sync_yfinance_records(ticker=ticker)
+            elif latest_date < current_today:
+                next_start_date = latest_date + datetime.timedelta(days=1)
+                if next_start_date <= current_today:
+                    await cls.sync_yfinance_records(
+                        ticker=ticker,
+                        start_date=next_start_date.strftime("%Y-%m-%d"),
+                    )
 
     @classmethod
     async def get_stock_history(
