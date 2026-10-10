@@ -231,9 +231,9 @@ stages:
     deps:
     - path: artifact/metrics
       hash: md5
-      md5: 699eae82b5ab85df342d1d308dc47b2b.dir
-      size: 38424
-      nfiles: 36
+      md5: 6c67c52d391067d5a99ab3c443cae6ad.dir
+      size: 36001
+      nfiles: 30
     - path: src/config.py
       hash: md5
       md5: 8c6fbad7006bedcb3a9b925d8d3add73
@@ -245,8 +245,8 @@ stages:
     outs:
     - path: artifact/report.md
       hash: md5
-      md5: 6657e08e70c679a7c22106241f1cfc5d
-      size: 43775
+      md5: 0347e88112cd33edef68a39c710896ca
+      size: 43145
   data_ingestion@BBCA.JK:
     cmd: python -m src.data_ingestion --ticker BBCA.JK --range-days 1825 
       --end-date auto
