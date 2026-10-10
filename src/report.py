@@ -79,10 +79,10 @@ def build_models_summary() -> str:
             if not champion_assigned and meets_threshold:
                 promotion_status = "Champion"
                 champion_assigned = True
-            elif not meets_threshold:
-                promotion_status = "Challenger (Below Threshold)"
-            else:
+            elif meets_threshold:
                 promotion_status = "Challenger"
+            else:
+                promotion_status = "Below Threshold"
 
             record_dict = {
                 "Ticker": ticker,
