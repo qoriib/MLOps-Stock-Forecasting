@@ -167,25 +167,6 @@ export function StockChart() {
           itemStyle: { color: colorBlue },
           lineStyle: { color: colorBlue, width: 2, type: 'dashed' },
           showSymbol: false,
-          markLine: isFuture && boundaryDate
-            ? {
-              symbol: ['none', 'none'],
-              data: [
-                {
-                  xAxis: boundaryDate,
-                  label: {
-                    show: true,
-                    formatter: 'Forecast Start',
-                    position: 'insideEndTop',
-                    color: colorBlue,
-                    fontSize: 11,
-                    fontWeight: 'bold',
-                  },
-                  lineStyle: { color: colorBlue, type: 'dashed', width: 1.5 },
-                },
-              ],
-            }
-            : undefined,
         },
       ],
     }
