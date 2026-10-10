@@ -59,19 +59,27 @@ class StockForecastUser(HttpUser):
 
 class StepLoadShapeCCU(LoadTestShape):
     """
-    Skenario Extreme Stress Testing Bertahap Hingga 200 CCU:
-    - Stage 1:  10 CCU (Baseline & Warm-up)       -> Durasi: 0 - 60 detik (1 mnt)
-    - Stage 2:  50 CCU (Beban Reguler)            -> Durasi: 60 - 150 detik (1.5 mnt)
-    - Stage 3: 100 CCU (Beban Tinggi / High Load) -> Durasi: 150 - 270 detik (2 mnt)
-    - Stage 4: 200 CCU (Peak Stress / Batas Maks) -> Durasi: 270 - 390 detik (2 mnt)
-    - Stage 5:  20 CCU (Cool-down / Pemulihan)    -> Durasi: 390 - 450 detik (1 mnt)
+    Skenario Stress Testing Bertahap Hingga 1000 CCU:
+    - Stage 1:   50 CCU (Baseline & Warm-up)               -> Durasi: 0 - 60 detik (1 mnt)
+    - Stage 2:  100 CCU (Beban Rendah / Low Load)          -> Durasi: 60 - 120 detik (1 mnt)
+    - Stage 3:  200 CCU (Beban Moderat / Moderate Load)    -> Durasi: 120 - 180 detik (1 mnt)
+    - Stage 4:  350 CCU (Beban Operasional Tinggi)         -> Durasi: 180 - 240 detik (1 mnt)
+    - Stage 5:  500 CCU (Beban Kapasitas Maksimal)         -> Durasi: 240 - 300 detik (1 mnt)
+    - Stage 6:  700 CCU (Heavy Saturation / Scale-out)     -> Durasi: 300 - 360 detik (1 mnt)
+    - Stage 7:  850 CCU (Pre-Peak Extreme Concurrency)     -> Durasi: 360 - 420 detik (1 mnt)
+    - Stage 8: 1000 CCU (Peak Stress / Batas Maksimal)     -> Durasi: 420 - 510 detik (1.5 mnt)
+    - Stage 9:   50 CCU (Cool-down & Recovery)             -> Durasi: 510 - 570 detik (1 mnt)
     """
     stages = [
-        {"duration": 60,  "users": 10,  "spawn_rate": 5},
-        {"duration": 150, "users": 50,  "spawn_rate": 10},
-        {"duration": 270, "users": 100, "spawn_rate": 15},
-        {"duration": 390, "users": 200, "spawn_rate": 20},
-        {"duration": 450, "users": 30,  "spawn_rate": 25},
+        {"duration": 60,  "users": 50,   "spawn_rate": 10},
+        {"duration": 120, "users": 100,  "spawn_rate": 15},
+        {"duration": 180, "users": 200,  "spawn_rate": 20},
+        {"duration": 240, "users": 350,  "spawn_rate": 25},
+        {"duration": 300, "users": 500,  "spawn_rate": 30},
+        {"duration": 360, "users": 700,  "spawn_rate": 35},
+        {"duration": 420, "users": 850,  "spawn_rate": 40},
+        {"duration": 510, "users": 1000, "spawn_rate": 45},
+        {"duration": 570, "users": 50,   "spawn_rate": 50},
     ]
 
     def tick(self):

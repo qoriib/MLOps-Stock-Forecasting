@@ -174,7 +174,7 @@ class ModelService:
         if not model_path.exists():
             raise FileNotFoundError(f"Model file {cache_lookup_key}.keras was not found.")
 
-        loaded_model = keras.models.load_model(model_path)
+        loaded_model = keras.models.load_model(model_path, compile=False)
         model_cache_storage[cache_lookup_key] = loaded_model
         logger.info(f"Loaded model {cache_lookup_key}")
 

@@ -46,9 +46,9 @@ def evaluate_and_plot(
 
     logger.info(f"Mengevaluasi model {model_name} (time_steps={time_steps}, batch_size={batch_size})...")
 
-    # Muat model Keras yang tersimpan
+    # Muat model Keras yang tersimpan (compile=False karena hanya untuk inferensi)
     model_file_path = config.get_model_path(ticker, model_name)
-    loaded_model = keras.models.load_model(model_file_path)
+    loaded_model = keras.models.load_model(model_file_path, compile=False)
 
     # Siapkan window data uji
     test_inputs = np.concatenate([train_scaled[-time_steps:], test_scaled], axis=0)
