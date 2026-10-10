@@ -1,9 +1,7 @@
 import argparse
 import json
 import logging
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 from pathlib import Path
 from typing import Dict, Tuple
 from src import config
@@ -57,24 +55,6 @@ def compute_statistics(stock_dataframe: pd.DataFrame, target_column: str) -> Dic
     }
 
 
-def plot_historical_price(stock_dataframe: pd.DataFrame, ticker: str, target_column: str, output_path: Path) -> Path:
-    # Buat kanvas grafik garis
-    plt.figure(figsize=(13, 5))
-    sns.lineplot(data=stock_dataframe, x="date", y=target_column)
-
-    # Atur anotasi sumbu dan judul grafik
-    plt.xlabel("Tanggal")
-    plt.ylabel(f"Harga ({target_column.capitalize()})")
-    plt.title(f"Pergerakan Harga Historis - {ticker}")
-    plt.tight_layout()
-
-    # Simpan hasil render gambar ke file
-    plt.savefig(output_path, dpi=150)
-    plt.close()
-    logger.info(f"[Artifact] Plot tren historis disimpan ke: {output_path.name}")
-    return output_path
-
-
 def save_understanding_metrics(summary_dictionary: dict, ticker: str) -> Path:
     # Simpan kamus statistik ke format JSON
     metrics_file_path = config.get_metrics_path(ticker, "data_understanding")
@@ -94,16 +74,7 @@ def run_data_understanding(ticker: str, target_col: str = "close") -> dict:
     # Tahap 3: Menghitung statistik deskriptif target
     statistics_summary = compute_statistics(stock_dataframe=stock_dataframe, target_column=target_col)
 
-    # Tahap 4: Menggambar visualisasi tren harga historis
-    plot_file_path = config.get_plot_path(ticker, "historical_price")
-    plot_historical_price(
-        stock_dataframe=stock_dataframe,
-        ticker=ticker,
-        target_column=target_col,
-        output_path=plot_file_path,
-    )
-
-    # Tahap 5: Menyusun dan mengekspor ringkasan metrik
+    # Tahap 4: Menyusun dan mengekspor ringkasan metrik
     summary_dictionary = {
         "ticker": ticker,
         "target_col": target_col,
