@@ -53,17 +53,10 @@ jobs:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f artifact/report.md ]; then
+            cml comment update --publish --watermark-title="ML Pipeline Report" artifact/report.md
             cat artifact/report.md >> $GITHUB_STEP_SUMMARY
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Inference Visualizations" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          for img in artifact/plots/*_inference.png; do
-            [ -f "$img" ] || continue
-            plot_name=$(basename "$img" .png)
-            cml publish "$img" --md --title "$plot_name" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          done
+
 
       - name: Upload Pipeline Visualizations & Metrics
         uses: actions/upload-artifact@v4

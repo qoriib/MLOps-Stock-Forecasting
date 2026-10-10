@@ -107,6 +107,26 @@ def build_models_summary() -> str:
     return "## Model Evaluation\n\n" + models_dataframe.to_markdown(index=False) + "\n\n"
 
 
+def build_visualizations_summary(output_dir: Path) -> str:
+    # Temukan seluruh plot inferensi yang dihasilkan
+    plot_files = sorted(config.PLOTS_DIR.glob("*_inference.png"))
+    if not plot_files:
+        return ""
+
+    lines = ["## Inference Visualizations\n"]
+    for plot_path in plot_files:
+        try:
+            relative_path = plot_path.relative_to(output_dir)
+            path_str = f"./{relative_path.as_posix()}"
+        except ValueError:
+            path_str = f"./{plot_path.as_posix()}"
+
+        plot_title = plot_path.stem
+        lines.append(f"### {plot_title}\n\n![{plot_title}]({path_str})\n")
+
+    return "\n".join(lines) + "\n"
+
+
 def generate_report(output_path: Path) -> str:
     # Susun bagian overview dataset
     dataset_section = build_dataset_summary()
@@ -114,8 +134,11 @@ def generate_report(output_path: Path) -> str:
     # Susun bagian evaluasi performa model
     models_section = build_models_summary()
 
+    # Susun bagian visualisasi inferensi
+    visualizations_section = build_visualizations_summary(output_dir=output_path.parent)
+
     # Gabungkan dan simpan laporan Markdown ke direktori artefak
-    report_content = "# Pipeline Report\n\n" + dataset_section + models_section
+    report_content = "# Pipeline Report\n\n" + dataset_section + models_section + visualizations_section
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report_content.strip() + "\n")
     logger.info(f"[Artifact] Laporan berhasil disimpan ke: {output_path}")
