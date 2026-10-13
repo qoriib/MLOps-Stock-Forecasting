@@ -1,3 +1,4 @@
+from src import config
 import argparse
 import json
 import keras
@@ -13,7 +14,6 @@ from mlflow import MlflowClient
 from mlflow.models.signature import infer_signature
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
-from src import config
 
 logger = logging.getLogger("evaluation_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

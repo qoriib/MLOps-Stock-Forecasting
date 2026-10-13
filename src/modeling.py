@@ -1,3 +1,4 @@
+from src import config
 import argparse
 import itertools
 import keras
@@ -14,7 +15,6 @@ from pathlib import Path
 from sklearn.metrics import mean_squared_error
 from tqdm import tqdm
 from typing import Any, Dict, List, Tuple
-from src import config
 
 logger = logging.getLogger("modeling_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
