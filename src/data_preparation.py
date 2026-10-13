@@ -24,7 +24,7 @@ def load_data(ticker: str) -> pd.DataFrame:
     return stock_dataframe
 
 
-def split_data(stock_dataframe: pd.DataFrame, train_size: float = 0.90) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def split_data(stock_dataframe: pd.DataFrame, train_size: float = 0.80) -> Tuple[pd.DataFrame, pd.DataFrame]:
     # Hitung batas indeks pemotongan sekuensial
     train_record_count = int(len(stock_dataframe) * train_size)
 
@@ -89,7 +89,7 @@ def save_prepared_dataset(
     return prepared_file_path
 
 
-def run_data_preparation(ticker: str, train_size: float = 0.90, target_col: str = "close"):
+def run_data_preparation(ticker: str, train_size: float = 0.80, target_col: str = "close"):
     # Tahap 1: Memuat dataset historis
     stock_dataframe = load_data(ticker=ticker)
 
@@ -121,7 +121,7 @@ def main():
     # Inisialisasi argumen CLI
     parser = argparse.ArgumentParser(description="CRISP-DM Stage 3: Data Preparation")
     parser.add_argument("--ticker", type=str, required=True, help="Ticker saham (misal: BBCA.JK)")
-    parser.add_argument("--train-size", type=float, default=0.90, help="Proporsi data latih (default: 0.90)")
+    parser.add_argument("--train-size", type=float, default=0.80, help="Proporsi data latih (default: 0.80)")
     parser.add_argument("--target-col", type=str, default="close", help="Nama kolom target (default: close)")
 
     # Parsing parameter input

@@ -74,12 +74,6 @@ def get_hyperparameter_path(ticker: str) -> Path:
     return METRICS_DIR / f"{ticker}_hyperparameter.csv"
 
 
-def get_packaging_path(ticker: str) -> Path:
-    # Pastikan direktori ada dan tentukan path JSON hasil pengemasan model
-    METRICS_DIR.mkdir(parents=True, exist_ok=True)
-    return METRICS_DIR / f"{ticker}_packaging.json"
-
-
 def get_backend_model_path(ticker: str, model_type: str) -> Path:
     # Pastikan direktori ada dan tentukan path target model untuk backend
     BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
@@ -91,16 +85,3 @@ def get_backend_scaler_path(ticker: str) -> Path:
     BACKEND_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
     return BACKEND_ASSETS_DIR / f"{ticker}_scaler.pkl"
 
-
-def load_params(params_file: str = "params.yaml") -> dict:
-    # Memuat file parameter konfigurasi pipeline
-    import yaml
-
-    params_path = Path(params_file)
-    if not params_path.is_absolute():
-        params_path = BASE_DIR / params_file
-
-    if params_path.exists():
-        with open(params_path, "r") as file_handler:
-            return yaml.safe_load(file_handler) or {}
-    return {}

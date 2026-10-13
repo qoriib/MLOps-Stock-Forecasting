@@ -3,7 +3,7 @@ import json
 import logging
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict
 from src import config
 
 logger = logging.getLogger("data_understanding_stage")
@@ -22,25 +22,8 @@ def load_data(ticker: str) -> pd.DataFrame:
     return stock_dataframe
 
 
-def check_date_gaps(stock_dataframe: pd.DataFrame) -> Tuple[int, pd.DatetimeIndex]:
-    # Tentukan batas tanggal observasi
-    min_date = stock_dataframe["date"].min()
-    max_date = stock_dataframe["date"].max()
-
-    # Identifikasi selisih tanggal kalender yang tidak ada di bursa
-    full_date_range = pd.date_range(start=min_date, end=max_date, freq="D")
-    missing_dates = full_date_range.difference(stock_dataframe["date"])
-    gap_count = len(missing_dates)
-
-    # Catat ringkasan informasi dataset
-    logger.info(f"Periode Observasi : {min_date.strftime('%Y-%m-%d')} s/d {max_date.strftime('%Y-%m-%d')}")
-    logger.info(f"Total Baris Data  : {len(stock_dataframe)}")
-    logger.info(f"Jumlah Gap Tanggal: {gap_count}")
-    return gap_count, missing_dates
-
-
 def compute_statistics(stock_dataframe: pd.DataFrame, target_column: str) -> Dict[str, Dict[str, float]]:
-    # Hitung agregasi statistik kolom target
+    # Hitung statistik deskriptif kolom target
     target_series = stock_dataframe[target_column]
     return {
         target_column: {
@@ -56,11 +39,11 @@ def compute_statistics(stock_dataframe: pd.DataFrame, target_column: str) -> Dic
 
 
 def save_understanding_metrics(summary_dictionary: dict, ticker: str) -> Path:
-    # Simpan kamus statistik ke format JSON
-    metrics_file_path = config.get_metrics_path(ticker, "data_understanding")
-    with open(metrics_file_path, "w") as json_file:
+    # Simpan kamus statistik deskriptif ke format JSON
+    metrics_file_path = config.get_metrics_path(ticker, "understanding")
+    with open(metrics_file_path, "w", encoding="utf-8") as json_file:
         json.dump(summary_dictionary, json_file, indent=2)
-    logger.info(f"[Artifact] Ringkasan data understanding disimpan ke: {metrics_file_path.name}")
+    logger.info(f"[Artifact] Ringkasan understanding disimpan ke: {metrics_file_path.name}")
     return metrics_file_path
 
 
@@ -68,20 +51,16 @@ def run_data_understanding(ticker: str, target_col: str = "close") -> dict:
     # Tahap 1: Memuat dataset
     stock_dataframe = load_data(ticker=ticker)
 
-    # Tahap 2: Menganalisis gap tanggal kalender
-    gap_count, _ = check_date_gaps(stock_dataframe=stock_dataframe)
-
-    # Tahap 3: Menghitung statistik deskriptif target
+    # Tahap 2: Menghitung statistik deskriptif target
     statistics_summary = compute_statistics(stock_dataframe=stock_dataframe, target_column=target_col)
 
-    # Tahap 4: Menyusun dan mengekspor ringkasan metrik
+    # Tahap 3: Menyusun dan mengekspor ringkasan metrik statistik deskriptif
     summary_dictionary = {
         "ticker": ticker,
         "target_col": target_col,
         "min_date": stock_dataframe["date"].min().strftime("%Y-%m-%d"),
         "max_date": stock_dataframe["date"].max().strftime("%Y-%m-%d"),
         "total_rows": len(stock_dataframe),
-        "gap_count": gap_count,
         "stats": statistics_summary,
     }
     save_understanding_metrics(summary_dictionary=summary_dictionary, ticker=ticker)

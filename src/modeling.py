@@ -28,19 +28,12 @@ def create_test_windows(train_array: np.ndarray, test_array: np.ndarray, time_st
     return np.array(windows, dtype=np.float32)
 
 
-def build_model(model_type: str, time_steps: int, optimizer_name: str, learning_rate: float) -> keras.Sequential:
+def build_model(model_type: str, time_steps: int, learning_rate: float, optimizer_name: str = "Adam") -> keras.Sequential:
     # Reset sesi Keras untuk membersihkan memori komputasi
     keras.backend.clear_session()
 
-    # Inisialisasi objek optimizer
-    if optimizer_name == "SGD":
-        optimizer_instance = optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
-    elif optimizer_name == "Adam":
-        optimizer_instance = optimizers.Adam(learning_rate=learning_rate)
-    elif optimizer_name == "RMSprop":
-        optimizer_instance = optimizers.RMSprop(learning_rate=learning_rate)
-    else:
-        raise ValueError(f"Optimizer {optimizer_name} tidak didukung.")
+    # Inisialisasi objek optimizer (statis menggunakan Adam)
+    optimizer_instance = optimizers.Adam(learning_rate=learning_rate)
 
     # Susun arsitektur jaringan saraf berulang bertingkat (Stacked Architecture)
     # Dirancang khusus untuk menjaga stabilitas sekuensial pada proyeksi 20 step / 30 hari ke depan
@@ -64,10 +57,10 @@ def build_model(model_type: str, time_steps: int, optimizer_name: str, learning_
     neural_network.add(layers.Dense(units=32, activation="relu"))
     neural_network.add(layers.Dense(units=1))
 
-    # Kompilasi dengan Huber Loss untuk ketahanan terhadap outlier dan gradien stabil pada multi-step rolling
+    # Kompilasi dengan Mean Squared Error (MSE) sesuai spesifikasi metodologi penelitian
     neural_network.compile(
         optimizer=optimizer_instance,
-        loss=keras.losses.Huber(delta=1.0),
+        loss=keras.losses.MeanSquaredError(),
         metrics=["mae"],
     )
 
@@ -88,7 +81,7 @@ def calculate_metrics(actual_values: np.ndarray, predicted_values: np.ndarray) -
 
 
 def execute_trial(
-    trial_params: Tuple[int, str, int, float, str],
+    trial_params: Tuple[int, int, float, str],
     train_scaled: np.ndarray,
     test_scaled: np.ndarray,
     actual_test_values: np.ndarray,
@@ -97,7 +90,8 @@ def execute_trial(
     random_state: int = 42,
 ) -> Tuple[Dict[str, Any], List[np.ndarray]]:
     # Unpack parameter kombinasi eksperimen
-    time_steps, optimizer_name, batch_size, learning_rate, model_type = trial_params
+    time_steps, batch_size, learning_rate, model_type = trial_params
+    optimizer_name = "Adam"
 
     # Buat sequence dataset untuk data latih
     dataset_train = keras.utils.timeseries_dataset_from_array(
@@ -112,11 +106,11 @@ def execute_trial(
     # Bentuk jendela data uji berukuran statis untuk mencegah retracing pada inferensi
     X_test = create_test_windows(train_array=train_scaled, test_array=test_scaled, time_steps=time_steps)
 
-    # Siapkan callback penghentian dini
+    # Siapkan callback penghentian dini (toleransi 10 epoch)
     early_stopping_callback = [
         keras.callbacks.EarlyStopping(
             monitor="loss",
-            patience=8,
+            patience=10,
             restore_best_weights=True,
         )
     ]
@@ -125,8 +119,8 @@ def execute_trial(
     trained_network = build_model(
         model_type=model_type,
         time_steps=time_steps,
-        optimizer_name=optimizer_name,
         learning_rate=learning_rate,
+        optimizer_name=optimizer_name,
     )
     training_history = trained_network.fit(
         dataset_train,
@@ -163,11 +157,10 @@ def execute_trial(
 def run_modeling(
     ticker: str,
     time_steps: List[int],
-    optimizers_list: List[str],
     batch_sizes: List[int],
     learning_rates: List[float],
     models_list: List[str],
-    epochs: int = 50,
+    epochs: int = 500,
     random_state: int = 42,
     target_col: str = "close",
     n_jobs: int = -1,
@@ -194,9 +187,9 @@ def run_modeling(
     if len(integer_columns) > 0:
         raw_dataframe[integer_columns] = raw_dataframe[integer_columns].astype("float64")
 
-    # Tahap 3: Susun kombinasi hyperparameter grid search
+    # Tahap 3: Susun kombinasi hyperparameter grid search (optimizer statis: Adam)
     parameter_combinations = list(
-        itertools.product(time_steps, optimizers_list, batch_sizes, learning_rates, models_list)
+        itertools.product(time_steps, batch_sizes, learning_rates, models_list)
     )
 
     if n_jobs is None or n_jobs <= 0:
@@ -255,6 +248,38 @@ def run_modeling(
             current_rmse = single_record["RMSE"]
             current_model_type = single_record["model"]
 
+            # Catat setiap eksperimen hyperparameter ke MLflow sebagai nested child run
+            trial_run_name = (
+                f"{ticker}_{current_model_type}_ts{single_record['time_steps']}"
+                f"_bs{single_record['batch_size']}_lr{single_record['learning_rate']}"
+            )
+            try:
+                with mlflow.start_run(run_name=trial_run_name, nested=True):
+                    mlflow.set_tags({
+                        "ticker": ticker,
+                        "model": current_model_type,
+                        "stage": "hyperparameter_trial",
+                    })
+                    mlflow.log_params({
+                        "ticker": ticker,
+                        "model": current_model_type,
+                        "time_steps": single_record["time_steps"],
+                        "batch_size": single_record["batch_size"],
+                        "optimizer": single_record["optimizer"],
+                        "learning_rate": single_record["learning_rate"],
+                        "epochs": epochs,
+                        "random_state": random_state,
+                        "target_col": target_col,
+                    })
+                    mlflow.log_metrics({
+                        "MSE": float(single_record["MSE"]),
+                        "RMSE": float(single_record["RMSE"]),
+                        "MAPE": float(single_record["MAPE"]),
+                        "epochs_trained": int(single_record["epochs_trained"]),
+                    })
+            except Exception as exc:
+                logger.warning(f"Gagal mencatat eksperimen {trial_run_name} ke MLflow: {exc}")
+
             # Simpan rekam jejak dan bobot jika performa RMSE lebih baik dari rekor sebelumnya
             if current_rmse < best_models_data[current_model_type]["rmse"]:
                 best_models_data[current_model_type]["rmse"] = current_rmse
@@ -278,8 +303,8 @@ def run_modeling(
                 best_network = build_model(
                     model_type=model_name,
                     time_steps=best_time_steps,
-                    optimizer_name=best_optimizer,
                     learning_rate=best_lr,
+                    optimizer_name=best_optimizer,
                 )
                 best_network.set_weights(model_info["weights"])
                 model_save_path = config.get_model_path(ticker, model_name)
@@ -323,7 +348,7 @@ def main():
     file_parameters = load_params_file(arguments.params_file)
 
     # Tetapkan nilai parameter numerik dasar
-    epochs = file_parameters.get("EPOCHS", 50)
+    epochs = file_parameters.get("EPOCHS", 500)
     if arguments.epochs is not None:
         epochs = arguments.epochs
 
@@ -340,16 +365,15 @@ def main():
         n_jobs = arguments.n_jobs
 
     # Ambil parameter grid search langsung dari konfigurasi
-    time_steps = file_parameters.get("TIME_STEPS", [10])
-    optimizers_list = file_parameters.get("OPTIMIZERS", ["Adam"])
-    batch_sizes = file_parameters.get("BATCH_SIZES", [8])
-    learning_rates = file_parameters.get("LEARNING_RATES", [0.01])
+    time_steps = file_parameters.get("TIME_STEPS", [20, 30])
+    batch_sizes = file_parameters.get("BATCH_SIZES", [16, 32])
+    learning_rates = file_parameters.get("LEARNING_RATES", [0.001, 0.0001])
     models_list = config.MODELS
 
     # Eksekusi pipeline modeling
     logger.info(f"=== Menjalankan Stage Modeling untuk: {ticker} ===")
     logger.info(
-        f"Hyperparameters: TIME_STEPS={time_steps}, OPTIMIZERS={optimizers_list}, "
+        f"Hyperparameters: TIME_STEPS={time_steps}, OPTIMIZER=Adam (statis), "
         f"BATCH_SIZES={batch_sizes}, LEARNING_RATES={learning_rates}, "
         f"MODELS={models_list}, EPOCHS={epochs}, RANDOM_STATE={random_state}, N_JOBS={n_jobs}"
     )
@@ -357,7 +381,6 @@ def main():
     run_modeling(
         ticker=ticker,
         time_steps=time_steps,
-        optimizers_list=optimizers_list,
         batch_sizes=batch_sizes,
         learning_rates=learning_rates,
         models_list=models_list,

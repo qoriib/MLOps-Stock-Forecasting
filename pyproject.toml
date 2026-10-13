@@ -12,8 +12,10 @@ dependencies = [
   "ipykernel>=6.29.0",
   "matplotlib>=3.8.0",
   "mlflow>=3.0.0",
+  "nbconvert>=7.16.0",
   "numpy>=1.26.0",
   "pandas>=2.2.0",
+  "papermill>=2.6.0",
   "python-dotenv>=1.0.0",
   "pyyaml>=6.0.1",
   "scikit-learn>=1.4.0",
@@ -29,8 +31,6 @@ data_understanding = "src.data_understanding:main"
 data_preparation = "src.data_preparation:main"
 modeling = "src.modeling:main"
 evaluation = "src.evaluation:main"
-model_packaging = "src.model_packaging:main"
-report = "src.report:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
