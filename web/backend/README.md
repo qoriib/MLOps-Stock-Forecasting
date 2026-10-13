@@ -10,7 +10,7 @@ Backend inferensi machine learning berbasis FastAPI untuk melayani peramalan har
 - **Clean Architecture**: Pemisahan tanggung jawab yang jelas antara Routes, Controllers, Services, dan Models/Entities.
 - **MongoDB Native Time Series**: Menggunakan koleksi deret waktu native (`timestamp`, `metadata.ticker`, granularity `hours`) via Beanie ODM.
 - **Autoregressive Forecast**: Inferensi sekuensial multi-langkah berbasis jendela waktu (`time_steps`) dengan memperhitungkan hari bursa aktif.
-- **Load Testing (CCU 10-150)**: Pengujian beban bertahap menggunakan Locust untuk menguji kestabilan throughput dan latensi.
+- **Load Testing (CCU 50-1000)**: Pengujian beban bertahap menggunakan Locust untuk menguji kestabilan throughput dan latensi.
 
 ---
 
@@ -27,7 +27,7 @@ web/backend/
 │   └── services/              # Logika database, caching saham, dan inferensi ML
 ├── assets/                    # Model .keras dan scaler .pkl aktif
 ├── tests/                     # Suite pengujian beban Locust
-│   ├── locustfile.py          # Definisi user tasks dan StepLoadShape (CCU 10-150)
+│   ├── locustfile.py          # Definisi user tasks dan StepLoadShape (CCU 50-1000)
 │   └── run_load_test.py       # Script runner headless dan generator report Markdown
 ├── gunicorn.conf.py           # Konfigurasi server produksi ASGI
 ├── main.py                    # Entrypoint aplikasi ASGI
@@ -59,13 +59,13 @@ web/backend/
 
 ---
 
-## Load Testing (CCU 10-150)
+## Load Testing (CCU 50-1000)
 
-Pengujian beban backend dilakukan menggunakan Locust dengan skenario bertahap 10 hingga 150 Concurrent Users (CCU):
+Pengujian beban backend dilakukan menggunakan Locust dengan skenario bertahap 50 hingga 1000 Concurrent Users (CCU):
 
 ### 1. Mode Otomatis (Headless)
 ```bash
-python tests/run_load_test.py --host http://localhost:8000 --users 150 --spawn-rate 20 --run-time 1m
+python tests/run_load_test.py --host http://localhost:8000 --users 1000 --spawn-rate 45 --run-time 570s
 ```
 Hasil pengujian disimpan di direktori `tests/result/` dalam format file CSV.
 

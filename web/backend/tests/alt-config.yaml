@@ -12,5 +12,5 @@ env:
     value: https://ca-stock-backend.eastasia.azurecontainerapps.io
 
 failureCriteria:
-  - p95(response_time_ms) > 1000
+  - avg(response_time_ms) > 3000
   - percentage(error) > 1

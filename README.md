@@ -1,6 +1,6 @@
 # MLOps Stock Forecasting
 
-Pipeline MLOps end-to-end untuk peramalan harga saham temporal perbankan (BBCA.JK) berbasis Deep Learning (LSTM dan GRU). Proyek ini mencakup akuisisi data otomatis, orkestrasi pipeline DVC, pelacakan eksperimen dan model registry MLflow (DagsHub), validasi promosi model *champion-challenger*, backend inferensi performa tinggi berbasis FastAPI dengan MongoDB Time Series, load testing CCU 10-150 via Locust, serta dashboard analitik interaktif React 19.
+Pipeline MLOps end-to-end untuk peramalan harga saham temporal perbankan berbasis Deep Learning (LSTM dan GRU). Proyek ini mencakup akuisisi data otomatis, orkestrasi pipeline DVC, pelacakan eksperimen dan model registry MLflow (DagsHub), validasi promosi model *champion-challenger*, backend inferensi performa tinggi berbasis FastAPI dengan MongoDB Time Series, load testing CCU 50-1000 via Locust, serta dashboard analitik interaktif React 19.
 
 ---
 
@@ -8,11 +8,11 @@ Pipeline MLOps end-to-end untuk peramalan harga saham temporal perbankan (BBCA.J
 
 | Lapisan | Komponen | Deskripsi |
 | :--- | :--- | :--- |
-| **Machine Learning** | TensorFlow / Keras 3.x, Scikit-Learn | Arsitektur LSTM & GRU, normalisasi MinMaxScaler, evaluasi MSE, RMSE, MAPE, R² |
+| **Machine Learning** | TensorFlow / Keras 3.x, Scikit-Learn | Arsitektur LSTM & GRU, normalisasi MinMaxScaler, evaluasi MSE, RMSE, MAPE |
 | **Pipeline & MLOps** | DVC, MLflow, DagsHub | DAG pipeline deklaratif, remote storage S3 DVC, experiment tracking, model registry |
 | **Backend API** | FastAPI, Uvicorn, Gunicorn | REST API asynchronous, Pydantic v2 validation, caching in-memory |
 | **Database** | MongoDB Time Series, Beanie ODM | Penyimpanan data deret waktu native dengan composite index |
-| **Load Testing** | Locust | Pengujian beban bertahap (CCU 10-150) untuk menguji throughput dan latensi |
+| **Load Testing** | Locust | Pengujian beban bertahap (CCU 50-1000) untuk menguji throughput dan latensi |
 | **Frontend** | React 19, Vite, TanStack Router, ECharts | Dashboard analitik interaktif, charting candlestick & forecast band |
 | **DevOps & Cloud** | Docker, GitHub Actions, Azure | CI/CD pipeline, Azure Container Apps (Backend), Azure Static Web Apps (Frontend) |
 
@@ -26,39 +26,30 @@ flowchart TD
     S1 --> S2["2. data_understanding"]
     S1 --> S3["3. data_preparation"]
     S3 --> S4["4. modeling (Grid Search)"]
-    S4 --> S5["5. evaluation (Registrasi @challenger)"]
-    S4 --> S6["6. report (artifact/report.md)"]
-    S5 --> PKG["src/model_packaging.py\n(Promosi @champion & Salin Aset)"]
-    PKG --> BACKEND["Backend Assets\n(web/backend/assets)"]
+    S4 --> S5["5. evaluation\n(Evaluasi, MLflow Registry & Kemas Champion)"]
+    S5 --> BACKEND["Backend Assets\n(web/backend/assets)"]
 ```
 
 ### Tahapan Pipeline (dvc.yaml)
 
 1. **data_ingestion**: Mengambil data historis OHLCV dari Yahoo Finance (`yfinance`) dan menyimpannya ke `artifact/data/{ticker}.csv`.
-2. **data_understanding**: Menganalisis gap kalender pasar, menghitung ringkasan statistik, dan menghasilkan plot histori harga.
-3. **data_preparation**: Membagi subset train/test secara kronologis sekuensial (90:10, tanpa kebocoran data) dan melakukan scaling dengan `MinMaxScaler`.
-4. **modeling**: Melakukan grid search hyperparameter (time steps, optimizer, batch size, learning rate) untuk model LSTM dan GRU dengan *Early Stopping* (`monitor="loss"`, `patience=8`).
-5. **evaluation**: Mengevaluasi model pada data uji (RMSE, MAPE, MSE, R²), membuat visualisasi inferensi, dan mendaftarkan model ke MLflow dengan status awal `@challenger`.
-6. **report**: Mengagregasi metrik seluruh eksperimen ke dalam format Markdown (`artifact/report.md`).
+2. **data_understanding**: Menghitung ringkasan statistik deskriptif dan menghasilkan visualisasi histori harga.
+3. **data_preparation**: Membagi subset train/test secara kronologis sekuensial (80:20, tanpa kebocoran data) dan melakukan scaling dengan `MinMaxScaler`.
+4. **modeling**: Melakukan grid search hyperparameter (time steps, batch size, learning rate) untuk model LSTM dan GRU dengan *Early Stopping* (`monitor="loss"`, `patience=8`).
+5. **evaluation**: Mengevaluasi model pada data uji (MSE, RMSE, MAPE), membuat visualisasi inferensi, meregistrasikan model ke MLflow, dan memvalidasi ambang batas untuk mengemas aset champion ke `web/backend/assets/`.
 
 ---
 
 ## Logika Promosi Model (@challenger ke @champion)
 
-Pengemasan dan seleksi model produksi dikelola secara terisolasi melalui modul `src/model_packaging.py`:
+Pengemasan dan seleksi model produksi diintegrasikan langsung pada tahap `src/evaluation.py`:
 
-- **Status Awal**: Setiap model hasil evaluasi otomatis didaftarkan ke MLflow sebagai **`@challenger`**.
-- **Kriteria Evaluasi**: Model kandidat diurutkan berdasarkan **RMSE terkecil**, lalu diuji terhadap ambang batas dari `params.yaml`:
-  - $\text{MAPE} < 10.0\%$
-  - $R^2 > 0.80$
-- **Promosi**:
-  - **Lolos**: Model berstatus `@challenger` dengan RMSE terkecil dipromosikan menjadi **`@champion`** di MLflow, dan asetnya (`.keras` dan scaler `.pkl`) disalin ke `web/backend/assets/`.
-  - **Gagal**: Model **tidak bisa menjadi champion** (status tetap `@challenger`) dan aset backend tidak ditimpa untuk menjaga stabilitas produksi.
-
-Eksekusi mandiri pengemasan model:
-```bash
-poetry run model_packaging
-```
+- **Kriteria Seleksi**: Model kandidat diurutkan berdasarkan **RMSE terkecil** pada data uji.
+- **Validasi Ambang Batas**:
+  - Model terbaik diuji terhadap ambang batas $\text{MAPE} < 10.0\%$ (Kategori Akurasi Sangat Baik menurut Lewis).
+- **Penetapan Status & Aset**:
+  - **Lolos Ambang Batas**: Model ber-RMSE terkecil dilabeli alias **`@champion`** di MLflow Model Registry, dan artefaknya (`.keras` dan `scaler.pkl`) dikemas ke `web/backend/assets/` untuk inferensi produksi. Model lainnya dilabeli **`@challenger`**.
+  - **Tidak Lolos**: Model dilabeli **`@challenger`** dan aset produksi di backend tidak ditimpa demi menjaga stabilitas sistem.
 
 ---
 
@@ -72,15 +63,15 @@ MLOps-Stock-Forecasting/
 │   ├── model/             # Bobot model terlatih (.keras) dan scaler (.pkl)
 │   ├── plots/             # Grafik visualisasi data historis dan inferensi (.png)
 │   └── report.md          # Ringkasan laporan performa pipeline
+├── notebooks/             # Notebook analisis dan otomasi pelaporan
+│   └── ml_report.ipynb    # Template laporan pipeline via Papermill
 ├── src/                   # Modul kode pipeline MLOps
 │   ├── config.py          # Resolusi path dan konfigurasi terpusat
 │   ├── data_ingestion.py  # Tahap 1: Akuisisi data Yahoo Finance
-│   ├── data_understanding.py # Tahap 2: Validasi gap & statistik deskriptif
+│   ├── data_understanding.py # Tahap 2: Ringkasan statistik & visualisasi
 │   ├── data_preparation.py   # Tahap 3: Pemisahan sekuensial & normalisasi
 │   ├── modeling.py        # Tahap 4: Pelatihan model & grid search
-│   ├── evaluation.py      # Tahap 5: Evaluasi data uji & registrasi challenger
-│   ├── model_packaging.py # Pengemasan model champion berbasis ambang batas
-│   └── report.py          # Tahap 6: Pembuatan laporan agregat
+│   └── evaluation.py      # Tahap 5: Evaluasi data uji, registrasi & kemas champion
 ├── web/
 │   ├── backend/           # Service inferensi FastAPI dan pengujian beban
 │   │   ├── app/           # Routes, Controllers, Services, dan Models
@@ -106,24 +97,17 @@ END_DATE: "auto"
 
 TARGET_COL: "close"
 RANDOM_STATE: 42
-TRAIN_SIZE: 0.9
-EPOCHS: 50
+TRAIN_SIZE: 0.8
+EPOCHS: 500
 
 # Hyperparameter Grid
 TIME_STEPS:
-  - 10
   - 20
   - 30
-OPTIMIZERS:
-  - SGD
-  - Adam
-  - RMSprop
 BATCH_SIZES:
-  - 8
   - 16
   - 32
 LEARNING_RATES:
-  - 0.01
   - 0.001
   - 0.0001
 

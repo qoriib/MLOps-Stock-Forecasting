@@ -9,12 +9,10 @@ on:
         default: false
         required: false
   schedule:
-    - cron: "0 1 * * 1"
+    - cron: "0 1 1 * *"
 
 permissions:
   contents: write
-  pull-requests: write
-  issues: write
 
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -39,32 +37,23 @@ jobs:
       - name: Run DVC ML Pipeline
         run: poetry run dvc repro --force --no-run-cache
 
-      - name: Package Champion Models & Backend Assets
-        run: poetry run model_packaging
-
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
 
-      - name: Setup CML
-        uses: iterative/setup-cml@v2
-
-      - name: Publish ML Pipeline Summary & Inference Plots
-        env:
-          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate & Publish Pipeline Report
         run: |
-          if [ -f artifact/report.md ]; then
-            cml comment update --publish --watermark-title="ML Pipeline Report" artifact/report.md
-            cat artifact/report.md >> $GITHUB_STEP_SUMMARY
-          fi
+          poetry run papermill notebooks/ml_report.ipynb artifact/report.ipynb -k python3
+          poetry run jupyter nbconvert artifact/report.ipynb --to markdown --no-input --output-dir artifact --output report.md
+          cat artifact/report.md >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload Pipeline Visualizations & Metrics
+      - name: Upload Metrics Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: artifact-visualizations-and-metrics
+          name: artifact-metrics
           path: |
             artifact/plots/**
             artifact/metrics/**
-          if-no-files-found: ignore
+            artifact/report.md
 
       - name: Upload Model Artifacts
         uses: actions/upload-artifact@v4
@@ -97,8 +86,8 @@ jobs:
       - name: Setup Pipeline Environment
         uses: ./.github/actions/setup-pipeline
 
-      - name: Package Champion Models & Backend Assets
-        run: poetry run model_packaging
+      - name: Pull Model Assets
+        run: poetry run dvc pull web/backend/assets
 
       - name: Azure Login
         uses: azure/login@v2

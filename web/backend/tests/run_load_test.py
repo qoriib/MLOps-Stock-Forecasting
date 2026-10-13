@@ -153,10 +153,10 @@ def print_summary(csv_prefix: Path) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Runner: Locust Headless Load Testing (CCU 10-150)")
+    parser = argparse.ArgumentParser(description="Runner: Locust Headless Load Testing (CCU 50-1000)")
     parser.add_argument("--host", type=str, default="http://127.0.0.1:8000", help="Base URL target backend")
-    parser.add_argument("--users", type=int, default=150, help="Jumlah Concurrent Users puncak (default: 150)")
-    parser.add_argument("--spawn-rate", type=int, default=15, help="Rasio spawn user per detik (default: 15)")
+    parser.add_argument("--users", type=int, default=1000, help="Jumlah Concurrent Users puncak (default: 1000)")
+    parser.add_argument("--spawn-rate", type=int, default=45, help="Rasio spawn user per detik (default: 45)")
     parser.add_argument("--run-time", type=str, default="45s", help="Durasi pengujian (default: 45s)")
     parser.add_argument("--output-dir", type=str, default="result", help="Subdirektori penyimpanan hasil pengujian")
     parser.add_argument("--report-name", type=str, default="report.md", help="Nama file markdown report")
