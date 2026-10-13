@@ -28,7 +28,7 @@ stages:
     params:
       - TARGET_COL
     metrics:
-      - artifact/metrics/${item.TICKER}_data_understanding.json
+      - artifact/metrics/${item.TICKER}_understanding.json
 
   data_preparation:
     desc: "CRISP-DM Stage 3: Chronological train/test split & MinMaxScaler scaling"
@@ -61,7 +61,6 @@ stages:
       - RANDOM_STATE
       - EPOCHS
       - TIME_STEPS
-      - OPTIMIZERS
       - BATCH_SIZES
       - LEARNING_RATES
     outs:
@@ -71,10 +70,10 @@ stages:
       - artifact/metrics/${item.TICKER}_hyperparameter.csv
 
   evaluation:
-    desc: "CRISP-DM Stage 5: Evaluation on test set, inference visualization & MLflow registration"
+    desc: "CRISP-DM Stage 5: Evaluation on test set, inference visualization, MLflow registration & champion packaging"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.evaluation --ticker ${item.TICKER} --target-col ${TARGET_COL}
+    cmd: python -m src.evaluation --ticker ${item.TICKER} --target-col ${TARGET_COL} --threshold-mape ${THRESHOLD_MAPE}
     deps:
       - src/config.py
       - src/evaluation.py
@@ -85,19 +84,16 @@ stages:
       - artifact/metrics/${item.TICKER}_hyperparameter.csv
     params:
       - TARGET_COL
+      - THRESHOLD_MAPE
     plots:
       - artifact/plots/${item.TICKER}_LSTM_inference.png
       - artifact/plots/${item.TICKER}_GRU_inference.png
     metrics:
       - artifact/metrics/${item.TICKER}_evaluation.json
-
-  report:
-    desc: "CRISP-DM Stage 6: Generate pipeline summary report"
-    cmd: python -m src.report --output artifact/report.md
-    deps:
-      - src/config.py
-      - src/report.py
-      - artifact/metrics
-      - artifact/plots
     outs:
-      - artifact/report.md
+      - web/backend/assets/${item.TICKER}_LSTM.keras:
+          persist: true
+      - web/backend/assets/${item.TICKER}_GRU.keras:
+          persist: true
+      - web/backend/assets/${item.TICKER}_scaler.pkl:
+          persist: true
