@@ -33,6 +33,8 @@ wheels/
 .coverage
 htmlcov/
 .ipynb_checkpoints
+notebooks/*_output.ipynb
+notebooks/*_executed.ipynb
 mlruns/
 mlartifacts/
 mlflow.db*

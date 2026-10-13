@@ -2,4 +2,4 @@
 /model
 /plots
 /metrics
-/report.md
+*.ipynb
