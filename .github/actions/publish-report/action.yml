@@ -1,0 +1,49 @@
+name: 'Publish Report'
+description: 'Uploads inference plots to Azure Blob Storage, transforms relative Markdown image links to Blob URLs, and publishes the report to GitHub Step Summary.'
+
+inputs:
+  report-file:
+    description: 'Path to the markdown report file'
+    required: false
+    default: 'artifact/report.md'
+  plots-dir:
+    description: 'Path to the directory containing inference plots'
+    required: false
+    default: 'artifact/plots'
+  storage-account:
+    description: 'Name of the Azure Storage Account'
+    required: true
+  container-name:
+    description: 'Name of the Azure Blob container'
+    required: false
+    default: 'plots'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Upload Plots & Publish Transformed Summary
+      shell: bash
+      env:
+        REPORT_FILE: ${{ inputs.report-file }}
+        PLOTS_DIR: ${{ inputs.plots-dir }}
+        STORAGE_ACCOUNT: ${{ inputs.storage-account }}
+        CONTAINER_NAME: ${{ inputs.container-name }}
+      run: |
+        TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+        BLOB_BASE_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${TIMESTAMP}"
+
+        echo "Uploading plots to Azure Blob Storage: ${CONTAINER_NAME}/${TIMESTAMP}..."
+        az storage blob upload-batch \
+          --account-name "$STORAGE_ACCOUNT" \
+          --destination "${CONTAINER_NAME}/${TIMESTAMP}" \
+          --source "$PLOTS_DIR" \
+          --auth-mode login || echo "Warning: Blob upload failed or storage not ready, continuing..."
+
+        if [ -f "$REPORT_FILE" ]; then
+          echo "Transforming relative image paths in $REPORT_FILE to Blob URLs..."
+          python3 "${{ github.action_path }}/transform_report.py" \
+            --report-file "$REPORT_FILE" \
+            --blob-base-url "$BLOB_BASE_URL"
+        else
+          echo "Report file not found: $REPORT_FILE"
+        fi

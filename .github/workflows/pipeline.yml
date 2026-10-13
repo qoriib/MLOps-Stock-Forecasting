@@ -15,6 +15,9 @@ permissions:
   contents: write
 
 env:
+  AZURE_VM_NAME: vm-mlops-runner
+  AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
+  AZURE_STORAGE_ACCOUNT: storagestockforecast
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
@@ -22,8 +25,24 @@ env:
   MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
 
 jobs:
+  start_vm:
+    name: "Allocate Azure VM"
+    if: ${{ github.event_name == 'schedule' || !inputs.skip_ml }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Start Azure VM Runner
+        run: |
+          az vm start --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_VM_NAME }}
+          sleep 60
+
   pipeline:
     name: "ML Pipeline"
+    needs: start_vm
     if: ${{ github.event_name == 'schedule' || !inputs.skip_ml }}
     runs-on: self-hosted
     steps:
@@ -40,11 +59,26 @@ jobs:
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
 
-      - name: Generate & Publish Pipeline Report
+      - name: Generate Pipeline Report
         run: |
           poetry run papermill notebooks/ml_report.ipynb artifact/report.ipynb -k python3
           poetry run jupyter nbconvert artifact/report.ipynb --to markdown --no-input --output-dir artifact --output report.md
-          cat artifact/report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Publish Pipeline Report to Summary
+        uses: ./.github/actions/publish-report
+        with:
+          report-file: artifact/report.md
+          plots-dir: artifact/plots
+          storage-account: ${{ env.AZURE_STORAGE_ACCOUNT }}
+          container-name: plots
+
+      - name: Publish Report to GitHub Summary
+        run: cat artifact/report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Metrics Artifacts
         uses: actions/upload-artifact@v4
@@ -65,13 +99,30 @@ jobs:
             artifact/model/*_scaler.pkl
             artifact/metrics/*_hyperparameter.csv
 
+  stop_vm:
+    name: "Deallocate Azure VM"
+    needs: [start_vm, pipeline]
+    if: ${{ always() && !cancelled() && needs.start_vm.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deallocate Azure VM
+        run: |
+          az vm deallocate \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --name ${{ env.AZURE_VM_NAME }} \
+            --no-wait
+
   deploy_backend:
     name: "Deploy Backend"
     needs: pipeline
     if: ${{ always() && !cancelled() && (needs.pipeline.result == 'success' || needs.pipeline.result == 'skipped') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
-      AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
       AZURE_ACR_NAME: acrstockforecast
       AZURE_LOAD_TEST_RESOURCE: alt-stock-forecast
       CONTAINER_APP_NAME: ca-stock-backend
@@ -114,16 +165,6 @@ jobs:
           containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
           resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
 
-      - name: Optimize Container App Resources & Scale Limits
-        run: |
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --cpu 4.0 \
-            --memory 8.0Gi \
-            --min-replicas 1 \
-            --max-replicas 3
-
       - name: Get Container App URL
         id: get-backend-url
         run: |
@@ -161,7 +202,7 @@ jobs:
     name: "Deploy Frontend"
     needs: deploy_backend
     if: ${{ always() && !cancelled() && needs.deploy_backend.outputs.backend_url != '' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
