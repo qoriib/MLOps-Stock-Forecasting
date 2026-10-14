@@ -6,11 +6,6 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parent
 BASE_DIR = SRC_DIR.parent
 
-# Konfigurasi optimasi CPU murni dan penonaktifan inisialisasi CUDA
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
-os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
-os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "1")
-
 # Muat variabel environment
 load_dotenv()
 

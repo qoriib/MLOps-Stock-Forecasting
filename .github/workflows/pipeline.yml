@@ -37,7 +37,7 @@ jobs:
         uses: ./.github/actions/setup-pipeline
 
       - name: Run DVC ML Pipeline
-        run: poetry run dvc repro --force --no-run-cache
+        run: poetry run dvc repro
 
       - name: Push Data & Git State
         uses: ./.github/actions/push-pipeline
