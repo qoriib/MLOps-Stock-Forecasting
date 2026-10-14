@@ -16,18 +16,17 @@ END_DATE: "auto"
 TARGET_COL: "close"
 RANDOM_STATE: 42
 TRAIN_SIZE: 0.8
-EPOCHS: 100
-N_JOBS: 4
+EPOCHS: 500
 
 # Hyperparameter
 TIME_STEPS:
   - 20
-  # - 30
+  - 30
 BATCH_SIZES:
   - 16
   - 32
 LEARNING_RATES:
-  # - 0.001
+  - 0.001
   - 0.0001
 
 # Ambang Batas Kelayakan Model
