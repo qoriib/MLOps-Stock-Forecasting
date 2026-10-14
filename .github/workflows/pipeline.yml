@@ -15,7 +15,6 @@ permissions:
   contents: write
 
 env:
-  AZURE_VM_NAME: vm-mlops-runner
   AZURE_RESOURCE_GROUP: mlops-stock-forecasting-rg
   AZURE_STORAGE_ACCOUNT: storagestockforecast
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -25,24 +24,8 @@ env:
   MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
 
 jobs:
-  start_vm:
-    name: "Allocate Azure VM"
-    if: ${{ github.event_name == 'schedule' || !inputs.skip_ml }}
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Start Azure VM Runner
-        run: |
-          az vm start --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ${{ env.AZURE_VM_NAME }}
-          sleep 60
-
   pipeline:
     name: "ML Pipeline"
-    needs: start_vm
     if: ${{ github.event_name == 'schedule' || !inputs.skip_ml }}
     runs-on: self-hosted
     steps:
@@ -98,24 +81,6 @@ jobs:
             artifact/model/*_GRU.keras
             artifact/model/*_scaler.pkl
             artifact/metrics/*_hyperparameter.csv
-
-  stop_vm:
-    name: "Deallocate Azure VM"
-    needs: [start_vm, pipeline]
-    if: ${{ always() && !cancelled() && needs.start_vm.result == 'success' }}
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deallocate Azure VM
-        run: |
-          az vm deallocate \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --name ${{ env.AZURE_VM_NAME }} \
-            --no-wait
 
   deploy_backend:
     name: "Deploy Backend"

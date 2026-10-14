@@ -1,4 +1,3 @@
-from src import config
 import argparse
 import itertools
 import keras
@@ -9,7 +8,7 @@ import pickle
 import yaml
 import numpy as np
 import pandas as pd
-from joblib import Parallel, delayed
+from src import config
 from keras import layers, optimizers
 from pathlib import Path
 from sklearn.metrics import mean_squared_error
@@ -163,7 +162,6 @@ def run_modeling(
     epochs: int = 500,
     random_state: int = 42,
     target_col: str = "close",
-    n_jobs: int = -1,
 ):
     # Tahap 1: Inisialisasi seed dan MLflow tracking
     keras.utils.set_random_seed(random_state)
@@ -192,11 +190,8 @@ def run_modeling(
         itertools.product(time_steps, batch_sizes, learning_rates, models_list)
     )
 
-    if n_jobs is None or n_jobs <= 0:
-        n_jobs = min(4, os.cpu_count() or 1)
-
     logger.info(
-        f"Memulai Grid Search ({len(parameter_combinations)} kombinasi, n_jobs={n_jobs}) untuk {ticker}..."
+        f"Memulai Grid Search ({len(parameter_combinations)} kombinasi) untuk {ticker}..."
     )
     hyperparameter_records = []
 
@@ -215,15 +210,21 @@ def run_modeling(
         mlflow.set_tags({
             "target": target_col,
             "stage": "hyperparameter",
-            "n_jobs": str(n_jobs),
         })
 
         if not raw_dataframe.empty:
             dataset_source = mlflow.data.from_pandas(raw_dataframe, targets=target_col, name=f"{ticker}_data")
             mlflow.log_input(dataset_source, context="training_and_testing")
 
-        parallel_generator = Parallel(n_jobs=n_jobs, return_as="generator")(
-            delayed(execute_trial)(
+        progress_bar = tqdm(
+            parameter_combinations,
+            total=len(parameter_combinations),
+            desc="Grid Search",
+            unit="trial",
+        )
+
+        for trial_params in progress_bar:
+            single_record, model_weights = execute_trial(
                 trial_params=trial_params,
                 train_scaled=train_scaled,
                 test_scaled=test_scaled,
@@ -232,18 +233,6 @@ def run_modeling(
                 epochs=epochs,
                 random_state=random_state,
             )
-            for trial_params in parameter_combinations
-        )
-
-        progress_bar = tqdm(
-            parallel_generator,
-            total=len(parameter_combinations),
-            desc=f"Grid Search ({n_jobs} jobs)",
-            unit="trial",
-        )
-
-        # Iterasi setiap hasil trial paralel
-        for single_record, model_weights in progress_bar:
             hyperparameter_records.append(single_record)
             current_rmse = single_record["RMSE"]
             current_model_type = single_record["model"]
@@ -340,7 +329,6 @@ def main():
     parser.add_argument("--epochs", type=int, default=None, help="Epochs pelatihan")
     parser.add_argument("--random-state", type=int, default=None, help="Random seed")
     parser.add_argument("--target-col", type=str, default=None, help="Target column")
-    parser.add_argument("--n-jobs", type=int, default=None, help="Jumlah worker parallel (-1 untuk auto)")
 
     # Parsing parameter CLI dan file konfigurasi eksternal
     arguments = parser.parse_args()
@@ -360,10 +348,6 @@ def main():
     if arguments.target_col is not None:
         target_column = arguments.target_col
 
-    n_jobs = file_parameters.get("N_JOBS", None)
-    if arguments.n_jobs is not None:
-        n_jobs = arguments.n_jobs
-
     # Ambil parameter grid search langsung dari konfigurasi
     time_steps = file_parameters.get("TIME_STEPS", [20, 30])
     batch_sizes = file_parameters.get("BATCH_SIZES", [16, 32])
@@ -375,7 +359,7 @@ def main():
     logger.info(
         f"Hyperparameters: TIME_STEPS={time_steps}, OPTIMIZER=Adam (statis), "
         f"BATCH_SIZES={batch_sizes}, LEARNING_RATES={learning_rates}, "
-        f"MODELS={models_list}, EPOCHS={epochs}, RANDOM_STATE={random_state}, N_JOBS={n_jobs}"
+        f"MODELS={models_list}, EPOCHS={epochs}, RANDOM_STATE={random_state}"
     )
 
     run_modeling(
@@ -387,7 +371,6 @@ def main():
         epochs=epochs,
         random_state=random_state,
         target_col=target_column,
-        n_jobs=n_jobs,
     )
     logger.info(f"=== Selesai Stage Modeling untuk: {ticker} ===")
 

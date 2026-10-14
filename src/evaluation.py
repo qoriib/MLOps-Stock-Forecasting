@@ -1,4 +1,3 @@
-from src import config
 import argparse
 import json
 import keras
@@ -10,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shutil
+from src import config
 from mlflow import MlflowClient
 from mlflow.models.signature import infer_signature
 from pathlib import Path
