@@ -32,12 +32,24 @@ runs:
         TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
         BLOB_BASE_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${TIMESTAMP}"
 
+        echo "Retrieving storage account key..."
+        ACCOUNT_KEY=$(az storage account keys list --account-name "$STORAGE_ACCOUNT" --query "[0].value" -o tsv)
+
+        echo "Ensuring container '${CONTAINER_NAME}' exists..."
+        az storage container create \
+          --name "$CONTAINER_NAME" \
+          --account-name "$STORAGE_ACCOUNT" \
+          --account-key "$ACCOUNT_KEY" \
+          --public-access blob \
+          --only-show-errors || true
+
         echo "Uploading plots to Azure Blob Storage: ${CONTAINER_NAME}/${TIMESTAMP}..."
         az storage blob upload-batch \
           --account-name "$STORAGE_ACCOUNT" \
+          --account-key "$ACCOUNT_KEY" \
           --destination "${CONTAINER_NAME}/${TIMESTAMP}" \
           --source "$PLOTS_DIR" \
-          --auth-mode login || echo "Warning: Blob upload failed or storage not ready, continuing..."
+          --overwrite || echo "Warning: Blob upload failed or storage not ready, continuing..."
 
         if [ -f "$REPORT_FILE" ]; then
           echo "Transforming relative image paths in $REPORT_FILE to Blob URLs..."
