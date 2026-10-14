@@ -64,7 +64,7 @@ jobs:
         run: cat artifact/report.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Metrics Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: artifact-metrics
           path: |
@@ -73,7 +73,7 @@ jobs:
             artifact/report.md
 
       - name: Upload Model Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: artifact-model
           path: |
