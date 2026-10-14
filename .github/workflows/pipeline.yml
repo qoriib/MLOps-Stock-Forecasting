@@ -103,7 +103,7 @@ jobs:
         uses: ./.github/actions/setup-pipeline
 
       - name: Pull Model Assets
-        run: poetry run dvc pull web/backend/assets
+        run: poetry run dvc pull
 
       - name: Azure Login
         uses: azure/login@v2
