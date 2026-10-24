@@ -262,8 +262,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -271,39 +271,39 @@ stages:
     outs:
     - path: artifact/data/BBCA.JK.csv
       hash: md5
-      md5: 1f445bc201ae593613a4decbc789032c
-      size: 131939
+      md5: d91c4eed84b0f65ee84f68995b07f0ae
+      size: 132324
   data_understanding@BBCA.JK:
     cmd: python -m src.data_understanding --ticker BBCA.JK --target-col close
     deps:
     - path: artifact/data/BBCA.JK.csv
       hash: md5
-      md5: d5eee104423b843d3f4ce47139dbd9c6
-      size: 132296
+      md5: d91c4eed84b0f65ee84f68995b07f0ae
+      size: 132324
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BBCA.JK_understanding.json
       hash: md5
-      md5: fe779a2f798987f050c4032449253268
-      size: 373
+      md5: b50ab2d148b58a743309cccd4afcaaa6
+      size: 375
   data_preparation@BBCA.JK:
     cmd: python -m src.data_preparation --ticker BBCA.JK --train-size 0.8 
       --target-col close
     deps:
     - path: artifact/data/BBCA.JK.csv
       hash: md5
-      md5: 1f445bc201ae593613a4decbc789032c
-      size: 131939
+      md5: d91c4eed84b0f65ee84f68995b07f0ae
+      size: 132324
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -319,23 +319,23 @@ stages:
     outs:
     - path: artifact/data/BBCA.JK_prepared.npz
       hash: md5
-      md5: 4fe33130ca25f08eccfa6d9ec3054021
-      size: 12764
+      md5: 3b28b1ca5eb9fce2bb1bfd3a598fc768
+      size: 12772
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
-      md5: 2245e3ad6cfd28b4fba08c9fd5f7e931
+      md5: 47df60f7101706201efc0219202ab5d0
       size: 522
   modeling@BBCA.JK:
     cmd: python -m src.modeling --ticker BBCA.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BBCA.JK_prepared.npz
       hash: md5
-      md5: c6a382b8593ca8c02ca79c489fd31c0d
-      size: 12740
+      md5: 3b28b1ca5eb9fce2bb1bfd3a598fc768
+      size: 12772
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
-      md5: bd8bc54df04ad1ca16d8d75c929d904f
+      md5: 47df60f7101706201efc0219202ab5d0
       size: 522
     - path: src/config.py
       hash: md5
@@ -343,8 +343,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -354,6 +354,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -362,39 +363,39 @@ stages:
     outs:
     - path: artifact/metrics/BBCA.JK_hyperparameter.csv
       hash: md5
-      md5: 0b8d5e6d6a77a05cc26e0972f2a4306a
-      size: 1368
+      md5: 3646337157ff25cfc3eb349fbba5ae42
+      size: 1304
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: 61e81250c2157449afc78a28fd512d56
-      size: 128634
+      md5: 4f95c6ae88d770e8b64753a98412376c
+      size: 53208
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: a2f2c7ce034c5648b828958fad3e8667
-      size: 156808
+      md5: 5af36943b5bb5360a052a58ddb052085
+      size: 63015
   evaluation@BBCA.JK:
     cmd: python -m src.evaluation --ticker BBCA.JK --target-col close 
       --threshold-mape 10.0
     deps:
     - path: artifact/data/BBCA.JK_prepared.npz
       hash: md5
-      md5: c6a382b8593ca8c02ca79c489fd31c0d
-      size: 12740
+      md5: 3b28b1ca5eb9fce2bb1bfd3a598fc768
+      size: 12772
     - path: artifact/metrics/BBCA.JK_hyperparameter.csv
       hash: md5
-      md5: 0b8d5e6d6a77a05cc26e0972f2a4306a
-      size: 1368
+      md5: 3646337157ff25cfc3eb349fbba5ae42
+      size: 1304
     - path: artifact/model/BBCA.JK_GRU.keras
       hash: md5
-      md5: 61e81250c2157449afc78a28fd512d56
-      size: 128634
+      md5: 4f95c6ae88d770e8b64753a98412376c
+      size: 53208
     - path: artifact/model/BBCA.JK_LSTM.keras
       hash: md5
-      md5: a2f2c7ce034c5648b828958fad3e8667
-      size: 156808
+      md5: 5af36943b5bb5360a052a58ddb052085
+      size: 63015
     - path: artifact/model/BBCA.JK_scaler.pkl
       hash: md5
-      md5: bd8bc54df04ad1ca16d8d75c929d904f
+      md5: 47df60f7101706201efc0219202ab5d0
       size: 522
     - path: src/config.py
       hash: md5
@@ -402,8 +403,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -411,27 +412,27 @@ stages:
     outs:
     - path: artifact/metrics/BBCA.JK_evaluation.json
       hash: md5
-      md5: 231931ab7bdd3508331fed849e3d6255
-      size: 391
+      md5: 157d9a897b0ecce8d336ba78908996d5
+      size: 392
     - path: artifact/plots/BBCA.JK_GRU_inference.png
       hash: md5
-      md5: e40bb41b9b0150834c6505acee32976f
-      size: 145016
+      md5: 3c2f6fdeac523ca184fc872f95df8506
+      size: 137364
     - path: artifact/plots/BBCA.JK_LSTM_inference.png
       hash: md5
-      md5: 62cf629555b2d07dae5c0107e50fbe38
-      size: 142861
+      md5: 821b4d204271b7eddd0e9c2ccbc57f94
+      size: 136901
     - path: web/backend/assets/BBCA.JK_GRU.keras
       hash: md5
-      md5: 61e81250c2157449afc78a28fd512d56
-      size: 128634
+      md5: 4f95c6ae88d770e8b64753a98412376c
+      size: 53208
     - path: web/backend/assets/BBCA.JK_LSTM.keras
       hash: md5
-      md5: a2f2c7ce034c5648b828958fad3e8667
-      size: 156808
+      md5: 5af36943b5bb5360a052a58ddb052085
+      size: 63015
     - path: web/backend/assets/BBCA.JK_scaler.pkl
       hash: md5
-      md5: bd8bc54df04ad1ca16d8d75c929d904f
+      md5: 47df60f7101706201efc0219202ab5d0
       size: 522
   data_ingestion@BBRI.JK:
     cmd: python -m src.data_ingestion --ticker BBRI.JK --range-days 1825 
@@ -443,8 +444,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -452,8 +453,8 @@ stages:
     outs:
     - path: artifact/data/BBRI.JK.csv
       hash: md5
-      md5: e7d2796b3c973dd3fea3a08f2f765150
-      size: 132524
+      md5: e77947b335aed08cb9eafa0612af4a9a
+      size: 132852
   data_ingestion@BMRI.JK:
     cmd: python -m src.data_ingestion --ticker BMRI.JK --range-days 1825 
       --end-date auto
@@ -464,8 +465,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -473,62 +474,62 @@ stages:
     outs:
     - path: artifact/data/BMRI.JK.csv
       hash: md5
-      md5: 4cc8d0c7d0d2504e141cd500c4508247
-      size: 135419
+      md5: 72d350311ad61ac3c7741a643864fe1b
+      size: 135433
   data_understanding@BBRI.JK:
     cmd: python -m src.data_understanding --ticker BBRI.JK --target-col close
     deps:
     - path: artifact/data/BBRI.JK.csv
       hash: md5
-      md5: c8301a2d31e826f971f7ab8b163bfff0
-      size: 132949
+      md5: e77947b335aed08cb9eafa0612af4a9a
+      size: 132852
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BBRI.JK_understanding.json
       hash: md5
-      md5: b8a0538c11980acb34f16dcbe8dc2e46
-      size: 378
+      md5: 78c49e5b24f8fcff9927307dd49d7cf2
+      size: 375
   data_understanding@BMRI.JK:
     cmd: python -m src.data_understanding --ticker BMRI.JK --target-col close
     deps:
     - path: artifact/data/BMRI.JK.csv
       hash: md5
-      md5: 83ad414cf671feaa2092eada95577470
-      size: 135569
+      md5: 72d350311ad61ac3c7741a643864fe1b
+      size: 135433
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BMRI.JK_understanding.json
       hash: md5
-      md5: 2b5955aa1f16672e8686cb1e2efef2ab
-      size: 378
+      md5: 0dafb122d8f8a982c27fb88aa3d75d9d
+      size: 387
   data_preparation@BBRI.JK:
     cmd: python -m src.data_preparation --ticker BBRI.JK --train-size 0.8 
       --target-col close
     deps:
     - path: artifact/data/BBRI.JK.csv
       hash: md5
-      md5: e7d2796b3c973dd3fea3a08f2f765150
-      size: 132524
+      md5: e77947b335aed08cb9eafa0612af4a9a
+      size: 132852
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -544,11 +545,11 @@ stages:
     outs:
     - path: artifact/data/BBRI.JK_prepared.npz
       hash: md5
-      md5: d524d80d536cc0724037a9bd9088fe1f
-      size: 13346
+      md5: 7b2220f9ceb798496f28dd05e5360e55
+      size: 13329
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
-      md5: 0d9fff398e035e6b686b80a136c0479e
+      md5: 8f15944a6810f8991b614d65f8b8a0c6
       size: 522
   data_preparation@BMRI.JK:
     cmd: python -m src.data_preparation --ticker BMRI.JK --train-size 0.8 
@@ -556,8 +557,8 @@ stages:
     deps:
     - path: artifact/data/BMRI.JK.csv
       hash: md5
-      md5: 4cc8d0c7d0d2504e141cd500c4508247
-      size: 135419
+      md5: 72d350311ad61ac3c7741a643864fe1b
+      size: 135433
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -573,23 +574,23 @@ stages:
     outs:
     - path: artifact/data/BMRI.JK_prepared.npz
       hash: md5
-      md5: 19bd91b4b79c4ae67b9fa24c15ce9b1d
-      size: 12934
+      md5: f32587972388f0c9f666c15c398c5ee2
+      size: 12918
     - path: artifact/model/BMRI.JK_scaler.pkl
       hash: md5
-      md5: b4f0b0d086d86c57f7f316138c3b226b
+      md5: 391104f6b5709f5ffd421e8f5681986f
       size: 522
   modeling@BBRI.JK:
     cmd: python -m src.modeling --ticker BBRI.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BBRI.JK_prepared.npz
       hash: md5
-      md5: d0a578aee16ea756d1bf0d3e7363928b
-      size: 13342
+      md5: 7b2220f9ceb798496f28dd05e5360e55
+      size: 13329
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
-      md5: f442eea6cfdc75ecc613eba313d70f82
+      md5: 8f15944a6810f8991b614d65f8b8a0c6
       size: 522
     - path: src/config.py
       hash: md5
@@ -597,8 +598,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -608,6 +609,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -616,27 +618,27 @@ stages:
     outs:
     - path: artifact/metrics/BBRI.JK_hyperparameter.csv
       hash: md5
-      md5: 5c86a4433e26b49730d796b53d4310ec
-      size: 1359
+      md5: 2ea97dde8e25050239a640cd1166bdc8
+      size: 1271
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: 98e26e37b53f0adf8014f0c781d88088
-      size: 128634
+      md5: 064073ab720cbf3d3c43f45310e39676
+      size: 53208
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: cf2c241a872aa706c74199bbe6f316e2
-      size: 156808
+      md5: e17b76320391abe63eb358ad41143810
+      size: 63015
   modeling@BMRI.JK:
     cmd: python -m src.modeling --ticker BMRI.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BMRI.JK_prepared.npz
       hash: md5
-      md5: 7060ef26fd83cccb040edca9736b6eff
-      size: 12861
+      md5: f32587972388f0c9f666c15c398c5ee2
+      size: 12918
     - path: artifact/model/BMRI.JK_scaler.pkl
       hash: md5
-      md5: c11c18526a71ebf295a3b967b1839caf
+      md5: 391104f6b5709f5ffd421e8f5681986f
       size: 522
     - path: src/config.py
       hash: md5
@@ -644,8 +646,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -655,6 +657,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -663,39 +666,39 @@ stages:
     outs:
     - path: artifact/metrics/BMRI.JK_hyperparameter.csv
       hash: md5
-      md5: a0ac55d9da481a27b35b4387c2b38e72
-      size: 1379
+      md5: a7d4c69745a52c0384588937ff03bb4f
+      size: 1287
     - path: artifact/model/BMRI.JK_GRU.keras
       hash: md5
-      md5: baad403f204c650c1449e9aed484edc2
-      size: 128634
+      md5: e2fcc75bff4069a8166533541e6823cc
+      size: 53208
     - path: artifact/model/BMRI.JK_LSTM.keras
       hash: md5
-      md5: f394a8ad8bab68578d91ffa1bc1b1444
-      size: 156808
+      md5: d972948c0197cd7233a529b1cf90e9e1
+      size: 63015
   evaluation@BBRI.JK:
     cmd: python -m src.evaluation --ticker BBRI.JK --target-col close 
       --threshold-mape 10.0
     deps:
     - path: artifact/data/BBRI.JK_prepared.npz
       hash: md5
-      md5: d0a578aee16ea756d1bf0d3e7363928b
-      size: 13342
+      md5: 7b2220f9ceb798496f28dd05e5360e55
+      size: 13329
     - path: artifact/metrics/BBRI.JK_hyperparameter.csv
       hash: md5
-      md5: 5c86a4433e26b49730d796b53d4310ec
-      size: 1359
+      md5: 2ea97dde8e25050239a640cd1166bdc8
+      size: 1271
     - path: artifact/model/BBRI.JK_GRU.keras
       hash: md5
-      md5: 98e26e37b53f0adf8014f0c781d88088
-      size: 128634
+      md5: 064073ab720cbf3d3c43f45310e39676
+      size: 53208
     - path: artifact/model/BBRI.JK_LSTM.keras
       hash: md5
-      md5: cf2c241a872aa706c74199bbe6f316e2
-      size: 156808
+      md5: e17b76320391abe63eb358ad41143810
+      size: 63015
     - path: artifact/model/BBRI.JK_scaler.pkl
       hash: md5
-      md5: f442eea6cfdc75ecc613eba313d70f82
+      md5: 8f15944a6810f8991b614d65f8b8a0c6
       size: 522
     - path: src/config.py
       hash: md5
@@ -703,8 +706,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -712,27 +715,27 @@ stages:
     outs:
     - path: artifact/metrics/BBRI.JK_evaluation.json
       hash: md5
-      md5: f9ffaefa20a123490782f05104ba8c15
-      size: 390
+      md5: 2588f591344aa5dfba27d46430a50d57
+      size: 388
     - path: artifact/plots/BBRI.JK_GRU_inference.png
       hash: md5
-      md5: 88f4639cb90fe1f29b16fe7d93c897fc
-      size: 149210
+      md5: 45a1ef4fc7522ecc6ee06713fa4ddc35
+      size: 142743
     - path: artifact/plots/BBRI.JK_LSTM_inference.png
       hash: md5
-      md5: 9200bc3c64cf1585bde05740f3343dec
-      size: 147780
+      md5: f1174a20dc10353817363895bffc2943
+      size: 141757
     - path: web/backend/assets/BBRI.JK_GRU.keras
       hash: md5
-      md5: 98e26e37b53f0adf8014f0c781d88088
-      size: 128634
+      md5: 064073ab720cbf3d3c43f45310e39676
+      size: 53208
     - path: web/backend/assets/BBRI.JK_LSTM.keras
       hash: md5
-      md5: cf2c241a872aa706c74199bbe6f316e2
-      size: 156808
+      md5: e17b76320391abe63eb358ad41143810
+      size: 63015
     - path: web/backend/assets/BBRI.JK_scaler.pkl
       hash: md5
-      md5: f442eea6cfdc75ecc613eba313d70f82
+      md5: 8f15944a6810f8991b614d65f8b8a0c6
       size: 522
   evaluation@BMRI.JK:
     cmd: python -m src.evaluation --ticker BMRI.JK --target-col close 
@@ -740,23 +743,23 @@ stages:
     deps:
     - path: artifact/data/BMRI.JK_prepared.npz
       hash: md5
-      md5: 7060ef26fd83cccb040edca9736b6eff
-      size: 12861
+      md5: f32587972388f0c9f666c15c398c5ee2
+      size: 12918
     - path: artifact/metrics/BMRI.JK_hyperparameter.csv
       hash: md5
-      md5: a0ac55d9da481a27b35b4387c2b38e72
-      size: 1379
+      md5: a7d4c69745a52c0384588937ff03bb4f
+      size: 1287
     - path: artifact/model/BMRI.JK_GRU.keras
       hash: md5
-      md5: baad403f204c650c1449e9aed484edc2
-      size: 128634
+      md5: e2fcc75bff4069a8166533541e6823cc
+      size: 53208
     - path: artifact/model/BMRI.JK_LSTM.keras
       hash: md5
-      md5: f394a8ad8bab68578d91ffa1bc1b1444
-      size: 156808
+      md5: d972948c0197cd7233a529b1cf90e9e1
+      size: 63015
     - path: artifact/model/BMRI.JK_scaler.pkl
       hash: md5
-      md5: c11c18526a71ebf295a3b967b1839caf
+      md5: 391104f6b5709f5ffd421e8f5681986f
       size: 522
     - path: src/config.py
       hash: md5
@@ -764,8 +767,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -773,27 +776,27 @@ stages:
     outs:
     - path: artifact/metrics/BMRI.JK_evaluation.json
       hash: md5
-      md5: 4824be566b3b63a2d3d9006f746390e0
-      size: 390
+      md5: 03c1b00fb3ba4c500c290e0ba64bfab1
+      size: 387
     - path: artifact/plots/BMRI.JK_GRU_inference.png
       hash: md5
-      md5: e5de3f9952339a0da0292aac0a343707
-      size: 166120
+      md5: f8d884dfa77d9b5e79d6f05e73a8457a
+      size: 155129
     - path: artifact/plots/BMRI.JK_LSTM_inference.png
       hash: md5
-      md5: 7b46147664ffbf28d5c6412bbdcb2a97
-      size: 165392
+      md5: e2e10df060c41bc5f674a7466e35d0e9
+      size: 153984
     - path: web/backend/assets/BMRI.JK_GRU.keras
       hash: md5
-      md5: baad403f204c650c1449e9aed484edc2
-      size: 128634
+      md5: e2fcc75bff4069a8166533541e6823cc
+      size: 53208
     - path: web/backend/assets/BMRI.JK_LSTM.keras
       hash: md5
-      md5: f394a8ad8bab68578d91ffa1bc1b1444
-      size: 156808
+      md5: d972948c0197cd7233a529b1cf90e9e1
+      size: 63015
     - path: web/backend/assets/BMRI.JK_scaler.pkl
       hash: md5
-      md5: c11c18526a71ebf295a3b967b1839caf
+      md5: 391104f6b5709f5ffd421e8f5681986f
       size: 522
   data_ingestion@BBNI.JK:
     cmd: python -m src.data_ingestion --ticker BBNI.JK --range-days 1825 
@@ -805,8 +808,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -814,7 +817,7 @@ stages:
     outs:
     - path: artifact/data/BBNI.JK.csv
       hash: md5
-      md5: e5d8171df9eaca3a3de08231b80313be
+      md5: 7142c8597e7e86d8d5136bdfcbd20a3b
       size: 130983
   data_ingestion@TLKM.JK:
     cmd: python -m src.data_ingestion --ticker TLKM.JK --range-days 1825 
@@ -947,24 +950,24 @@ stages:
     deps:
     - path: artifact/data/BBNI.JK.csv
       hash: md5
-      md5: c2705835b75138c32e9c8b72d0a9458c
-      size: 131197
+      md5: 7142c8597e7e86d8d5136bdfcbd20a3b
+      size: 130983
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BBNI.JK_understanding.json
       hash: md5
-      md5: 554deee112e7a672a38b7ab1749da496
-      size: 375
+      md5: fe1f748d05bf70c46aa53a9d09173bf7
+      size: 371
   data_understanding@TLKM.JK:
     cmd: python -m src.data_understanding --ticker TLKM.JK --target-col close
     deps:
@@ -1133,7 +1136,7 @@ stages:
     deps:
     - path: artifact/data/BBNI.JK.csv
       hash: md5
-      md5: e5d8171df9eaca3a3de08231b80313be
+      md5: 7142c8597e7e86d8d5136bdfcbd20a3b
       size: 130983
     - path: src/config.py
       hash: md5
@@ -1150,8 +1153,8 @@ stages:
     outs:
     - path: artifact/data/BBNI.JK_prepared.npz
       hash: md5
-      md5: bc0351c32672d7919f527e1936983a25
-      size: 12698
+      md5: 74c22fcbe04f4bbf0e23bea22efa93ab
+      size: 12706
     - path: artifact/model/BBNI.JK_scaler.pkl
       hash: md5
       md5: 1da72383d93ce49353eb8d92ab21b273
@@ -1340,8 +1343,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -1349,8 +1352,8 @@ stages:
     outs:
     - path: artifact/data/BRIS.JK.csv
       hash: md5
-      md5: 410c1e919543c7a808451d8483aeafb2
-      size: 134311
+      md5: 1a917cc1d74eedbe87e3edeccda981ed
+      size: 134125
   data_ingestion@BNLI.JK:
     cmd: python -m src.data_ingestion --ticker BNLI.JK --range-days 1825 
       --end-date auto
@@ -1361,8 +1364,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -1370,8 +1373,8 @@ stages:
     outs:
     - path: artifact/data/BNLI.JK.csv
       hash: md5
-      md5: 71b6b793e44005c6d6a0543f9f1c3dae
-      size: 129083
+      md5: 089816d7a2ebe738f056a822fb0467c2
+      size: 129343
   data_ingestion@BDMN.JK:
     cmd: python -m src.data_ingestion --ticker BDMN.JK --range-days 1825 
       --end-date auto
@@ -1382,8 +1385,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -1391,8 +1394,8 @@ stages:
     outs:
     - path: artifact/data/BDMN.JK.csv
       hash: md5
-      md5: ad5ae9fea137eac8398ba50fec8b278f
-      size: 130849
+      md5: 883fa627f26df45b4fde3b5a664026a0
+      size: 130752
   data_ingestion@BNGA.JK:
     cmd: python -m src.data_ingestion --ticker BNGA.JK --range-days 1825 
       --end-date auto
@@ -1403,8 +1406,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -1412,8 +1415,8 @@ stages:
     outs:
     - path: artifact/data/BNGA.JK.csv
       hash: md5
-      md5: cccb4bad75f4c92ddffc38f5b376e4a3
-      size: 132251
+      md5: 07bfbcb0f9ce3a972982659de67ceac6
+      size: 132213
   data_ingestion@MEGA.JK:
     cmd: python -m src.data_ingestion --ticker MEGA.JK --range-days 1825 
       --end-date auto
@@ -1424,8 +1427,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -1433,8 +1436,8 @@ stages:
     outs:
     - path: artifact/data/MEGA.JK.csv
       hash: md5
-      md5: ffa67816aeec390e463a4ebacdc88431
-      size: 128573
+      md5: cb0b899e88cb6cc61de37a18c495b50b
+      size: 128502
   data_ingestion@BBTN.JK:
     cmd: python -m src.data_ingestion --ticker BBTN.JK --range-days 1825 
       --end-date auto
@@ -1461,116 +1464,116 @@ stages:
     deps:
     - path: artifact/data/BRIS.JK.csv
       hash: md5
-      md5: eafcb1a29ead8941ce49206416d93567
-      size: 134389
+      md5: 1a917cc1d74eedbe87e3edeccda981ed
+      size: 134125
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BRIS.JK_understanding.json
       hash: md5
-      md5: 46541e8726a6d77c75cfa6ebf29835ab
-      size: 391
+      md5: e942f6360b1307a08b205d63ef3d9874
+      size: 357
   data_understanding@BNLI.JK:
     cmd: python -m src.data_understanding --ticker BNLI.JK --target-col close
     deps:
     - path: artifact/data/BNLI.JK.csv
       hash: md5
-      md5: abe2816970df86528ab14f093ed2fa3a
-      size: 129285
+      md5: 089816d7a2ebe738f056a822fb0467c2
+      size: 129343
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BNLI.JK_understanding.json
       hash: md5
-      md5: d3b40d12f7ff295f3e45490f40d389d2
+      md5: 55d59a689bcaa0abfe35d46e696d3e0b
       size: 390
   data_understanding@BDMN.JK:
     cmd: python -m src.data_understanding --ticker BDMN.JK --target-col close
     deps:
     - path: artifact/data/BDMN.JK.csv
       hash: md5
-      md5: 89cc0a77b293ef6d987c47ab7b59764a
-      size: 130879
+      md5: 883fa627f26df45b4fde3b5a664026a0
+      size: 130752
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BDMN.JK_understanding.json
       hash: md5
-      md5: afa486db54b204093096e83bf840c7b3
-      size: 378
+      md5: aa60372ca62b438c3c3a9b33f623d671
+      size: 380
   data_understanding@BNGA.JK:
     cmd: python -m src.data_understanding --ticker BNGA.JK --target-col close
     deps:
     - path: artifact/data/BNGA.JK.csv
       hash: md5
-      md5: 46ced5bbdfea5da4a7aaa9033bae4a70
-      size: 132347
+      md5: 07bfbcb0f9ce3a972982659de67ceac6
+      size: 132213
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/BNGA.JK_understanding.json
       hash: md5
-      md5: 982385ccf8e7c59c6998c62e30037b1a
-      size: 381
+      md5: 09d0f0a11f0d42a74c518b5d1531d714
+      size: 376
   data_understanding@MEGA.JK:
     cmd: python -m src.data_understanding --ticker MEGA.JK --target-col close
     deps:
     - path: artifact/data/MEGA.JK.csv
       hash: md5
-      md5: 8cc4266d20e5ddfd58c0bf5f711a2ab0
-      size: 128727
+      md5: cb0b899e88cb6cc61de37a18c495b50b
+      size: 128502
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/MEGA.JK_understanding.json
       hash: md5
-      md5: 59f25cdf30fa56115adaa50b59b6088e
-      size: 387
+      md5: 8f5822426d8548459bcd4d2831aaafdd
+      size: 391
   data_understanding@BBTN.JK:
     cmd: python -m src.data_understanding --ticker BBTN.JK --target-col close
     deps:
@@ -1600,8 +1603,8 @@ stages:
     deps:
     - path: artifact/data/BRIS.JK.csv
       hash: md5
-      md5: 410c1e919543c7a808451d8483aeafb2
-      size: 134311
+      md5: 1a917cc1d74eedbe87e3edeccda981ed
+      size: 134125
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -1617,8 +1620,8 @@ stages:
     outs:
     - path: artifact/data/BRIS.JK_prepared.npz
       hash: md5
-      md5: 7499cddf84a74158c04fdc8bd49ae130
-      size: 13252
+      md5: 08967c070ff6ee872e62312eb5763626
+      size: 13266
     - path: artifact/model/BRIS.JK_scaler.pkl
       hash: md5
       md5: 58b61b33749da307277902295a951c83
@@ -1629,8 +1632,8 @@ stages:
     deps:
     - path: artifact/data/BNLI.JK.csv
       hash: md5
-      md5: 71b6b793e44005c6d6a0543f9f1c3dae
-      size: 129083
+      md5: 089816d7a2ebe738f056a822fb0467c2
+      size: 129343
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -1646,8 +1649,8 @@ stages:
     outs:
     - path: artifact/data/BNLI.JK_prepared.npz
       hash: md5
-      md5: b4deace8f216d6ec2de62209d580ef91
-      size: 12148
+      md5: aea1afb9eacef062886d46385ee4ee68
+      size: 12136
     - path: artifact/model/BNLI.JK_scaler.pkl
       hash: md5
       md5: 1b21940e1790d73976b0869db0619188
@@ -1658,8 +1661,8 @@ stages:
     deps:
     - path: artifact/data/BDMN.JK.csv
       hash: md5
-      md5: ad5ae9fea137eac8398ba50fec8b278f
-      size: 130849
+      md5: 883fa627f26df45b4fde3b5a664026a0
+      size: 130752
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -1675,11 +1678,11 @@ stages:
     outs:
     - path: artifact/data/BDMN.JK_prepared.npz
       hash: md5
-      md5: 50388bce5cfe5c00c55307af9f469586
-      size: 11169
+      md5: 356d9a4ef28f5c061dd831a0e5db9e46
+      size: 11172
     - path: artifact/model/BDMN.JK_scaler.pkl
       hash: md5
-      md5: 20ec8be231c304606d70cb1a48e899bf
+      md5: 087db6ce913274b19d352272e6fc2a2a
       size: 522
   data_preparation@BNGA.JK:
     cmd: python -m src.data_preparation --ticker BNGA.JK --train-size 0.8 
@@ -1687,8 +1690,8 @@ stages:
     deps:
     - path: artifact/data/BNGA.JK.csv
       hash: md5
-      md5: cccb4bad75f4c92ddffc38f5b376e4a3
-      size: 132251
+      md5: 07bfbcb0f9ce3a972982659de67ceac6
+      size: 132213
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -1704,11 +1707,11 @@ stages:
     outs:
     - path: artifact/data/BNGA.JK_prepared.npz
       hash: md5
-      md5: da9323acdd595f8974b299329923109d
-      size: 11301
+      md5: 73c01ba0eebf6206edc7244993711ccf
+      size: 11335
     - path: artifact/model/BNGA.JK_scaler.pkl
       hash: md5
-      md5: 8bc9198608cfd550968b39a63b6333eb
+      md5: 456e5e00e7629cbd7f6d0427db55b42b
       size: 522
   data_preparation@MEGA.JK:
     cmd: python -m src.data_preparation --ticker MEGA.JK --train-size 0.8 
@@ -1716,8 +1719,8 @@ stages:
     deps:
     - path: artifact/data/MEGA.JK.csv
       hash: md5
-      md5: ffa67816aeec390e463a4ebacdc88431
-      size: 128573
+      md5: cb0b899e88cb6cc61de37a18c495b50b
+      size: 128502
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -1733,8 +1736,8 @@ stages:
     outs:
     - path: artifact/data/MEGA.JK_prepared.npz
       hash: md5
-      md5: 6f9fe3ccdc22f03d6efada775bcad16f
-      size: 11018
+      md5: a516160e100023d910b6d7efad820ad0
+      size: 11022
     - path: artifact/model/MEGA.JK_scaler.pkl
       hash: md5
       md5: bf33a1f55cc8145cfcc51c1eaf9f24d9
@@ -1770,15 +1773,15 @@ stages:
       size: 522
   modeling@BBNI.JK:
     cmd: python -m src.modeling --ticker BBNI.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BBNI.JK_prepared.npz
       hash: md5
-      md5: d2a8aad9eca15f26b0708450eebf1d2f
-      size: 12707
+      md5: 74c22fcbe04f4bbf0e23bea22efa93ab
+      size: 12706
     - path: artifact/model/BBNI.JK_scaler.pkl
       hash: md5
-      md5: 2200b0058cdf6f5c66110f619863104e
+      md5: 1da72383d93ce49353eb8d92ab21b273
       size: 522
     - path: src/config.py
       hash: md5
@@ -1786,8 +1789,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -1797,6 +1800,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -1805,27 +1809,27 @@ stages:
     outs:
     - path: artifact/metrics/BBNI.JK_hyperparameter.csv
       hash: md5
-      md5: 55526c3012ea89312015a62320ae548d
-      size: 1377
+      md5: 719ff39b7df5bbd3f6f67b0b73e3f2c6
+      size: 1272
     - path: artifact/model/BBNI.JK_GRU.keras
       hash: md5
-      md5: 640394d8170d4dc2679d6c8bffe25b45
-      size: 128634
+      md5: 82d0160579e8f2bf785010fd47f6f59d
+      size: 53208
     - path: artifact/model/BBNI.JK_LSTM.keras
       hash: md5
-      md5: 3d56bf94a180bfeeaf8d1f204d5d7db4
-      size: 156808
+      md5: 539b41df44b91f28e768dc7f7d3692c6
+      size: 63015
   modeling@BRIS.JK:
     cmd: python -m src.modeling --ticker BRIS.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BRIS.JK_prepared.npz
       hash: md5
-      md5: a0809baab267faf564ad97f3f8372fcb
-      size: 13236
+      md5: 08967c070ff6ee872e62312eb5763626
+      size: 13266
     - path: artifact/model/BRIS.JK_scaler.pkl
       hash: md5
-      md5: ba5da8db2dd04f82e578f74dbddff92d
+      md5: 58b61b33749da307277902295a951c83
       size: 522
     - path: src/config.py
       hash: md5
@@ -1833,8 +1837,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -1844,6 +1848,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -1852,27 +1857,27 @@ stages:
     outs:
     - path: artifact/metrics/BRIS.JK_hyperparameter.csv
       hash: md5
-      md5: e07875c6016e92d734e5b663dd3a0114
-      size: 1363
+      md5: f4942e87f4b44314596788b370196252
+      size: 1282
     - path: artifact/model/BRIS.JK_GRU.keras
       hash: md5
-      md5: bb2f7dd3726bc41cc9b8aba2865f4ae2
-      size: 128634
+      md5: 4c8410c52a5b7c5b1bcfc859a31dd3c6
+      size: 53208
     - path: artifact/model/BRIS.JK_LSTM.keras
       hash: md5
-      md5: 0729b68631338b4d42258d3a8b66674a
-      size: 156808
+      md5: d3c6af436a5c134c2c2f3507bb7ef4ff
+      size: 63015
   modeling@BNLI.JK:
     cmd: python -m src.modeling --ticker BNLI.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BNLI.JK_prepared.npz
       hash: md5
-      md5: 1de2bdf741ae0b80a5095812e0f46b90
-      size: 12133
+      md5: aea1afb9eacef062886d46385ee4ee68
+      size: 12136
     - path: artifact/model/BNLI.JK_scaler.pkl
       hash: md5
-      md5: 0d5460385cd8744674f0efd2ac94a282
+      md5: 1b21940e1790d73976b0869db0619188
       size: 522
     - path: src/config.py
       hash: md5
@@ -1880,8 +1885,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -1891,6 +1896,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -1899,27 +1905,27 @@ stages:
     outs:
     - path: artifact/metrics/BNLI.JK_hyperparameter.csv
       hash: md5
-      md5: 49e6ab9ec7ebc3e3ffd2031f66481c1e
-      size: 1356
+      md5: 15c7ad38530a95c4c34bff880d6dfcc7
+      size: 1290
     - path: artifact/model/BNLI.JK_GRU.keras
       hash: md5
-      md5: 2f501e4cc03d22724983763db4dfde11
-      size: 128634
+      md5: e92f5a18314bf641680a198d405b4b7b
+      size: 53208
     - path: artifact/model/BNLI.JK_LSTM.keras
       hash: md5
-      md5: 3730423c1cdb4bda3706e46fb449df63
-      size: 156808
+      md5: 50f7baf50c58e407b11ff25ce6a4c3aa
+      size: 63015
   modeling@BDMN.JK:
     cmd: python -m src.modeling --ticker BDMN.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BDMN.JK_prepared.npz
       hash: md5
-      md5: d11de376beeb88f69437ce30086d0b5a
-      size: 11168
+      md5: 356d9a4ef28f5c061dd831a0e5db9e46
+      size: 11172
     - path: artifact/model/BDMN.JK_scaler.pkl
       hash: md5
-      md5: 9038b5bffab0a60b86a5e247f8ce3c41
+      md5: 087db6ce913274b19d352272e6fc2a2a
       size: 522
     - path: src/config.py
       hash: md5
@@ -1927,8 +1933,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -1938,6 +1944,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -1946,27 +1953,27 @@ stages:
     outs:
     - path: artifact/metrics/BDMN.JK_hyperparameter.csv
       hash: md5
-      md5: 5f68a7e117e7d7564fad8ff5b5ce6748
-      size: 1363
+      md5: f21afda95c986c2ff1822079325b43c5
+      size: 1282
     - path: artifact/model/BDMN.JK_GRU.keras
       hash: md5
-      md5: a565f30c4e2c264bdc0bb60e048c0e98
-      size: 128634
+      md5: e42037f7ea6829b2995d65171a434941
+      size: 53208
     - path: artifact/model/BDMN.JK_LSTM.keras
       hash: md5
-      md5: 690a537e69badbeabd2ae21e4e4c7d32
-      size: 156808
+      md5: ff56729faab0ca3fa123a6873a2e8202
+      size: 63015
   modeling@BNGA.JK:
     cmd: python -m src.modeling --ticker BNGA.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/BNGA.JK_prepared.npz
       hash: md5
-      md5: e292e9dbd072f75020cb4d5a0e8d47d5
-      size: 11296
+      md5: 73c01ba0eebf6206edc7244993711ccf
+      size: 11335
     - path: artifact/model/BNGA.JK_scaler.pkl
       hash: md5
-      md5: b2ffaa52ff41b59584a8c5c93a69e014
+      md5: 456e5e00e7629cbd7f6d0427db55b42b
       size: 522
     - path: src/config.py
       hash: md5
@@ -1974,8 +1981,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -1985,6 +1992,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -1993,27 +2001,27 @@ stages:
     outs:
     - path: artifact/metrics/BNGA.JK_hyperparameter.csv
       hash: md5
-      md5: d5c3257caeed37bf7eb1a88530e60caf
-      size: 1367
+      md5: 2c3a68774a185caad2f7d98c93816442
+      size: 1291
     - path: artifact/model/BNGA.JK_GRU.keras
       hash: md5
-      md5: 42f2997a7b914eb0cb2c2b61ab8fd778
-      size: 128634
+      md5: f5c71bf47dc2aeab235a91278e9a73e5
+      size: 53208
     - path: artifact/model/BNGA.JK_LSTM.keras
       hash: md5
-      md5: 33f48ace54369bfc24953f72ac5f82f1
-      size: 156808
+      md5: 769e54a4b4e3986599bbe775b14cb093
+      size: 63015
   modeling@MEGA.JK:
     cmd: python -m src.modeling --ticker MEGA.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/MEGA.JK_prepared.npz
       hash: md5
-      md5: ffbb3e93fb5e292d8723186de77678e1
-      size: 10992
+      md5: a516160e100023d910b6d7efad820ad0
+      size: 11022
     - path: artifact/model/MEGA.JK_scaler.pkl
       hash: md5
-      md5: 19539effe3b3ef8fd44fda0b9ba4701c
+      md5: bf33a1f55cc8145cfcc51c1eaf9f24d9
       size: 522
     - path: src/config.py
       hash: md5
@@ -2021,8 +2029,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -2032,6 +2040,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -2040,16 +2049,16 @@ stages:
     outs:
     - path: artifact/metrics/MEGA.JK_hyperparameter.csv
       hash: md5
-      md5: 4e0c8566a2f3d94203b59d85bdc2ba5d
-      size: 1367
+      md5: 6a0bcbfde627c757bd6bba34f3184710
+      size: 1285
     - path: artifact/model/MEGA.JK_GRU.keras
       hash: md5
-      md5: abba84906a69ff3152d6b1d498ae5550
-      size: 128634
+      md5: 21badf997174ee8e655858f6654e90a8
+      size: 53208
     - path: artifact/model/MEGA.JK_LSTM.keras
       hash: md5
-      md5: d3cc6fb0e1dd5e0f3e72c368a305f9f5
-      size: 156808
+      md5: 24709ebd8bd3a295aec5b0c30fee2915
+      size: 63015
   modeling@BBTN.JK:
     cmd: python -m src.modeling --ticker BBTN.JK --epochs 50 --random-state 42 
       --target-col close --params-file params.yaml
@@ -2106,23 +2115,23 @@ stages:
     deps:
     - path: artifact/data/BBNI.JK_prepared.npz
       hash: md5
-      md5: d2a8aad9eca15f26b0708450eebf1d2f
-      size: 12707
+      md5: 74c22fcbe04f4bbf0e23bea22efa93ab
+      size: 12706
     - path: artifact/metrics/BBNI.JK_hyperparameter.csv
       hash: md5
-      md5: 55526c3012ea89312015a62320ae548d
-      size: 1377
+      md5: 719ff39b7df5bbd3f6f67b0b73e3f2c6
+      size: 1272
     - path: artifact/model/BBNI.JK_GRU.keras
       hash: md5
-      md5: 640394d8170d4dc2679d6c8bffe25b45
-      size: 128634
+      md5: 82d0160579e8f2bf785010fd47f6f59d
+      size: 53208
     - path: artifact/model/BBNI.JK_LSTM.keras
       hash: md5
-      md5: 3d56bf94a180bfeeaf8d1f204d5d7db4
-      size: 156808
+      md5: 539b41df44b91f28e768dc7f7d3692c6
+      size: 63015
     - path: artifact/model/BBNI.JK_scaler.pkl
       hash: md5
-      md5: 2200b0058cdf6f5c66110f619863104e
+      md5: 1da72383d93ce49353eb8d92ab21b273
       size: 522
     - path: src/config.py
       hash: md5
@@ -2130,8 +2139,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -2139,27 +2148,27 @@ stages:
     outs:
     - path: artifact/metrics/BBNI.JK_evaluation.json
       hash: md5
-      md5: 9c749ee47c55a8d5560720636bbd8126
+      md5: c6a4ee9744838ade06dd4d81308fc68a
       size: 388
     - path: artifact/plots/BBNI.JK_GRU_inference.png
       hash: md5
-      md5: a31238e8e1419005fd9a363f7845d56e
-      size: 173521
+      md5: cf8395d04f505cd105c6afecffe8e03f
+      size: 162054
     - path: artifact/plots/BBNI.JK_LSTM_inference.png
       hash: md5
-      md5: 5419988e7e9eb1f7c69191a259c2da01
-      size: 172461
+      md5: a66f1ccfea65a42081fddaad1493a5ac
+      size: 160976
     - path: web/backend/assets/BBNI.JK_GRU.keras
       hash: md5
-      md5: 640394d8170d4dc2679d6c8bffe25b45
-      size: 128634
+      md5: 82d0160579e8f2bf785010fd47f6f59d
+      size: 53208
     - path: web/backend/assets/BBNI.JK_LSTM.keras
       hash: md5
-      md5: 3d56bf94a180bfeeaf8d1f204d5d7db4
-      size: 156808
+      md5: 539b41df44b91f28e768dc7f7d3692c6
+      size: 63015
     - path: web/backend/assets/BBNI.JK_scaler.pkl
       hash: md5
-      md5: 2200b0058cdf6f5c66110f619863104e
+      md5: 1da72383d93ce49353eb8d92ab21b273
       size: 522
   evaluation@BRIS.JK:
     cmd: python -m src.evaluation --ticker BRIS.JK --target-col close 
@@ -2167,23 +2176,23 @@ stages:
     deps:
     - path: artifact/data/BRIS.JK_prepared.npz
       hash: md5
-      md5: a0809baab267faf564ad97f3f8372fcb
-      size: 13236
+      md5: 08967c070ff6ee872e62312eb5763626
+      size: 13266
     - path: artifact/metrics/BRIS.JK_hyperparameter.csv
       hash: md5
-      md5: e07875c6016e92d734e5b663dd3a0114
-      size: 1363
+      md5: f4942e87f4b44314596788b370196252
+      size: 1282
     - path: artifact/model/BRIS.JK_GRU.keras
       hash: md5
-      md5: bb2f7dd3726bc41cc9b8aba2865f4ae2
-      size: 128634
+      md5: 4c8410c52a5b7c5b1bcfc859a31dd3c6
+      size: 53208
     - path: artifact/model/BRIS.JK_LSTM.keras
       hash: md5
-      md5: 0729b68631338b4d42258d3a8b66674a
-      size: 156808
+      md5: d3c6af436a5c134c2c2f3507bb7ef4ff
+      size: 63015
     - path: artifact/model/BRIS.JK_scaler.pkl
       hash: md5
-      md5: ba5da8db2dd04f82e578f74dbddff92d
+      md5: 58b61b33749da307277902295a951c83
       size: 522
     - path: src/config.py
       hash: md5
@@ -2191,8 +2200,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -2200,27 +2209,27 @@ stages:
     outs:
     - path: artifact/metrics/BRIS.JK_evaluation.json
       hash: md5
-      md5: 77c401a5574bf2253fb667f7197a28a8
-      size: 388
+      md5: 001e10faeeab2521030c085c3b088187
+      size: 390
     - path: artifact/plots/BRIS.JK_GRU_inference.png
       hash: md5
-      md5: ef525140ea5fa8c0cb5ffdd40a22deba
-      size: 154151
+      md5: 4f16eed6a6c5924aa1c5eb4871c4135c
+      size: 136869
     - path: artifact/plots/BRIS.JK_LSTM_inference.png
       hash: md5
-      md5: fce6134187ca580a1b428331f6ad87d5
-      size: 153583
+      md5: 38dcd0ce3687a1d3513d43c5c389b516
+      size: 136062
     - path: web/backend/assets/BRIS.JK_GRU.keras
       hash: md5
-      md5: bb2f7dd3726bc41cc9b8aba2865f4ae2
-      size: 128634
+      md5: 4c8410c52a5b7c5b1bcfc859a31dd3c6
+      size: 53208
     - path: web/backend/assets/BRIS.JK_LSTM.keras
       hash: md5
-      md5: 0729b68631338b4d42258d3a8b66674a
-      size: 156808
+      md5: d3c6af436a5c134c2c2f3507bb7ef4ff
+      size: 63015
     - path: web/backend/assets/BRIS.JK_scaler.pkl
       hash: md5
-      md5: ba5da8db2dd04f82e578f74dbddff92d
+      md5: 58b61b33749da307277902295a951c83
       size: 522
   evaluation@BNLI.JK:
     cmd: python -m src.evaluation --ticker BNLI.JK --target-col close 
@@ -2228,23 +2237,23 @@ stages:
     deps:
     - path: artifact/data/BNLI.JK_prepared.npz
       hash: md5
-      md5: 1de2bdf741ae0b80a5095812e0f46b90
-      size: 12133
+      md5: aea1afb9eacef062886d46385ee4ee68
+      size: 12136
     - path: artifact/metrics/BNLI.JK_hyperparameter.csv
       hash: md5
-      md5: 49e6ab9ec7ebc3e3ffd2031f66481c1e
-      size: 1356
+      md5: 15c7ad38530a95c4c34bff880d6dfcc7
+      size: 1290
     - path: artifact/model/BNLI.JK_GRU.keras
       hash: md5
-      md5: 2f501e4cc03d22724983763db4dfde11
-      size: 128634
+      md5: e92f5a18314bf641680a198d405b4b7b
+      size: 53208
     - path: artifact/model/BNLI.JK_LSTM.keras
       hash: md5
-      md5: 3730423c1cdb4bda3706e46fb449df63
-      size: 156808
+      md5: 50f7baf50c58e407b11ff25ce6a4c3aa
+      size: 63015
     - path: artifact/model/BNLI.JK_scaler.pkl
       hash: md5
-      md5: 0d5460385cd8744674f0efd2ac94a282
+      md5: 1b21940e1790d73976b0869db0619188
       size: 522
     - path: src/config.py
       hash: md5
@@ -2252,8 +2261,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -2261,27 +2270,27 @@ stages:
     outs:
     - path: artifact/metrics/BNLI.JK_evaluation.json
       hash: md5
-      md5: 985be21d0f9c9be6fbf34f49a297ba35
-      size: 386
+      md5: f8d17fbc945978515e76921a97b4dcec
+      size: 393
     - path: artifact/plots/BNLI.JK_GRU_inference.png
       hash: md5
-      md5: c6944331175f840f7f68f41418fefd8c
-      size: 120567
+      md5: f4e4d268c545c7c26fd6bdedbe64744c
+      size: 111802
     - path: artifact/plots/BNLI.JK_LSTM_inference.png
       hash: md5
-      md5: 6335db74417a2f3bf919545fe58c3d87
-      size: 122207
+      md5: 2b0b0aa736be5708093ff07c5572fbe4
+      size: 116338
     - path: web/backend/assets/BNLI.JK_GRU.keras
       hash: md5
-      md5: 2f501e4cc03d22724983763db4dfde11
-      size: 128634
+      md5: e92f5a18314bf641680a198d405b4b7b
+      size: 53208
     - path: web/backend/assets/BNLI.JK_LSTM.keras
       hash: md5
-      md5: 3730423c1cdb4bda3706e46fb449df63
-      size: 156808
+      md5: 50f7baf50c58e407b11ff25ce6a4c3aa
+      size: 63015
     - path: web/backend/assets/BNLI.JK_scaler.pkl
       hash: md5
-      md5: 0d5460385cd8744674f0efd2ac94a282
+      md5: 1b21940e1790d73976b0869db0619188
       size: 522
   evaluation@BDMN.JK:
     cmd: python -m src.evaluation --ticker BDMN.JK --target-col close 
@@ -2289,23 +2298,23 @@ stages:
     deps:
     - path: artifact/data/BDMN.JK_prepared.npz
       hash: md5
-      md5: d11de376beeb88f69437ce30086d0b5a
-      size: 11168
+      md5: 356d9a4ef28f5c061dd831a0e5db9e46
+      size: 11172
     - path: artifact/metrics/BDMN.JK_hyperparameter.csv
       hash: md5
-      md5: 5f68a7e117e7d7564fad8ff5b5ce6748
-      size: 1363
+      md5: f21afda95c986c2ff1822079325b43c5
+      size: 1282
     - path: artifact/model/BDMN.JK_GRU.keras
       hash: md5
-      md5: a565f30c4e2c264bdc0bb60e048c0e98
-      size: 128634
+      md5: e42037f7ea6829b2995d65171a434941
+      size: 53208
     - path: artifact/model/BDMN.JK_LSTM.keras
       hash: md5
-      md5: 690a537e69badbeabd2ae21e4e4c7d32
-      size: 156808
+      md5: ff56729faab0ca3fa123a6873a2e8202
+      size: 63015
     - path: artifact/model/BDMN.JK_scaler.pkl
       hash: md5
-      md5: 9038b5bffab0a60b86a5e247f8ce3c41
+      md5: 087db6ce913274b19d352272e6fc2a2a
       size: 522
     - path: src/config.py
       hash: md5
@@ -2313,8 +2322,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -2322,27 +2331,27 @@ stages:
     outs:
     - path: artifact/metrics/BDMN.JK_evaluation.json
       hash: md5
-      md5: 7b2e6ab096286112c98cfaac31c1a6a4
-      size: 389
+      md5: af5fdd247dbb27364b0c93393722feeb
+      size: 391
     - path: artifact/plots/BDMN.JK_GRU_inference.png
       hash: md5
-      md5: bd46fa7bd30da6954f3940ca2536dda7
-      size: 142809
+      md5: 63d18a5accdd906a2ff23f68f705dcc1
+      size: 132755
     - path: artifact/plots/BDMN.JK_LSTM_inference.png
       hash: md5
-      md5: ed2446ae924df10f70d6ed5f60f43f39
-      size: 153636
+      md5: 5bc60a2b39dba00af7a13252d5eb367f
+      size: 132623
     - path: web/backend/assets/BDMN.JK_GRU.keras
       hash: md5
-      md5: a565f30c4e2c264bdc0bb60e048c0e98
-      size: 128634
+      md5: e42037f7ea6829b2995d65171a434941
+      size: 53208
     - path: web/backend/assets/BDMN.JK_LSTM.keras
       hash: md5
-      md5: 690a537e69badbeabd2ae21e4e4c7d32
-      size: 156808
+      md5: ff56729faab0ca3fa123a6873a2e8202
+      size: 63015
     - path: web/backend/assets/BDMN.JK_scaler.pkl
       hash: md5
-      md5: 9038b5bffab0a60b86a5e247f8ce3c41
+      md5: 087db6ce913274b19d352272e6fc2a2a
       size: 522
   data_ingestion@NISP.JK:
     cmd: python -m src.data_ingestion --ticker NISP.JK --range-days 1825 
@@ -2354,8 +2363,8 @@ stages:
       size: 2867
     - path: src/data_ingestion.py
       hash: md5
-      md5: ef5807f2b7f02f17496de32110f552ec
-      size: 3705
+      md5: 0eae9de7c83080aea70139833eeb886a
+      size: 3702
     params:
       params.yaml:
         END_DATE: auto
@@ -2363,39 +2372,39 @@ stages:
     outs:
     - path: artifact/data/NISP.JK.csv
       hash: md5
-      md5: aec573657ee93846cbf4804425aca0c3
-      size: 132095
+      md5: 348aff79752babd88a22a98d1a8b1702
+      size: 132238
   data_understanding@NISP.JK:
     cmd: python -m src.data_understanding --ticker NISP.JK --target-col close
     deps:
     - path: artifact/data/NISP.JK.csv
       hash: md5
-      md5: ed55e8c4cf59820c9dd5593692cc8ad2
-      size: 132152
+      md5: 348aff79752babd88a22a98d1a8b1702
+      size: 132238
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
       size: 2867
     - path: src/data_understanding.py
       hash: md5
-      md5: f9c9ffb89df5fc64a8e3eca058804345
-      size: 3454
+      md5: 10a9586774cf401caaba92a0ed8575bc
+      size: 3289
     params:
       params.yaml:
         TARGET_COL: close
     outs:
     - path: artifact/metrics/NISP.JK_understanding.json
       hash: md5
-      md5: efb58abda348b231a17280980530e9c5
-      size: 378
+      md5: 7f275c8c2f53eb4bf49b7fa5d193fc27
+      size: 377
   data_preparation@NISP.JK:
     cmd: python -m src.data_preparation --ticker NISP.JK --train-size 0.8 
       --target-col close
     deps:
     - path: artifact/data/NISP.JK.csv
       hash: md5
-      md5: aec573657ee93846cbf4804425aca0c3
-      size: 132095
+      md5: 348aff79752babd88a22a98d1a8b1702
+      size: 132238
     - path: src/config.py
       hash: md5
       md5: 7d8bffc3800ff7ec5d8792dccfda9e74
@@ -2411,23 +2420,23 @@ stages:
     outs:
     - path: artifact/data/NISP.JK_prepared.npz
       hash: md5
-      md5: a2ec28fd6df8b6a918d4381f13359a65
-      size: 10428
+      md5: 1c03ba85bf52d321d730db3bf82a4d89
+      size: 10432
     - path: artifact/model/NISP.JK_scaler.pkl
       hash: md5
-      md5: f895a20cadc8253b54bdada1a78354d2
+      md5: 214374483fa3dd0285c0019206ea4023
       size: 522
   modeling@NISP.JK:
     cmd: python -m src.modeling --ticker NISP.JK --epochs 500 --random-state 42 
-      --target-col close --params-file params.yaml
+      --target-col close --n-jobs 4
     deps:
     - path: artifact/data/NISP.JK_prepared.npz
       hash: md5
-      md5: 9dcd61abe4cf8ec553d36d8d78986b11
-      size: 10423
+      md5: 1c03ba85bf52d321d730db3bf82a4d89
+      size: 10432
     - path: artifact/model/NISP.JK_scaler.pkl
       hash: md5
-      md5: 859b58039f37c0e1ae41e6504a8de437
+      md5: 214374483fa3dd0285c0019206ea4023
       size: 522
     - path: src/config.py
       hash: md5
@@ -2435,8 +2444,8 @@ stages:
       size: 2867
     - path: src/modeling.py
       hash: md5
-      md5: 50da6c87887993304b0764289c9c2c7f
-      size: 15961
+      md5: 65331c9ca3b765a1f5eef874d49c5d97
+      size: 12892
     params:
       params.yaml:
         BATCH_SIZES:
@@ -2446,6 +2455,7 @@ stages:
         LEARNING_RATES:
         - 0.001
         - 0.0001
+        N_JOBS: 4
         RANDOM_STATE: 42
         TARGET_COL: close
         TIME_STEPS:
@@ -2454,39 +2464,39 @@ stages:
     outs:
     - path: artifact/metrics/NISP.JK_hyperparameter.csv
       hash: md5
-      md5: 021279901fcaf3aa1e339d94a1146731
-      size: 1361
+      md5: e2297282cadd04364112282b2a48bdd5
+      size: 1292
     - path: artifact/model/NISP.JK_GRU.keras
       hash: md5
-      md5: 6a7f275765d9ea7eafa5445e44a2172a
-      size: 128634
+      md5: 0a5a36f3af8ad21d70094f982dc2a00d
+      size: 53208
     - path: artifact/model/NISP.JK_LSTM.keras
       hash: md5
-      md5: 43669a0996e8c6d0691f7f2417f1b8d0
-      size: 156808
+      md5: 54409c50076a995fcdc24572aa394d58
+      size: 63015
   evaluation@BNGA.JK:
     cmd: python -m src.evaluation --ticker BNGA.JK --target-col close 
       --threshold-mape 10.0
     deps:
     - path: artifact/data/BNGA.JK_prepared.npz
       hash: md5
-      md5: e292e9dbd072f75020cb4d5a0e8d47d5
-      size: 11296
+      md5: 73c01ba0eebf6206edc7244993711ccf
+      size: 11335
     - path: artifact/metrics/BNGA.JK_hyperparameter.csv
       hash: md5
-      md5: d5c3257caeed37bf7eb1a88530e60caf
-      size: 1367
+      md5: 2c3a68774a185caad2f7d98c93816442
+      size: 1291
     - path: artifact/model/BNGA.JK_GRU.keras
       hash: md5
-      md5: 42f2997a7b914eb0cb2c2b61ab8fd778
-      size: 128634
+      md5: f5c71bf47dc2aeab235a91278e9a73e5
+      size: 53208
     - path: artifact/model/BNGA.JK_LSTM.keras
       hash: md5
-      md5: 33f48ace54369bfc24953f72ac5f82f1
-      size: 156808
+      md5: 769e54a4b4e3986599bbe775b14cb093
+      size: 63015
     - path: artifact/model/BNGA.JK_scaler.pkl
       hash: md5
-      md5: b2ffaa52ff41b59584a8c5c93a69e014
+      md5: 456e5e00e7629cbd7f6d0427db55b42b
       size: 522
     - path: src/config.py
       hash: md5
@@ -2494,8 +2504,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -2503,27 +2513,27 @@ stages:
     outs:
     - path: artifact/metrics/BNGA.JK_evaluation.json
       hash: md5
-      md5: 02bb91dcdbe6f7ebe48648dce73862a1
-      size: 389
+      md5: a2c9b012bc3cf7c15fee7f3c5a0f2387
+      size: 390
     - path: artifact/plots/BNGA.JK_GRU_inference.png
       hash: md5
-      md5: 0367daf104331432c5a7757ca7e5a5c7
-      size: 163644
+      md5: 8f86be06617b6ab7bc6984806520ad73
+      size: 162561
     - path: artifact/plots/BNGA.JK_LSTM_inference.png
       hash: md5
-      md5: 9f11f747bdf9100c0b0cd2c5487fbf56
-      size: 166615
+      md5: 1a0e5f06d73bb2daf40c9dee1889c0e9
+      size: 166878
     - path: web/backend/assets/BNGA.JK_GRU.keras
       hash: md5
-      md5: 42f2997a7b914eb0cb2c2b61ab8fd778
-      size: 128634
+      md5: f5c71bf47dc2aeab235a91278e9a73e5
+      size: 53208
     - path: web/backend/assets/BNGA.JK_LSTM.keras
       hash: md5
-      md5: 33f48ace54369bfc24953f72ac5f82f1
-      size: 156808
+      md5: 769e54a4b4e3986599bbe775b14cb093
+      size: 63015
     - path: web/backend/assets/BNGA.JK_scaler.pkl
       hash: md5
-      md5: b2ffaa52ff41b59584a8c5c93a69e014
+      md5: 456e5e00e7629cbd7f6d0427db55b42b
       size: 522
   evaluation@MEGA.JK:
     cmd: python -m src.evaluation --ticker MEGA.JK --target-col close 
@@ -2531,23 +2541,23 @@ stages:
     deps:
     - path: artifact/data/MEGA.JK_prepared.npz
       hash: md5
-      md5: ffbb3e93fb5e292d8723186de77678e1
-      size: 10992
+      md5: a516160e100023d910b6d7efad820ad0
+      size: 11022
     - path: artifact/metrics/MEGA.JK_hyperparameter.csv
       hash: md5
-      md5: 4e0c8566a2f3d94203b59d85bdc2ba5d
-      size: 1367
+      md5: 6a0bcbfde627c757bd6bba34f3184710
+      size: 1285
     - path: artifact/model/MEGA.JK_GRU.keras
       hash: md5
-      md5: abba84906a69ff3152d6b1d498ae5550
-      size: 128634
+      md5: 21badf997174ee8e655858f6654e90a8
+      size: 53208
     - path: artifact/model/MEGA.JK_LSTM.keras
       hash: md5
-      md5: d3cc6fb0e1dd5e0f3e72c368a305f9f5
-      size: 156808
+      md5: 24709ebd8bd3a295aec5b0c30fee2915
+      size: 63015
     - path: artifact/model/MEGA.JK_scaler.pkl
       hash: md5
-      md5: 19539effe3b3ef8fd44fda0b9ba4701c
+      md5: bf33a1f55cc8145cfcc51c1eaf9f24d9
       size: 522
     - path: src/config.py
       hash: md5
@@ -2555,8 +2565,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -2564,27 +2574,27 @@ stages:
     outs:
     - path: artifact/metrics/MEGA.JK_evaluation.json
       hash: md5
-      md5: 03b7babe86b61e596025d4a18ebf71b3
-      size: 389
+      md5: 930da57b8e77343febc8c69360de8eea
+      size: 388
     - path: artifact/plots/MEGA.JK_GRU_inference.png
       hash: md5
-      md5: f3610e66b1820aa07710985d9a146dd8
-      size: 142785
+      md5: 54cc55bf9de669935aa121e0c512945c
+      size: 136247
     - path: artifact/plots/MEGA.JK_LSTM_inference.png
       hash: md5
-      md5: 250c43514d3ee2c73f87352a4930dd47
-      size: 145007
+      md5: c43c870c738e5fd716b7b5917d036dd3
+      size: 136261
     - path: web/backend/assets/MEGA.JK_GRU.keras
       hash: md5
-      md5: abba84906a69ff3152d6b1d498ae5550
-      size: 128634
+      md5: 21badf997174ee8e655858f6654e90a8
+      size: 53208
     - path: web/backend/assets/MEGA.JK_LSTM.keras
       hash: md5
-      md5: d3cc6fb0e1dd5e0f3e72c368a305f9f5
-      size: 156808
+      md5: 24709ebd8bd3a295aec5b0c30fee2915
+      size: 63015
     - path: web/backend/assets/MEGA.JK_scaler.pkl
       hash: md5
-      md5: 19539effe3b3ef8fd44fda0b9ba4701c
+      md5: bf33a1f55cc8145cfcc51c1eaf9f24d9
       size: 522
   evaluation@NISP.JK:
     cmd: python -m src.evaluation --ticker NISP.JK --target-col close 
@@ -2592,23 +2602,23 @@ stages:
     deps:
     - path: artifact/data/NISP.JK_prepared.npz
       hash: md5
-      md5: 9dcd61abe4cf8ec553d36d8d78986b11
-      size: 10423
+      md5: 1c03ba85bf52d321d730db3bf82a4d89
+      size: 10432
     - path: artifact/metrics/NISP.JK_hyperparameter.csv
       hash: md5
-      md5: 021279901fcaf3aa1e339d94a1146731
-      size: 1361
+      md5: e2297282cadd04364112282b2a48bdd5
+      size: 1292
     - path: artifact/model/NISP.JK_GRU.keras
       hash: md5
-      md5: 6a7f275765d9ea7eafa5445e44a2172a
-      size: 128634
+      md5: 0a5a36f3af8ad21d70094f982dc2a00d
+      size: 53208
     - path: artifact/model/NISP.JK_LSTM.keras
       hash: md5
-      md5: 43669a0996e8c6d0691f7f2417f1b8d0
-      size: 156808
+      md5: 54409c50076a995fcdc24572aa394d58
+      size: 63015
     - path: artifact/model/NISP.JK_scaler.pkl
       hash: md5
-      md5: 859b58039f37c0e1ae41e6504a8de437
+      md5: 214374483fa3dd0285c0019206ea4023
       size: 522
     - path: src/config.py
       hash: md5
@@ -2616,8 +2626,8 @@ stages:
       size: 2867
     - path: src/evaluation.py
       hash: md5
-      md5: 23c5f2825cac386c0693ebf884c122a8
-      size: 16380
+      md5: 919fe0628adb52492e9cc74c4459d44e
+      size: 13913
     params:
       params.yaml:
         TARGET_COL: close
@@ -2625,25 +2635,25 @@ stages:
     outs:
     - path: artifact/metrics/NISP.JK_evaluation.json
       hash: md5
-      md5: 516533069b3736bd10e21d67dafe01a4
-      size: 393
+      md5: 5a4ce3e1cf1cb500cde675534f924696
+      size: 389
     - path: artifact/plots/NISP.JK_GRU_inference.png
       hash: md5
-      md5: 309f9c241d673919f2675ade659d682d
-      size: 144187
+      md5: 6875c77c1b18300cbc0ce659a29b6c53
+      size: 138550
     - path: artifact/plots/NISP.JK_LSTM_inference.png
       hash: md5
-      md5: f381d497e68bb52f2dd25ddef56f609b
-      size: 142202
+      md5: 875e5b8ae4d602d8f6d493deeaef02d5
+      size: 138199
     - path: web/backend/assets/NISP.JK_GRU.keras
       hash: md5
-      md5: 6a7f275765d9ea7eafa5445e44a2172a
-      size: 128634
+      md5: 0a5a36f3af8ad21d70094f982dc2a00d
+      size: 53208
     - path: web/backend/assets/NISP.JK_LSTM.keras
       hash: md5
-      md5: 43669a0996e8c6d0691f7f2417f1b8d0
-      size: 156808
+      md5: 54409c50076a995fcdc24572aa394d58
+      size: 63015
     - path: web/backend/assets/NISP.JK_scaler.pkl
       hash: md5
-      md5: 859b58039f37c0e1ae41e6504a8de437
+      md5: 214374483fa3dd0285c0019206ea4023
       size: 522
