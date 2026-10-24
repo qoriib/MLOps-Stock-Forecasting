@@ -21,8 +21,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 def load_best_configurations(ticker: str) -> pd.DataFrame:
     df_hyperparameter = pd.read_csv(config.get_hyperparameter_path(ticker))
-    df_hyperparameter_best = df_hyperparameter.loc[df_hyperparameter.groupby("model")["RMSE"].idxmin()].reset_index(drop=True)
-    return df_hyperparameter_best
+    best_indices = df_hyperparameter.groupby("model")["RMSE"].idxmin()
+    return df_hyperparameter.loc[best_indices].reset_index(drop=True)
 
 
 def predict_test_data(
@@ -83,17 +83,19 @@ def plot_inference_and_forecast(
     ticker: str,
     model_name: str,
     target_column: str,
-    dates_train: np.ndarray,
-    actual_train_values: np.ndarray,
-    dates_test: np.ndarray,
-    actual_test_values: np.ndarray,
+    prepared_dataset: Any,
     predicted_test_values: np.ndarray,
     future_dates: List[pd.Timestamp],
     future_predictions: np.ndarray,
-    evaluation_metrics: Dict[str, float],
-) -> Tuple[Path, plt.Figure]:
+    config_row: Dict[str, Any],
+) -> plt.Figure:
     plot_file_path = config.get_plot_path(ticker, f"{model_name}_inference")
     figure, axes = plt.subplots(figsize=(14, 5))
+
+    dates_train = prepared_dataset["dates_train"]
+    dates_test = prepared_dataset["dates_test"]
+    actual_train_values = prepared_dataset["y_train"]
+    actual_test_values = prepared_dataset["y_test"]
 
     parsed_dates_train = pd.to_datetime(dates_train)
     parsed_dates_test = pd.to_datetime(dates_test)
@@ -128,12 +130,11 @@ def plot_inference_and_forecast(
         linestyle=":",
         linewidth=2,
     )
-    axes.axvline(x=parsed_dates_test[-1], color="gray", linestyle="-.", alpha=0.5, label="Cutoff")
 
     # Atur metadata label grafik
     axes.set_title(
         f"Inferensi & Proyeksi {model_name} - {ticker} "
-        f"(RMSE: {evaluation_metrics['RMSE']:.2f}, MAPE: {evaluation_metrics['MAPE']:.2f}%, MSE: {evaluation_metrics['MSE']:.2f})"
+        f"(RMSE: {float(config_row['RMSE']):.2f}, MAPE: {float(config_row['MAPE']):.2f}%, MSE: {float(config_row['MSE']):.2f})"
     )
     axes.set_xlabel("Tanggal")
     axes.set_ylabel(f"Harga ({target_column.capitalize()})")
@@ -142,7 +143,7 @@ def plot_inference_and_forecast(
 
     figure.savefig(plot_file_path, dpi=150)
     logger.info(f"[Artifact] Plot visualisasi disimpan ke: {plot_file_path.name}")
-    return plot_file_path, figure
+    return figure
 
 
 def register_model_mlflow(
@@ -150,8 +151,6 @@ def register_model_mlflow(
     ticker: str,
     model_name: str,
     target_column: str,
-    config_row: Dict[str, Any],
-    evaluation_metrics: Dict[str, float],
     loaded_model: keras.Model,
     scaler_file_path: Path,
     figure: plt.Figure,
@@ -171,8 +170,6 @@ def register_model_mlflow(
             "stage": "registration",
         })
 
-        mlflow.log_params(config_row)
-        mlflow.log_metrics(evaluation_metrics)
         mlflow.log_artifact(str(scaler_file_path), artifact_path="scaler")
         mlflow.log_figure(figure, artifact_file=f"{model_name}_inference.png")
 
@@ -200,14 +197,16 @@ def package_champion_assets(
     scaler_file_path: Path,
 ) -> None:
     registered_model_name = f"{ticker}_{model_name}"
+    is_champion = mean_absolute_percentage_error < threshold_mape
+    model_alias = "champion" if is_champion else "challenger"
 
-    if mean_absolute_percentage_error < threshold_mape:
-        # Model memenuhi ambang batas
-        mlflow_client.set_registered_model_alias(
-            name=registered_model_name,
-            alias="champion",
-            version=latest_version_number,
-        )
+    mlflow_client.set_registered_model_alias(
+        name=registered_model_name,
+        alias=model_alias,
+        version=latest_version_number,
+    )
+
+    if is_champion:
         logger.info(
             f"[MLflow] Model {registered_model_name} (v{latest_version_number}) "
             f"LOLOS ambang batas (MAPE={mean_absolute_percentage_error:.2f}%) -> DIPROMOSIKAN ke @champion"
@@ -224,132 +223,17 @@ def package_champion_assets(
         shutil.copy2(scaler_file_path, destination_scaler_path)
         logger.info(f"[Backend Asset] Model dan Scaler champion disalin ke: {destination_model_path.name}")
     else:
-        # Model tidak memenuhi ambang batas -> Tetapkan sebagai status @challenger
-        mlflow_client.set_registered_model_alias(
-            name=registered_model_name,
-            alias="challenger",
-            version=latest_version_number,
-        )
         logger.info(
             f"[MLflow] Model {registered_model_name} v{latest_version_number} "
             f"(MAPE={mean_absolute_percentage_error:.2f}%) DITOLAK menjadi champion -> Status @challenger"
         )
 
 
-def evaluate_single_model(
-    ticker: str,
-    target_column: str,
-    config_row: Dict[str, Any],
-    train_scaled: np.ndarray,
-    test_scaled: np.ndarray,
-    actual_test_values: np.ndarray,
-    actual_train_values: np.ndarray,
-    dates_train: np.ndarray,
-    dates_test: np.ndarray,
-    scaler_instance: Any,
-    scaler_file_path: Path,
-    mlflow_client: MlflowClient,
-    threshold_mape: float,
-) -> Dict[str, Any]:
-    model_name = str(config_row["model"])
-    time_steps = int(config_row["time_steps"])
-    batch_size = int(config_row["batch_size"])
-
-    logger.info(f"Mengevaluasi model {model_name} (time_steps={time_steps}, batch_size={batch_size})")
-
-    # 1. Muat model Keras yang tersimpan
-    model_file_path = config.get_model_path(ticker, model_name)
-    loaded_model = keras.models.load_model(model_file_path, compile=False)
-
-    # 2. Lakukan inferensi data uji
-    inversed_predictions = predict_test_data(
-        loaded_model=loaded_model,
-        scaler_instance=scaler_instance,
-        train_scaled=train_scaled,
-        test_scaled=test_scaled,
-        time_steps=time_steps,
-        batch_size=batch_size,
-    )
-
-    # 3. Hitung metrik evaluasi pengujian
-    evaluation_metrics = {
-        "RMSE": float(config_row["RMSE"]),
-        "MAPE": float(config_row["MAPE"]),
-        "MSE": float(config_row["MSE"]),
-    }
-
-    # 4. Proyeksi harga masa depan
-    last_test_date = pd.to_datetime(dates_test)[-1]
-    future_dates, future_predictions = forecast_future_steps(
-        loaded_model=loaded_model,
-        scaler_instance=scaler_instance,
-        test_scaled=test_scaled,
-        last_test_date=last_test_date,
-        time_steps=time_steps,
-        forecast_steps=20,
-    )
-
-    # 5. Visualisasi dan ekspor gambar plot inferensi
-    _, figure = plot_inference_and_forecast(
-        ticker=ticker,
-        model_name=model_name,
-        target_column=target_column,
-        dates_train=dates_train,
-        actual_train_values=actual_train_values,
-        dates_test=dates_test,
-        actual_test_values=actual_test_values,
-        predicted_test_values=inversed_predictions,
-        future_dates=future_dates,
-        future_predictions=future_predictions,
-        evaluation_metrics=evaluation_metrics,
-    )
-
-    # 6. Registrasi model ke MLflow Model Registry
-    try:
-        latest_version_number = register_model_mlflow(
-            mlflow_client=mlflow_client,
-            ticker=ticker,
-            model_name=model_name,
-            target_column=target_column,
-            config_row=config_row,
-            evaluation_metrics=evaluation_metrics,
-            loaded_model=loaded_model,
-            scaler_file_path=scaler_file_path,
-            figure=figure,
-            time_steps=time_steps,
-        )
-
-        # 7. Evaluasi ambang batas kelayakan champion & pengemasan aset backend
-        package_champion_assets(
-            mlflow_client=mlflow_client,
-            ticker=ticker,
-            model_name=model_name,
-            latest_version_number=latest_version_number,
-            mean_absolute_percentage_error=evaluation_metrics["MAPE"],
-            threshold_mape=threshold_mape,
-            model_file_path=model_file_path,
-            scaler_file_path=scaler_file_path,
-        )
-    except Exception as error_exception:
-        logger.warning(f"[MLflow] Registrasi & evaluasi model {ticker}_{model_name} dilewati: {error_exception}")
-
-    plt.close(figure)
-
-    return {
-        "model": model_name,
-        "RMSE": evaluation_metrics["RMSE"],
-        "MAPE": evaluation_metrics["MAPE"],
-        "MSE": evaluation_metrics["MSE"],
-        "time_steps": time_steps,
-        "batch_size": batch_size,
-        "learning_rate": config_row.get("learning_rate"),
-    }
-
-
 def run_evaluation(ticker: str, target_col: str = "close", threshold_mape: float = 10.0) -> List[Dict[str, Any]]:
     # Tahap 1: Hubungkan ke tracking server MLflow
     if config.MLFLOW_TRACKING_URI:
         mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
+
     mlflow.set_experiment(config.get_experiment_name(ticker))
 
     # Tahap 2: Ambil konfigurasi hyperparameter terbaik per arsitektur model
@@ -357,13 +241,7 @@ def run_evaluation(ticker: str, target_col: str = "close", threshold_mape: float
 
     # Tahap 3: Muat dataset siap latih dan instance normalisasi scaler
     prepared_data_path = config.get_prepared_data_path(ticker)
-    prepared_arrays = np.load(prepared_data_path, allow_pickle=True)
-    train_scaled = prepared_arrays["train_scaled"]
-    test_scaled = prepared_arrays["test_scaled"]
-    actual_test_values = prepared_arrays["y_test"]
-    actual_train_values = prepared_arrays["y_train"]
-    dates_train = prepared_arrays["dates_train"]
-    dates_test = prepared_arrays["dates_test"]
+    prepared_dataset = np.load(prepared_data_path, allow_pickle=True)
 
     scaler_file_path = config.get_scaler_path(ticker)
     with open(scaler_file_path, "rb") as file_handler:
@@ -375,23 +253,88 @@ def run_evaluation(ticker: str, target_col: str = "close", threshold_mape: float
 
     # Tahap 5: Evaluasi, registrasi, dan kemas tiap model terbaik
     for _, configuration_row in best_configurations_dataframe.iterrows():
-        config_dictionary = configuration_row.to_dict()
-        evaluated_result_item = evaluate_single_model(
-            ticker=ticker,
-            target_column=target_col,
-            config_row=config_dictionary,
-            train_scaled=train_scaled,
-            test_scaled=test_scaled,
-            actual_test_values=actual_test_values,
-            actual_train_values=actual_train_values,
-            dates_train=dates_train,
-            dates_test=dates_test,
+        config_row = configuration_row.to_dict()
+        model_name = str(config_row["model"])
+        time_steps = int(config_row["time_steps"])
+        batch_size = int(config_row["batch_size"])
+
+        logger.info(f"Mengevaluasi model {model_name}")
+
+        # 1. Muat model Keras yang tersimpan
+        model_file_path = config.get_model_path(ticker, model_name)
+        loaded_model = keras.models.load_model(model_file_path, compile=False)
+
+        # 2. Lakukan inferensi data uji
+        inversed_predictions = predict_test_data(
+            loaded_model=loaded_model,
             scaler_instance=scaler_instance,
-            scaler_file_path=scaler_file_path,
-            mlflow_client=mlflow_client,
-            threshold_mape=threshold_mape,
+            train_scaled=prepared_dataset["train_scaled"],
+            test_scaled=prepared_dataset["test_scaled"],
+            time_steps=time_steps,
+            batch_size=batch_size,
         )
-        evaluation_results.append(evaluated_result_item)
+
+        # 3. Proyeksi harga masa depan
+        last_test_date = pd.to_datetime(prepared_dataset["dates_test"])[-1]
+        future_dates, future_predictions = forecast_future_steps(
+            loaded_model=loaded_model,
+            scaler_instance=scaler_instance,
+            test_scaled=prepared_dataset["test_scaled"],
+            last_test_date=last_test_date,
+            time_steps=time_steps,
+            forecast_steps=20,
+        )
+
+        # 4. Visualisasi dan ekspor gambar plot inferensi
+        figure = plot_inference_and_forecast(
+            ticker=ticker,
+            model_name=model_name,
+            target_column=target_col,
+            prepared_dataset=prepared_dataset,
+            predicted_test_values=inversed_predictions,
+            future_dates=future_dates,
+            future_predictions=future_predictions,
+            config_row=config_row,
+        )
+
+        # 5. Registrasi model ke MLflow Model Registry
+        try:
+            latest_version_number = register_model_mlflow(
+                mlflow_client=mlflow_client,
+                ticker=ticker,
+                model_name=model_name,
+                target_column=target_col,
+                loaded_model=loaded_model,
+                scaler_file_path=scaler_file_path,
+                figure=figure,
+                time_steps=time_steps,
+            )
+
+            # 6. Evaluasi ambang batas kelayakan champion & pengemasan aset backend
+            package_champion_assets(
+                mlflow_client=mlflow_client,
+                ticker=ticker,
+                model_name=model_name,
+                latest_version_number=latest_version_number,
+                mean_absolute_percentage_error=float(config_row["MAPE"]),
+                threshold_mape=threshold_mape,
+                model_file_path=model_file_path,
+                scaler_file_path=scaler_file_path,
+            )
+        except Exception as error_exception:
+            logger.warning(f"[MLflow] Registrasi & evaluasi model {ticker}_{model_name} dilewati: {error_exception}")
+
+        plt.close(figure)
+
+        evaluation_results.append({
+            "model": model_name,
+            "RMSE": float(config_row["RMSE"]),
+            "MAPE": float(config_row["MAPE"]),
+            "MSE": float(config_row["MSE"]),
+            "time_steps": time_steps,
+            "batch_size": batch_size,
+            "learning_rate": config_row.get("learning_rate"),
+        })
 
     # Tahap 6: Ekspor ringkasan metrik evaluasi ke file JSON
     evaluation_metrics_file = config.get_metrics_path(ticker, "evaluation")
