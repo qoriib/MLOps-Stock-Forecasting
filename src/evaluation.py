@@ -20,13 +20,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 
 def load_best_configurations(ticker: str) -> pd.DataFrame:
-    # Memuat konfigurasi hyperparameter terbaik per arsitektur model berdasarkan RMSE terendah
-    hyperparameter_csv_path = config.get_hyperparameter_path(ticker)
-    hyperparameter_dataframe = pd.read_csv(hyperparameter_csv_path)
-
-    best_configuration_indices = hyperparameter_dataframe.groupby("model")["RMSE"].idxmin().values
-    best_configurations_dataframe = hyperparameter_dataframe.loc[best_configuration_indices].reset_index(drop=True)
-    return best_configurations_dataframe
+    df_hyperparameter = pd.read_csv(config.get_hyperparameter_path(ticker))
+    df_hyperparameter_best = df_hyperparameter.loc[df_hyperparameter.groupby("model")["RMSE"].idxmin()].reset_index(drop=True)
+    return df_hyperparameter_best
 
 
 def predict_test_data(
@@ -62,13 +58,8 @@ def forecast_future_steps(
     time_steps: int,
     forecast_steps: int = 20,
 ) -> Tuple[List[pd.Timestamp], np.ndarray]:
-    # Hitung deret tanggal bursa masa depan (hari kerja Senin-Jumat)
-    future_dates = []
-    current_date = last_test_date
-    while len(future_dates) < forecast_steps:
-        current_date += pd.Timedelta(days=1)
-        if current_date.weekday() < 5:
-            future_dates.append(current_date)
+    # Hitung deret tanggal bursa masa depan
+    future_dates = list(pd.bdate_range(start=last_test_date + pd.Timedelta(days=1), periods=forecast_steps))
 
     # Lakukan inferensi rolling rekursif
     rolling_window = list(test_scaled[-time_steps:].flatten())
@@ -126,22 +117,22 @@ def plot_inference_and_forecast(
         linestyle="--",
     )
 
-    # Plot sambungan proyeksi 20 langkah ke depan
+    # Plot sambungan proyeksi ke depan
     connection_dates = [parsed_dates_test[-1]] + future_dates
     connection_predictions = [predicted_test_values[-1]] + list(future_predictions)
     axes.plot(
         connection_dates,
         connection_predictions,
-        label=f"{model_name} Future Forecast (+20 Steps)",
+        label=f"{model_name} Future Forecast",
         color="tab:orange",
         linestyle=":",
         linewidth=2,
     )
-    axes.axvline(x=parsed_dates_test[-1], color="gray", linestyle="-.", alpha=0.5, label="Test / Future Cutoff")
+    axes.axvline(x=parsed_dates_test[-1], color="gray", linestyle="-.", alpha=0.5, label="Cutoff")
 
     # Atur metadata label grafik
     axes.set_title(
-        f"Inferensi & Proyeksi 20-Step {model_name} - {ticker} "
+        f"Inferensi & Proyeksi {model_name} - {ticker} "
         f"(RMSE: {evaluation_metrics['RMSE']:.2f}, MAPE: {evaluation_metrics['MAPE']:.2f}%, MSE: {evaluation_metrics['MSE']:.2f})"
     )
     axes.set_xlabel("Tanggal")
@@ -211,7 +202,7 @@ def package_champion_assets(
     registered_model_name = f"{ticker}_{model_name}"
 
     if mean_absolute_percentage_error < threshold_mape:
-        # Model memenuhi ambang batas -> Promosikan ke status @champion
+        # Model memenuhi ambang batas
         mlflow_client.set_registered_model_alias(
             name=registered_model_name,
             alias="champion",
@@ -264,7 +255,7 @@ def evaluate_single_model(
     time_steps = int(config_row["time_steps"])
     batch_size = int(config_row["batch_size"])
 
-    logger.info(f"Mengevaluasi model {model_name} (time_steps={time_steps}, batch_size={batch_size})...")
+    logger.info(f"Mengevaluasi model {model_name} (time_steps={time_steps}, batch_size={batch_size})")
 
     # 1. Muat model Keras yang tersimpan
     model_file_path = config.get_model_path(ticker, model_name)
@@ -287,7 +278,7 @@ def evaluate_single_model(
         "MSE": float(config_row["MSE"]),
     }
 
-    # 4. Proyeksi harga masa depan 20 hari ke depan
+    # 4. Proyeksi harga masa depan
     last_test_date = pd.to_datetime(dates_test)[-1]
     future_dates, future_predictions = forecast_future_steps(
         loaded_model=loaded_model,
@@ -404,8 +395,10 @@ def run_evaluation(ticker: str, target_col: str = "close", threshold_mape: float
 
     # Tahap 6: Ekspor ringkasan metrik evaluasi ke file JSON
     evaluation_metrics_file = config.get_metrics_path(ticker, "evaluation")
+
     with open(evaluation_metrics_file, "w", encoding="utf-8") as file_handler:
         json.dump(evaluation_results, file_handler, indent=2)
+
     logger.info(f"[Artifact] Ringkasan evaluasi tersimpan di: {evaluation_metrics_file.name}")
 
     return evaluation_results
@@ -413,7 +406,7 @@ def run_evaluation(ticker: str, target_col: str = "close", threshold_mape: float
 
 def main():
     # Inisialisasi parser argumen CLI
-    parser = argparse.ArgumentParser(description="CRISP-DM Stage 5: Evaluation, Registration & Packaging")
+    parser = argparse.ArgumentParser(description="Evaluation")
     parser.add_argument("--ticker", type=str, required=True, help="Ticker saham (misal: BBCA.JK)")
     parser.add_argument("--target-col", type=str, default="close", help="Nama kolom target prediksi")
     parser.add_argument("--threshold-mape", type=float, default=10.0, help="Ambang batas maksimum MAPE untuk champion")
