@@ -3,10 +3,13 @@ params:
 
 stages:
   data_ingestion:
-    desc: "CRISP-DM Stage 1: Ingest stock data from Yahoo Finance"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.data_ingestion --ticker ${item.TICKER} --range-days ${RANGE_DAYS} --end-date ${END_DATE}
+    cmd: >-
+      python -m src.data_ingestion
+      --ticker ${item.TICKER}
+      --range-days ${RANGE_DAYS}
+      --end-date ${END_DATE}
     deps:
       - src/config.py
       - src/data_ingestion.py
@@ -17,10 +20,12 @@ stages:
       - artifact/data/${item.TICKER}.csv
 
   data_understanding:
-    desc: "CRISP-DM Stage 2: Data quality check, gap analysis & historical statistics"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.data_understanding --ticker ${item.TICKER} --target-col ${TARGET_COL}
+    cmd: >-
+      python -m src.data_understanding
+      --ticker ${item.TICKER}
+      --target-col ${TARGET_COL}
     deps:
       - src/config.py
       - src/data_understanding.py
@@ -31,10 +36,13 @@ stages:
       - artifact/metrics/${item.TICKER}_understanding.json
 
   data_preparation:
-    desc: "CRISP-DM Stage 3: Chronological train/test split & MinMaxScaler scaling"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.data_preparation --ticker ${item.TICKER} --train-size ${TRAIN_SIZE} --target-col ${TARGET_COL}
+    cmd: >-
+      python -m src.data_preparation
+      --ticker ${item.TICKER}
+      --train-size ${TRAIN_SIZE}
+      --target-col ${TARGET_COL}
     deps:
       - src/config.py
       - src/data_preparation.py
@@ -47,10 +55,15 @@ stages:
       - artifact/data/${item.TICKER}_prepared.npz
 
   modeling:
-    desc: "CRISP-DM Stage 4: LSTM & GRU grid search training with early stopping"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.modeling --ticker ${item.TICKER} --epochs ${EPOCHS} --random-state ${RANDOM_STATE} --target-col ${TARGET_COL} --params-file params.yaml
+    cmd: >-
+      python -m src.modeling
+      --ticker ${item.TICKER}
+      --epochs ${EPOCHS}
+      --random-state ${RANDOM_STATE}
+      --target-col ${TARGET_COL}
+      --n-jobs ${N_JOBS}
     deps:
       - src/config.py
       - src/modeling.py
@@ -60,6 +73,7 @@ stages:
       - TARGET_COL
       - RANDOM_STATE
       - EPOCHS
+      - N_JOBS
       - TIME_STEPS
       - BATCH_SIZES
       - LEARNING_RATES
@@ -70,10 +84,13 @@ stages:
       - artifact/metrics/${item.TICKER}_hyperparameter.csv
 
   evaluation:
-    desc: "CRISP-DM Stage 5: Evaluation on test set, inference visualization, MLflow registration & champion packaging"
     matrix:
       TICKER: ${TICKERS}
-    cmd: python -m src.evaluation --ticker ${item.TICKER} --target-col ${TARGET_COL} --threshold-mape ${THRESHOLD_MAPE}
+    cmd: >-
+      python -m src.evaluation
+      --ticker ${item.TICKER}
+      --target-col ${TARGET_COL}
+      --threshold-mape ${THRESHOLD_MAPE}
     deps:
       - src/config.py
       - src/evaluation.py

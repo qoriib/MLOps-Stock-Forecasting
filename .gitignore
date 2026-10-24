@@ -47,6 +47,7 @@ mlflow.db*
 node_modules/
 dist/
 .wrangler/
+report/
 
 # DVC - Never ignore .dvc metadata files
 !*.dvc
