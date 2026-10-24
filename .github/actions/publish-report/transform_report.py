@@ -1,13 +1,9 @@
-import argparse
 import re
+import argparse
 from pathlib import Path
 
 
 def transform_report(report_file: Path, blob_base_url: str, output_file: Path | None = None) -> str:
-    """Read a markdown report, transform relative plot paths into Azure Blob URLs,
-
-    and save the transformed result back to the specified output file.
-    """
     if not report_file.exists():
         print(f"Warning: Report file does not exist: {report_file}")
         return ""
@@ -15,7 +11,6 @@ def transform_report(report_file: Path, blob_base_url: str, output_file: Path | 
     content = report_file.read_text(encoding="utf-8")
     blob_base = blob_base_url.rstrip("/")
 
-    # Replace relative paths: (../artifact/plots/...), (artifact/plots/...), (plots/...) -> (https://.../filename.png)
     transformed_content = re.sub(r"\((?:\.\./|\./)?(?:artifact/)?plots/([^)]+)\)", rf"({blob_base}/\1)", content)
 
     target_path = output_file if output_file else report_file
