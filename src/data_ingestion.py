@@ -4,38 +4,33 @@ import logging
 import pandas as pd
 import yfinance as yf
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 from src import config
 
 logger = logging.getLogger("data_ingestion_stage")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
-def resolve_dates(range_days: int, end_date: str) -> Tuple[str, str, str]:
+def resolve_dates(range_days: int, end_date: str) -> Tuple[str, str]:
     cleaned_end_date = end_date.strip()
 
     # Evaluasi mode tanggal akhir otomatis atau spesifik
     if cleaned_end_date == "auto":
-        today_date = datetime.date.today()
-        yahoo_end_date = today_date + datetime.timedelta(days=1)
-        end_date_string = yahoo_end_date.strftime("%Y-%m-%d")
-        display_end_date = f"{today_date.strftime('%Y-%m-%d')} (hari ini)"
-        reference_date = today_date
+        reference_date = datetime.date.today()
+        end_date_string = (reference_date + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     else:
         reference_date = datetime.datetime.strptime(cleaned_end_date, "%Y-%m-%d").date()
         end_date_string = reference_date.strftime("%Y-%m-%d")
-        display_end_date = end_date_string
 
     # Kalkulasi batas tanggal awal berdasarkan rentang hari
-    start_date = reference_date - datetime.timedelta(days=range_days)
-    start_date_string = start_date.strftime("%Y-%m-%d")
+    start_date_string = (reference_date - datetime.timedelta(days=range_days)).strftime("%Y-%m-%d")
 
-    return start_date_string, end_date_string, display_end_date
+    return start_date_string, end_date_string
 
 
-def fetch_raw_data(ticker: str, start_date: str, end_date: str, display_end: str) -> pd.DataFrame:
+def fetch_raw_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
     # Ambil data historis dari Yahoo Finance API
-    logger.info(f"[Yahoo Finance] Mengunduh data historis {ticker} ({start_date} s.d. {display_end})...")
+    logger.info(f"[Yahoo Finance] Mengunduh data historis {ticker} ({start_date} s.d. {end_date})")
     downloaded_dataframe = yf.Ticker(ticker).history(start=start_date, end=end_date)
     return downloaded_dataframe
 
@@ -60,7 +55,7 @@ def save_ingested_data(stock_dataframe: pd.DataFrame, ticker: str) -> Path:
 
 def run_data_ingestion(ticker: str, range_days: int, end_date: str = "auto") -> pd.DataFrame:
     # Hitung rentang tanggal penarikan
-    start_date, end_date_string, display_end_date = resolve_dates(
+    start_date, end_date_string = resolve_dates(
         range_days=range_days,
         end_date=end_date,
     )
@@ -70,7 +65,6 @@ def run_data_ingestion(ticker: str, range_days: int, end_date: str = "auto") -> 
         ticker=ticker,
         start_date=start_date,
         end_date=end_date_string,
-        display_end=display_end_date,
     )
 
     # Bersihkan data lalu simpan ke artefak
@@ -81,7 +75,7 @@ def run_data_ingestion(ticker: str, range_days: int, end_date: str = "auto") -> 
 
 def main():
     # Inisialisasi argumen CLI
-    parser = argparse.ArgumentParser(description="CRISP-DM Stage 1: Data Ingestion")
+    parser = argparse.ArgumentParser(description="Data Ingestion")
     parser.add_argument("--ticker", type=str, required=True, help="Ticker saham (misal: BBCA.JK)")
     parser.add_argument("--range-days", type=int, required=True, help="Rentang hari ke belakang")
     parser.add_argument("--end-date", type=str, default="auto", help="Tanggal akhir (auto atau YYYY-MM-DD)")
