@@ -13,12 +13,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 def load_data(ticker: str) -> pd.DataFrame:
     # Memuat data historis saham dari disk
     csv_file_path = config.get_data_path(ticker)
-    logger.info(f"[Data Understanding] Memuat data {ticker} dari {csv_file_path.name}...")
+    logger.info(f"[Data Understanding] Memuat data {ticker} dari {csv_file_path.name}")
 
-    # Baca file csv dan konversi tipe tanggal
-    stock_dataframe = pd.read_csv(csv_file_path)
-    stock_dataframe["date"] = pd.to_datetime(stock_dataframe["date"])
-    stock_dataframe = stock_dataframe.sort_values("date").reset_index(drop=True)
+    # Baca file csv
+    stock_dataframe = pd.read_csv(csv_file_path, parse_dates=["date"])
     return stock_dataframe
 
 
@@ -41,8 +39,10 @@ def compute_statistics(stock_dataframe: pd.DataFrame, target_column: str) -> Dic
 def save_understanding_metrics(summary_dictionary: dict, ticker: str) -> Path:
     # Simpan kamus statistik deskriptif ke format JSON
     metrics_file_path = config.get_metrics_path(ticker, "understanding")
+
     with open(metrics_file_path, "w", encoding="utf-8") as json_file:
         json.dump(summary_dictionary, json_file, indent=2)
+    
     logger.info(f"[Artifact] Ringkasan understanding disimpan ke: {metrics_file_path.name}")
     return metrics_file_path
 
@@ -63,6 +63,7 @@ def run_data_understanding(ticker: str, target_col: str = "close") -> dict:
         "total_rows": len(stock_dataframe),
         "stats": statistics_summary,
     }
+    
     save_understanding_metrics(summary_dictionary=summary_dictionary, ticker=ticker)
 
     return summary_dictionary
@@ -70,7 +71,7 @@ def run_data_understanding(ticker: str, target_col: str = "close") -> dict:
 
 def main():
     # Inisialisasi argumen CLI
-    parser = argparse.ArgumentParser(description="CRISP-DM Stage 2: Data Understanding")
+    parser = argparse.ArgumentParser(description="Data Understanding")
     parser.add_argument("--ticker", type=str, required=True, help="Ticker saham (misal: BBCA.JK)")
     parser.add_argument("--target-col", type=str, default="close", help="Nama kolom target (default: close)")
 
